@@ -26,6 +26,10 @@ public record ParametrosJogo(
         return new ParametrosJogo(nova, catalogoNc, pessoas, fornecedores, eventos, financeiro, textos);
     }
 
+    public ParametrosJogo comCatalogoNc(CatalogoNc novo) {
+        return new ParametrosJogo(linha33, novo, pessoas, fornecedores, eventos, financeiro, textos);
+    }
+
     public ParametrosJogo comPessoas(ParametrosPessoas novas) {
         return new ParametrosJogo(linha33, catalogoNc, novas, fornecedores, eventos, financeiro, textos);
     }

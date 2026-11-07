@@ -1,16 +1,36 @@
 extends Control
 ## Tela da Fábrica (MVP): baias com os barcos de 33 pés, bonequinhos trabalhando,
-## barra de topo com data e fila de inspeção, avisos à direita e barra de baixo com as ordens.
-## Arte provisória: retângulos na paleta Endesga 32. A arte final vem depois.
+## barra de topo, ficha do barco selecionado (com as decisões de NC), avisos e barra de ordens.
+## Arte provisória desenhada em código (scripts/sprites.gd) na paleta Endesga 32.
+## Nenhuma regra de jogo aqui: tudo vem do motor Java pela API.
 
 const SEMENTE := 42
 const SEGUNDOS_POR_TICK_X1 := 2.5  # 1 dia útil (8 ticks) ≈ 20 s na velocidade 1 (GDD, Loops de jogo)
 const ALTURA_TOPO := 16
 const ALTURA_BASE := 24
-const LARGURA_AVISOS := 190
-const FONTE_PEQUENA := 8
-const FONTE_MEDIA := 10
+const LARGURA_PAINEL := 200
+const TAMANHO_TEXTO := 16   # VT323 fica nítida em 16
+const TAMANHO_TITULO := 8   # Press Start 2P fica nítida em 8
 const MAX_AVISOS := 6
+
+const FONTE_TEXTO := preload("res://assets/fonts/VT323-Regular.ttf")
+const FONTE_TITULO := preload("res://assets/fonts/PressStart2P-Regular.ttf")
+
+const NOMES_STATUS := {
+	"EM_PRODUCAO": "Em produção",
+	"AGUARDANDO_INSPECAO": "Na fila da inspeção",
+	"EM_INSPECAO": "Em inspeção",
+	"AGUARDANDO_DECISAO": "NC: decida!",
+	"EM_RETRABALHO": "Em retrabalho",
+	"APROVADO": "Aprovado, segurado",
+	"PARADO_MATERIAL": "Parado: sem material",
+	"ENTREGUE": "Entregue",
+}
+const NOMES_GRAVIDADE := {"LEVE": "leve", "MEDIA": "média", "CRITICA": "CRÍTICA"}
+const NOMES_STATUS_NC := {
+	"ABERTA": "aberta", "EM_RETRABALHO": "em retrabalho", "RESOLVIDA": "resolvida",
+	"CONCEDIDA": "concessão",
+}
 
 var estado: Dictionary = {}
 var velocidade := 0
@@ -21,27 +41,52 @@ var avisos: Array[String] = []
 var erro_api := ""
 var selecionado := ""
 var areas_barcos := {}  # id do barco -> Rect2 clicável
+var assinatura_ficha := ""
 
 var fonte: Font
+var fonte_titulo: Font
 var botoes_velocidade := {}
 var rotulo_selecao: Label
 var botao_prioridade: Button
 var botao_segurar: Button
+var ficha: VBoxContainer
 
 
 func _ready() -> void:
-	fonte = ThemeDB.fallback_font
+	fonte = _fonte_pixel(FONTE_TEXTO)
+	fonte_titulo = _fonte_pixel(FONTE_TITULO)
 	theme = Theme.new()
-	theme.default_font_size = FONTE_PEQUENA
+	theme.default_font = fonte
+	theme.default_font_size = TAMANHO_TEXTO
 	Api.erro.connect(_on_erro_api)
 	_montar_barra_inferior()
-	_atualizar_botoes()
+	_montar_ficha()
+	_atualizar_interface()
 	if await Api.criar_partida(SEMENTE):
 		await _atualizar_estado()
-		_avisar("Partida criada (semente %d). Espaço pausa; 1, 2 e 3 mudam a velocidade." % SEMENTE)
-		# "godot --path client-godot -- --rodar" abre o jogo já em x4 (testes e capturas de tela)
-		if OS.get_cmdline_user_args().has("--rodar"):
-			_mudar_velocidade(4)
+		_avisar("Partida criada. Espaço pausa; 1, 2 e 3 mudam a velocidade. Clique num barco.")
+		_opcoes_de_desenvolvimento(OS.get_cmdline_user_args())
+
+
+## Opções para testes e capturas de tela, passadas depois de "--":
+##   godot --path client-godot -- --dias 12 --selecionar 33-002 --rodar
+func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
+	var i := args.find("--dias")
+	if i >= 0 and i + 1 < args.size():
+		var faltam := int(args[i + 1]) * 8
+		while faltam > 0:
+			var resposta = await Api.avancar(mini(faltam, 168))
+			if resposta == null:
+				return
+			estado = resposta["estado"]
+			faltam -= int(resposta["resultado"]["ticksExecutados"])
+		await _buscar_eventos()
+	i = args.find("--selecionar")
+	if i >= 0 and i + 1 < args.size():
+		selecionado = args[i + 1]
+	_atualizar_interface()
+	if args.has("--rodar"):
+		_mudar_velocidade(4)
 
 
 func _process(delta: float) -> void:
@@ -52,6 +97,14 @@ func _process(delta: float) -> void:
 	if acumulado >= SEGUNDOS_POR_TICK_X1 / velocidade:
 		acumulado = 0.0
 		_avancar(1)
+
+
+static func _fonte_pixel(origem: FontFile) -> FontFile:
+	var f := origem.duplicate() as FontFile
+	f.antialiasing = TextServer.FONT_ANTIALIASING_NONE
+	f.hinting = TextServer.HINTING_NONE
+	f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
+	return f
 
 
 # ---------------------------------------------------------------- ordens e API
@@ -68,14 +121,14 @@ func _avancar(ticks: int) -> void:
 	if resposta["resultado"]["pausado"]:
 		_mudar_velocidade(0)
 		_avisar("PAUSA: %s" % _motivo_pausa(str(resposta["resultado"]["motivoPausa"])))
-	_atualizar_botoes()
+	_atualizar_interface()
 
 
 func _atualizar_estado() -> void:
 	var novo = await Api.estado()
 	if novo != null:
 		estado = novo
-		_atualizar_botoes()
+		_atualizar_interface()
 
 
 func _buscar_eventos() -> void:
@@ -85,6 +138,17 @@ func _buscar_eventos() -> void:
 	for evento in lista:
 		ultimo_evento = maxi(ultimo_evento, int(evento["id"]))
 		_avisar(str(evento["mensagem"]))
+
+
+func _enviar_ordem(dados: Dictionary, aviso: String) -> void:
+	var novo = await Api.ordem(dados)
+	if novo != null:
+		estado = novo
+		erro_api = ""
+		if not aviso.is_empty():
+			_avisar(aviso)
+		await _buscar_eventos()
+		_atualizar_interface()
 
 
 func _mudar_velocidade(nova: int) -> void:
@@ -97,25 +161,22 @@ func _mudar_velocidade(nova: int) -> void:
 
 
 func _priorizar() -> void:
-	if selecionado.is_empty():
-		return
-	var novo = await Api.ordem({"tipo": "DefinirPrioridade", "barcoId": selecionado, "posicao": 1})
-	if novo != null:
-		estado = novo
-		_avisar("%s agora é a prioridade 1." % selecionado)
-		_atualizar_botoes()
+	if not selecionado.is_empty():
+		_enviar_ordem({"tipo": "DefinirPrioridade", "barcoId": selecionado, "posicao": 1},
+				"%s agora é a prioridade 1." % selecionado)
 
 
 func _alternar_segurar() -> void:
 	var barco := _barco(selecionado)
 	if barco.is_empty():
 		return
-	var tipo := "LiberarGate" if barco["retido"] else "SegurarGate"
-	var novo = await Api.ordem({"tipo": tipo, "barcoId": selecionado})
-	if novo != null:
-		estado = novo
-		_avisar("%s %s." % [selecionado, "liberado" if tipo == "LiberarGate" else "segurado no gate"])
-		_atualizar_botoes()
+	var liberar: bool = barco["retido"]
+	_enviar_ordem({"tipo": "LiberarGate" if liberar else "SegurarGate", "barcoId": selecionado},
+			"%s %s." % [selecionado, "liberado" if liberar else "segurado no gate"])
+
+
+func _decidir_nc(nc_id: String, decisao: String) -> void:
+	_enviar_ordem({"tipo": "DecidirNc", "ncId": nc_id, "decisao": decisao}, "")
 
 
 func _on_erro_api(mensagem: String) -> void:
@@ -136,18 +197,21 @@ func _unhandled_input(event: InputEvent) -> void:
 				_mudar_velocidade(2)
 			KEY_3:
 				_mudar_velocidade(4)
+			KEY_ESCAPE:
+				selecionado = ""
+				_atualizar_interface()
 
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		selecionado = ""
 		for id in areas_barcos:
 			if areas_barcos[id].has_point(event.position):
 				selecionado = id
-		_atualizar_botoes()
+				_atualizar_interface()
+				return
 
 
-# ---------------------------------------------------------------- interface
+# ---------------------------------------------------------------- interface (Controls)
 
 func _montar_barra_inferior() -> void:
 	var barra := HBoxContainer.new()
@@ -160,11 +224,8 @@ func _montar_barra_inferior() -> void:
 	add_child(barra)
 
 	for opcao in [[0, "Pausa"], [1, "x1"], [2, "x2"], [4, "x4"]]:
-		var botao := Button.new()
-		botao.text = opcao[1]
+		var botao := _botao(opcao[1], _mudar_velocidade.bind(opcao[0]))
 		botao.toggle_mode = true
-		botao.focus_mode = Control.FOCUS_NONE
-		botao.pressed.connect(_mudar_velocidade.bind(opcao[0]))
 		barra.add_child(botao)
 		botoes_velocidade[opcao[0]] = botao
 	botoes_velocidade[0].set_pressed_no_signal(true)
@@ -173,26 +234,74 @@ func _montar_barra_inferior() -> void:
 	rotulo_selecao = Label.new()
 	rotulo_selecao.add_theme_color_override("font_color", Paleta.TEXTO)
 	barra.add_child(rotulo_selecao)
-
-	botao_prioridade = Button.new()
-	botao_prioridade.text = "Prioridade 1"
-	botao_prioridade.focus_mode = Control.FOCUS_NONE
-	botao_prioridade.pressed.connect(_priorizar)
+	botao_prioridade = _botao("Prioridade 1", _priorizar)
 	barra.add_child(botao_prioridade)
-
-	botao_segurar = Button.new()
-	botao_segurar.focus_mode = Control.FOCUS_NONE
-	botao_segurar.pressed.connect(_alternar_segurar)
+	botao_segurar = _botao("Segurar gate", _alternar_segurar)
 	barra.add_child(botao_segurar)
 
 
-func _atualizar_botoes() -> void:
+func _montar_ficha() -> void:
+	ficha = VBoxContainer.new()
+	ficha.add_theme_constant_override("separation", 1)
+	ficha.position = Vector2(size.x - LARGURA_PAINEL, ALTURA_TOPO + 22)
+	ficha.size = Vector2(LARGURA_PAINEL - 8, 10)
+	add_child(ficha)
+
+
+func _botao(texto: String, acao: Callable) -> Button:
+	var b := Button.new()
+	b.text = texto
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(acao)
+	return b
+
+
+func _atualizar_interface() -> void:
 	var barco := _barco(selecionado)
 	var ativo: bool = not barco.is_empty() and barco["status"] != "ENTREGUE"
 	rotulo_selecao.text = "Clique num barco" if barco.is_empty() else "Barco %s" % selecionado
 	botao_prioridade.disabled = not ativo
 	botao_segurar.disabled = not ativo
 	botao_segurar.text = "Liberar gate" if ativo and barco["retido"] else "Segurar gate"
+	_reconstruir_ficha(barco)
+
+
+## Refaz os Controls da ficha só quando algo nela mudou (evita piscar a cada tick).
+func _reconstruir_ficha(barco: Dictionary) -> void:
+	ficha.position = Vector2(size.x - LARGURA_PAINEL, ALTURA_TOPO + 22)
+	var assinatura := "" if barco.is_empty() else JSON.stringify([barco["id"], barco["status"], barco["ncs"]])
+	if assinatura == assinatura_ficha:
+		return
+	assinatura_ficha = assinatura
+	for filho in ficha.get_children():
+		filho.queue_free()
+	if barco.is_empty():
+		return
+
+	for nc in barco["ncs"]:
+		var aberta: bool = nc["status"] == "ABERTA"
+		var linha := Label.new()
+		linha.text = "%s %s: %s" % [nc["gate"], NOMES_GRAVIDADE.get(nc["gravidade"], nc["gravidade"]), nc["descricao"]]
+		linha.autowrap_mode = TextServer.AUTOWRAP_WORD
+		linha.custom_minimum_size.x = LARGURA_PAINEL - 8
+		linha.add_theme_color_override("font_color", Paleta.CRITICO if aberta else Paleta.PISO_ESCURO)
+		ficha.add_child(linha)
+		if not aberta:
+			var situacao := Label.new()
+			situacao.text = "  %s (%s HH)" % [NOMES_STATUS_NC.get(nc["status"], nc["status"]), str(int(nc["hhRetrabalho"]))]
+			situacao.add_theme_color_override("font_color", Paleta.PISO_ESCURO)
+			ficha.add_child(situacao)
+			continue
+		var acoes := HBoxContainer.new()
+		acoes.add_theme_constant_override("separation", 2)
+		acoes.add_child(_botao("Retrabalho", _decidir_nc.bind(nc["id"], "RETRABALHO")))
+		var concessao := _botao("Concessão", _decidir_nc.bind(nc["id"], "CONCESSAO"))
+		concessao.disabled = nc["gravidade"] == "CRITICA"
+		concessao.tooltip_text = "NC crítica não aceita concessão." if concessao.disabled else "Libera sem consertar: risco de garantia."
+		acoes.add_child(concessao)
+		if nc["origem"] == "FORNECEDOR":
+			acoes.add_child(_botao("RNC", _decidir_nc.bind(nc["id"], "RNC_FORNECEDOR")))
+		ficha.add_child(acoes)
 
 
 func _avisar(texto: String) -> void:
@@ -207,37 +316,37 @@ func _draw() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Paleta.FUNDO_ESCURO)
 	if estado.is_empty():
 		var texto := erro_api if not erro_api.is_empty() else "Conectando à API..."
-		draw_multiline_string(fonte, Vector2(16, 40), texto, HORIZONTAL_ALIGNMENT_LEFT, size.x - 32,
-				FONTE_MEDIA, -1, Paleta.ALERTA)
+		draw_string(fonte_titulo, Vector2(16, 40), "MARELLAR", HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO, Paleta.TEXTO_CLARO)
+		draw_multiline_string(fonte, Vector2(16, 64), texto, HORIZONTAL_ALIGNMENT_LEFT, size.x - 32,
+				TAMANHO_TEXTO, -1, Paleta.ALERTA)
 		return
 	_desenhar_topo()
 	_desenhar_baias()
-	_desenhar_avisos()
+	_desenhar_painel()
 	draw_rect(Rect2(0, size.y - ALTURA_BASE, size.x, ALTURA_BASE), Paleta.FUNDO)
 
 
 func _desenhar_topo() -> void:
 	draw_rect(Rect2(0, 0, size.x, ALTURA_TOPO), Paleta.FUNDO)
 	var partes := str(estado["data"]).split("-")
-	var data := "%s/%s/%s" % [partes[2], partes[1], partes[0]]
 	var em_inspecao = estado["barcoEmInspecao"]
-	var texto := "%s %02dh  |  %s, dia %d/21  |  Inspeção: %s, fila %d  |  Ociosas: %s h" % [
-		data, int(estado["hora"]), estado["mesReferencia"], int(estado["diaUtilDoMes"]),
+	var texto := "%s/%s %02dh | %s dia %d/21 | Inspeção: %s (fila %d) | NCs abertas: %d | Marta: moral %d" % [
+		partes[2], partes[1], int(estado["hora"]), estado["mesReferencia"], int(estado["diaUtilDoMes"]),
 		"livre" if em_inspecao == null else em_inspecao, estado["filaInspecao"].size(),
-		str(int(estado["horasOciosas"]))]
-	draw_string(fonte, Vector2(6, 11), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, FONTE_PEQUENA, Paleta.TEXTO)
+		int(estado["qualidade"]["ncsAbertas"]), int(estado["inspetor"]["moral"])]
+	draw_string(fonte, Vector2(5, 12), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.TEXTO)
 	var vel := "PAUSA" if velocidade == 0 else "x%d" % velocidade
-	draw_string(fonte, Vector2(size.x - 40, 11), vel, HORIZONTAL_ALIGNMENT_LEFT, -1, FONTE_PEQUENA,
+	draw_string(fonte_titulo, Vector2(size.x - 44, 12), vel, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO,
 			Paleta.ALERTA if velocidade == 0 else Paleta.MONTAGEM_LIMPA)
 
 
 func _desenhar_baias() -> void:
 	areas_barcos.clear()
-	var area := Rect2(4, ALTURA_TOPO + 4, size.x - LARGURA_AVISOS - 12, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
+	var area := Rect2(4, ALTURA_TOPO + 4, size.x - LARGURA_PAINEL - 10, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
 	var barcos: Array = estado["barcos"]
 	var colunas := 2
-	var linhas := int(ceil(barcos.size() / float(colunas)))
-	var tam := Vector2((area.size.x - 4 * (colunas - 1)) / colunas, (area.size.y - 4 * (linhas - 1)) / maxi(linhas, 1))
+	var linhas := maxi(1, int(ceil(barcos.size() / float(colunas))))
+	var tam := Vector2(floor((area.size.x - 4 * (colunas - 1)) / colunas), floor((area.size.y - 4 * (linhas - 1)) / linhas))
 	for i in barcos.size():
 		var pos := area.position + Vector2((i % colunas) * (tam.x + 4), (i / colunas) * (tam.y + 4))
 		_desenhar_baia(barcos[i], Rect2(pos, tam))
@@ -247,74 +356,106 @@ func _desenhar_baia(barco: Dictionary, baia: Rect2) -> void:
 	var id: String = barco["id"]
 	var gate: String = barco["gateAtual"]
 	var status: String = barco["status"]
-	var zona_suja := gate == "DM"
+	var entregue := status == "ENTREGUE"
+	var etapa := Sprites.etapa_do_gate(gate, entregue)
+	var zona_suja := etapa == Sprites.ETAPA_MOLDE
 	var cor_zona := Paleta.PRODUCAO_SUJA if zona_suja else Paleta.MONTAGEM_LIMPA
+	var t := Time.get_ticks_msec() / 1000.0
 	areas_barcos[id] = baia
 
-	# piso e faixa da zona (suja = laminação, limpa = montagem)
+	# piso, faixa da zona (suja = laminação, limpa = montagem) e grade de tiles 16 px
 	draw_rect(baia, Paleta.ARMAZEM_ESCURO)
+	for x in range(int(baia.position.x) + 16, int(baia.end.x), 16):
+		draw_line(Vector2(x, baia.position.y + 3), Vector2(x, baia.end.y), Color(Paleta.ARMAZEM, 0.35))
 	draw_rect(Rect2(baia.position, Vector2(baia.size.x, 3)), cor_zona)
-	if status == "ENTREGUE":
-		draw_rect(Rect2(baia.position + Vector2(0, baia.size.y * 0.55), Vector2(baia.size.x, baia.size.y * 0.45)), Paleta.AGUA_ESCURA)
 
-	# casco do barco de 33 pés (~5 tiles = 80 px)
-	var centro := baia.position + Vector2(baia.size.x / 2, baia.size.y * 0.55)
-	var casco := Rect2(centro - Vector2(40, 10), Vector2(68, 20))
-	draw_rect(casco, Paleta.CASCO)
-	draw_rect(Rect2(casco.position + Vector2(6, 4), Vector2(36, 12)), Paleta.CASCO_SOMBRA)
-	draw_colored_polygon(PackedVector2Array([
-		casco.position + Vector2(casco.size.x, 0),
-		casco.position + Vector2(casco.size.x + 14, casco.size.y / 2),
-		casco.position + Vector2(casco.size.x, casco.size.y)]), Paleta.CASCO)
+	# barco
+	var linha_dagua := baia.position + Vector2(baia.size.x / 2 - 44, baia.size.y * 0.62)
+	Sprites.barco(self, linha_dagua, etapa, float(barco["progressoGate"]), t)
 
-	# bonequinhos alocados neste barco
-	var t := Time.get_ticks_msec() / 1000.0
-	var cor_uniforme := Paleta.PRODUCAO_SUJA if zona_suja else Paleta.MONTAGEM_LIMPA_ESCURA
+	# bonequinhos trabalhando (laminação de marrom, montagem de verde)
+	var uniforme := Paleta.PRODUCAO_SUJA if zona_suja else Paleta.MONTAGEM_LIMPA_ESCURA
 	var alocadas: Array = barco["pessoasAlocadas"]
 	for k in alocadas.size():
-		var lado := -1 if k % 2 == 0 else 1
-		var x := casco.position.x + 6 + (k / 2) * 22
-		var y := centro.y + lado * 17 - 4
-		var pulo := 1.0 if velocidade > 0 and int(t * 4 + k) % 2 == 0 else 0.0
-		draw_rect(Rect2(x, y - pulo, 4, 7), cor_uniforme)
-		draw_rect(Rect2(x, y - 3 - pulo, 4, 3), Paleta.TEXTO)
+		var frente := k % 2 == 0
+		var x := linha_dagua.x + 8 + (k / 2) * 26
+		var y := linha_dagua.y + (12.0 if frente else -16.0)
+		var quadro := int(t * 4 + k) % 2 if velocidade > 0 else 0
+		Sprites.pessoa(self, Vector2(x, y), uniforme, quadro)
 
-	# inspetor
+	# inspetora ao lado do barco em inspeção
 	if estado["barcoEmInspecao"] == id:
-		var xi := casco.end.x + 18
-		draw_rect(Rect2(xi, centro.y - 4, 5, 8), Paleta.AGUA)
-		draw_rect(Rect2(xi, centro.y - 8, 5, 4), Paleta.TEXTO)
-		draw_string(fonte, Vector2(xi - 2, centro.y - 10), "Q", HORIZONTAL_ALIGNMENT_LEFT, -1, FONTE_PEQUENA, Paleta.AGUA)
+		Sprites.inspetor(self, linha_dagua + Vector2(96, 10), int(t * 2) % 2)
 
-	# textos e barra de progresso do gate
-	var y0 := baia.position.y + 13
-	draw_string(fonte, Vector2(baia.position.x + 4, y0), "%s  P%d" % [id, int(barco["prioridade"])],
-			HORIZONTAL_ALIGNMENT_LEFT, -1, FONTE_MEDIA, Paleta.TEXTO_CLARO)
-	draw_string(fonte, Vector2(baia.position.x + 4, y0 + 10), "%s - %s" % [gate, barco["nomeGate"]],
-			HORIZONTAL_ALIGNMENT_LEFT, baia.size.x - 8, FONTE_PEQUENA, Paleta.TEXTO)
-	var barra := Rect2(baia.position.x + 4, baia.end.y - 16, baia.size.x - 8, 4)
+	# selo de NC aberta
+	var abertas := 0
+	for nc in barco["ncs"]:
+		if nc["status"] == "ABERTA":
+			abertas += 1
+	if abertas > 0:
+		Sprites.selo_nc(self, linha_dagua + Vector2(88, -26), fonte, abertas, int(t * 3) % 2 == 0)
+
+	# textos e barra de progresso
+	var esquerda := baia.position.x + 4
+	draw_string(fonte_titulo, Vector2(esquerda, baia.position.y + 14), id, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			TAMANHO_TITULO, Paleta.TEXTO_CLARO)
+	draw_string(fonte, Vector2(baia.end.x - 22, baia.position.y + 15), "P%d" % int(barco["prioridade"]),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.ALERTA)
+	draw_string(fonte, Vector2(esquerda, baia.position.y + 27), "%s - %s" % [gate, barco["nomeGate"]],
+			HORIZONTAL_ALIGNMENT_LEFT, baia.size.x - 8, TAMANHO_TEXTO, Paleta.TEXTO)
+
+	var barra := Rect2(esquerda, baia.end.y - 17, baia.size.x - 8, 3)
 	draw_rect(barra, Paleta.FUNDO_ESCURO)
 	draw_rect(Rect2(barra.position, Vector2(barra.size.x * float(barco["progressoGate"]), barra.size.y)), cor_zona)
-	var restantes := int(ceil(float(barco["hhRestantesNoGate"])))
-	draw_string(fonte, Vector2(barra.position.x, baia.end.y - 4), "%s  |  faltam %d HH" % [_texto_status(barco), restantes],
-			HORIZONTAL_ALIGNMENT_LEFT, baia.size.x - 8, FONTE_PEQUENA, _cor_status(status))
+	var detalhe := ""
+	if status == "EM_RETRABALHO":
+		detalhe = "faltam %d HH de retrabalho" % int(ceil(float(barco["hhRetrabalhoPendente"])))
+	elif status == "EM_PRODUCAO":
+		detalhe = "faltam %d HH" % int(ceil(float(barco["hhRestantesNoGate"])))
+	var texto_status: String = NOMES_STATUS.get(status, status)
+	if barco["retido"] and status != "APROVADO":
+		texto_status += " (segurar)"
+	draw_string(fonte, Vector2(esquerda, baia.end.y - 3), "%s  %s" % [texto_status, detalhe],
+			HORIZONTAL_ALIGNMENT_LEFT, baia.size.x - 8, TAMANHO_TEXTO, _cor_status(status))
 
 	if id == selecionado:
-		draw_rect(baia, Paleta.ALERTA, false, 1.0)
+		draw_rect(baia.grow(-0.5), Paleta.ALERTA, false, 1.0)
 
 
-func _desenhar_avisos() -> void:
-	var painel := Rect2(size.x - LARGURA_AVISOS - 4, ALTURA_TOPO + 4, LARGURA_AVISOS, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
+func _desenhar_painel() -> void:
+	var painel := Rect2(size.x - LARGURA_PAINEL - 2, ALTURA_TOPO + 4, LARGURA_PAINEL, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
 	draw_rect(painel, Paleta.FUNDO)
-	draw_string(fonte, painel.position + Vector2(6, 12), "Avisos", HORIZONTAL_ALIGNMENT_LEFT, -1, FONTE_MEDIA, Paleta.ALERTA)
-	var y := painel.position.y + 26
+	var x := painel.position.x + 6
+	var barco := _barco(selecionado)
+
+	# ficha do barco (os botões de NC são Controls posicionados aqui)
+	var titulo := "FICHA DO BARCO" if barco.is_empty() else "BARCO %s" % selecionado
+	draw_string(fonte_titulo, Vector2(x, painel.position.y + 12), titulo, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			TAMANHO_TITULO, Paleta.ALERTA)
+	if barco.is_empty():
+		draw_string(fonte, Vector2(x, painel.position.y + 28), "Clique num barco.", HORIZONTAL_ALIGNMENT_LEFT, -1,
+				TAMANHO_TEXTO, Paleta.PISO_ESCURO)
+	elif (barco["ncs"] as Array).is_empty():
+		draw_string(fonte, Vector2(x, painel.position.y + 28), "%s | %d gates aprovados | sem NC" % [
+			barco["cliente"], (barco["gatesAprovados"] as Array).size()], HORIZONTAL_ALIGNMENT_LEFT,
+			LARGURA_PAINEL - 10, TAMANHO_TEXTO, Paleta.TEXTO)
+
+	# avisos na metade de baixo
+	var topo_avisos := maxf(painel.position.y + painel.size.y * 0.5, ficha.position.y + ficha.size.y + 6)
+	draw_line(Vector2(painel.position.x, topo_avisos - 4), Vector2(painel.end.x, topo_avisos - 4), Paleta.ARMAZEM_ESCURO)
+	draw_string(fonte_titulo, Vector2(x, topo_avisos + 8), "AVISOS", HORIZONTAL_ALIGNMENT_LEFT, -1,
+			TAMANHO_TITULO, Paleta.ALERTA)
+	var y := topo_avisos + 22
 	for aviso in avisos:
-		draw_multiline_string(fonte, Vector2(painel.position.x + 6, y), aviso, HORIZONTAL_ALIGNMENT_LEFT,
-				painel.size.x - 12, FONTE_PEQUENA, 3, Paleta.TEXTO)
-		y += 30
+		if y > painel.end.y - 8:
+			break
+		var linhas := fonte.get_multiline_string_size(aviso, HORIZONTAL_ALIGNMENT_LEFT, LARGURA_PAINEL - 12, TAMANHO_TEXTO)
+		draw_multiline_string(fonte, Vector2(x, y), aviso, HORIZONTAL_ALIGNMENT_LEFT, LARGURA_PAINEL - 12,
+				TAMANHO_TEXTO, -1, Paleta.TEXTO)
+		y += linhas.y + 3
 	if not erro_api.is_empty():
-		draw_multiline_string(fonte, Vector2(painel.position.x + 6, painel.end.y - 30), erro_api,
-				HORIZONTAL_ALIGNMENT_LEFT, painel.size.x - 12, FONTE_PEQUENA, 3, Paleta.CRITICO)
+		draw_multiline_string(fonte, Vector2(x, painel.end.y - 24), erro_api, HORIZONTAL_ALIGNMENT_LEFT,
+				LARGURA_PAINEL - 12, TAMANHO_TEXTO, 2, Paleta.CRITICO)
 
 
 # ---------------------------------------------------------------- utilitários
@@ -328,27 +469,13 @@ func _barco(id: String) -> Dictionary:
 	return {}
 
 
-func _texto_status(barco: Dictionary) -> String:
-	var texto: String = {
-		"EM_PRODUCAO": "Em produção",
-		"AGUARDANDO_INSPECAO": "Aguardando inspeção",
-		"EM_INSPECAO": "Em inspeção",
-		"APROVADO": "Aprovado, segurado",
-		"PARADO_MATERIAL": "Parado: sem material",
-		"ENTREGUE": "Entregue",
-	}.get(barco["status"], barco["status"])
-	if barco["retido"] and barco["status"] != "APROVADO":
-		texto += " (segurar)"
-	return texto
-
-
 func _cor_status(status: String) -> Color:
 	match status:
-		"AGUARDANDO_INSPECAO":
+		"AGUARDANDO_INSPECAO", "EM_RETRABALHO":
 			return Paleta.ALERTA
 		"EM_INSPECAO":
 			return Paleta.AGUA
-		"APROVADO", "PARADO_MATERIAL":
+		"AGUARDANDO_DECISAO", "APROVADO", "PARADO_MATERIAL":
 			return Paleta.CRITICO
 		"ENTREGUE":
 			return Paleta.MONTAGEM_LIMPA
@@ -362,5 +489,5 @@ func _motivo_pausa(motivo: String) -> String:
 		"ACIDENTE":
 			return "acidente de trabalho."
 		"NC_CRITICA":
-			return "NC crítica no gate."
+			return "NC crítica detectada. Clique no barco e decida."
 	return motivo

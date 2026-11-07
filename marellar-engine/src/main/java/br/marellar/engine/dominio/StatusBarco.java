@@ -7,6 +7,10 @@ public enum StatusBarco {
     AGUARDANDO_INSPECAO,
     /** O inspetor esta inspecionando o gate. */
     EM_INSPECAO,
+    /** O inspetor achou NC; o jogador precisa decidir retrabalho, concessao ou RNC. */
+    AGUARDANDO_DECISAO,
+    /** Equipe consertando as NCs do gate. */
+    EM_RETRABALHO,
     /** Gate aprovado, mas o jogador segurou o barco antes do proximo gate. */
     APROVADO,
     /** Sem material para comecar o gate (entra no M4, com fornecedores). */

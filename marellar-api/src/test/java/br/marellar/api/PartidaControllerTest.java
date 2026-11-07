@@ -123,6 +123,24 @@ class PartidaControllerTest {
     }
 
     @Test
+    void ordemDecidirNcComNcInexistenteDa422() throws Exception {
+        mvc.perform(post("/api/v1/partidas/{id}/ordens", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tipo\": \"DecidirNc\", \"ncId\": \"NC-9999\", \"decisao\": \"RETRABALHO\"}"))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.detail").value("NC nao encontrada: NC-9999"));
+    }
+
+    @Test
+    void estadoTrazInspetorEQualidade() throws Exception {
+        mvc.perform(get("/api/v1/partidas/{id}", id))
+                .andExpect(jsonPath("$.inspetor.nome").value("Marta Quintela"))
+                .andExpect(jsonPath("$.inspetor.rigor").value(75))
+                .andExpect(jsonPath("$.qualidade.ncsDetectadas").value(0))
+                .andExpect(jsonPath("$.barcos[0].ncs").isArray());
+    }
+
+    @Test
     void ticksForaDoLimiteDa400() throws Exception {
         mvc.perform(post("/api/v1/partidas/{id}/avancar", id)
                         .contentType(MediaType.APPLICATION_JSON)

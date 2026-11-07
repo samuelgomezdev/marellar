@@ -5,6 +5,8 @@ import br.marellar.engine.dados.ParametrosLinha;
 import br.marellar.engine.dados.ParametrosPessoas;
 import br.marellar.engine.dominio.Barco;
 import br.marellar.engine.dominio.Evento;
+import br.marellar.engine.dominio.Funcao;
+import br.marellar.engine.dominio.NaoConformidade;
 import br.marellar.engine.dominio.MotivoPausa;
 import br.marellar.engine.dominio.Pessoa;
 import br.marellar.engine.dominio.TipoEvento;
@@ -47,6 +49,11 @@ public final class Partida {
     private boolean pausado;
     private MotivoPausa motivoPausa;
     private BigDecimal horasOciosas = BigDecimal.ZERO;
+    private final List<NaoConformidade> ncs = new ArrayList<>();
+    private int contadorNc;
+    private int concessoes;
+    private int rncs;
+    private BigDecimal custoMaterialRetrabalho = BigDecimal.ZERO;
 
     Partida(long semente, ParametrosJogo parametros, LocalDate inicio) {
         this.semente = semente;
@@ -96,6 +103,81 @@ public final class Partida {
                 .filter(Barco::ativo)
                 .sorted(Comparator.comparingInt(Barco::prioridade).thenComparing(Barco::id))
                 .toList();
+    }
+
+    // ----- qualidade -----
+
+    public String proximoIdNc() {
+        contadorNc++;
+        return "NC-%04d".formatted(contadorNc);
+    }
+
+    public void adicionarNcs(List<NaoConformidade> novas) {
+        ncs.addAll(novas);
+    }
+
+    public Optional<NaoConformidade> nc(String id) {
+        return ncs.stream().filter(n -> n.id().equals(id)).findFirst();
+    }
+
+    public List<NaoConformidade> ncsDoBarco(String barcoId) {
+        return ncs.stream().filter(n -> n.barcoId().equals(barcoId)).toList();
+    }
+
+    public List<NaoConformidade> ncsDoGateAtual(Barco barco) {
+        return ncs.stream()
+                .filter(n -> n.barcoId().equals(barco.id()) && n.gate() == barco.gateAtual())
+                .toList();
+    }
+
+    public List<NaoConformidade> ncs() {
+        return ncs;
+    }
+
+    public void registrarConcessao() {
+        concessoes++;
+    }
+
+    public void registrarRnc() {
+        rncs++;
+    }
+
+    public void somarCustoMaterialRetrabalho(BigDecimal valor) {
+        custoMaterialRetrabalho = custoMaterialRetrabalho.add(valor);
+    }
+
+    public int concessoes() {
+        return concessoes;
+    }
+
+    public int rncs() {
+        return rncs;
+    }
+
+    public BigDecimal custoMaterialRetrabalho() {
+        return custoMaterialRetrabalho;
+    }
+
+    public Pessoa inspetor() {
+        return pessoas.stream().filter(p -> p.funcao() == Funcao.INSPETOR).findFirst()
+                .orElseThrow(() -> new IllegalStateException("Partida sem inspetor"));
+    }
+
+    public Optional<String> fornecedorDoItem(String item) {
+        if (item == null) {
+            return Optional.empty();
+        }
+        return parametros.fornecedores().fornecedores().stream()
+                .filter(f -> f.itens().contains(item))
+                .map(f -> f.id())
+                .findFirst();
+    }
+
+    public Optional<String> nomeDoFornecedor(String id) {
+        return parametros.fornecedores().fornecedores().stream()
+                .filter(f -> f.id().equals(id))
+                .map(f -> f.nome())
+                .findFirst();
     }
 
     // ----- inspecao -----

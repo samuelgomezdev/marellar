@@ -1,6 +1,7 @@
 package br.marellar.engine.dominio;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Collections;
 import java.util.List;
@@ -16,10 +17,14 @@ public final class Barco {
     private StatusBarco status;
     private BigDecimal hhTotalDoGate;
     private BigDecimal hhRestantesNoGate;
+    private BigDecimal hhRetrabalhoPendente = BigDecimal.ZERO;
     private int prioridade;
     private boolean retido;
     private BigDecimal hhProduzidas = BigDecimal.ZERO;
+    private BigDecimal hhRetrabalho = BigDecimal.ZERO;
     private BigDecimal hhApontadas = BigDecimal.ZERO;
+    private long somaNiveisNoGate;
+    private long horasNoGate;
     private final List<CodigoGate> gatesAprovados = new ArrayList<>();
 
     public Barco(String id, Linha linha, String cliente, CodigoGate gateInicial, BigDecimal hhDoGate, int prioridade) {
@@ -39,26 +44,57 @@ public final class Barco {
         this.gateAtual = gate;
         this.hhTotalDoGate = hhDoGate;
         this.hhRestantesNoGate = hhDoGate;
+        this.somaNiveisNoGate = 0;
+        this.horasNoGate = 0;
         this.status = StatusBarco.EM_PRODUCAO;
     }
 
+    public void iniciarRetrabalho(BigDecimal hh) {
+        this.hhRetrabalhoPendente = hh;
+        this.status = StatusBarco.EM_RETRABALHO;
+    }
+
+    public boolean trabalhando() {
+        return status == StatusBarco.EM_PRODUCAO || status == StatusBarco.EM_RETRABALHO;
+    }
+
     /**
-     * Desconta as HH produzidas no gate atual. Devolve quanto foi de fato usado
-     * (nunca mais que o que faltava no gate).
+     * Desconta as HH produzidas no gate atual (ou no retrabalho). Devolve quanto foi de fato usado,
+     * nunca mais que o que faltava. {@code somaNiveis} e a soma dos niveis de quem trabalhou nesta hora.
      */
-    public BigDecimal produzir(BigDecimal hhProducao, int horasPagas) {
-        if (status != StatusBarco.EM_PRODUCAO) {
-            throw new IllegalStateException("Barco " + id + " nao esta em producao: " + status);
+    public BigDecimal produzir(BigDecimal hhProducao, int horasPagas, int somaNiveis) {
+        if (!trabalhando()) {
+            throw new IllegalStateException("Barco " + id + " nao esta trabalhando: " + status);
         }
+        hhApontadas = hhApontadas.add(BigDecimal.valueOf(horasPagas));
+        if (status == StatusBarco.EM_RETRABALHO) {
+            BigDecimal usado = hhProducao.min(hhRetrabalhoPendente);
+            hhRetrabalhoPendente = hhRetrabalhoPendente.subtract(usado);
+            hhRetrabalho = hhRetrabalho.add(usado);
+            return usado;
+        }
+        somaNiveisNoGate += somaNiveis;
+        horasNoGate += horasPagas;
         BigDecimal usado = hhProducao.min(hhRestantesNoGate);
         hhRestantesNoGate = hhRestantesNoGate.subtract(usado);
         hhProduzidas = hhProduzidas.add(usado);
-        hhApontadas = hhApontadas.add(BigDecimal.valueOf(horasPagas));
         return usado;
     }
 
-    public boolean gateTerminado() {
-        return hhRestantesNoGate.signum() == 0;
+    public boolean trabalhoTerminado() {
+        return status == StatusBarco.EM_RETRABALHO
+                ? hhRetrabalhoPendente.signum() == 0
+                : hhRestantesNoGate.signum() == 0;
+    }
+
+    /** Nivel medio de quem trabalhou no gate atual, arredondado (3 se ninguem trabalhou). */
+    public int nivelMedioNoGate() {
+        if (horasNoGate == 0) {
+            return 3;
+        }
+        return BigDecimal.valueOf(somaNiveisNoGate)
+                .divide(BigDecimal.valueOf(horasNoGate), 0, RoundingMode.HALF_EVEN)
+                .intValue();
     }
 
     public void mudarStatus(StatusBarco novo) {
@@ -109,6 +145,10 @@ public final class Barco {
         return hhRestantesNoGate;
     }
 
+    public BigDecimal hhRetrabalhoPendente() {
+        return hhRetrabalhoPendente;
+    }
+
     public int prioridade() {
         return prioridade;
     }
@@ -119,6 +159,10 @@ public final class Barco {
 
     public BigDecimal hhProduzidas() {
         return hhProduzidas;
+    }
+
+    public BigDecimal hhRetrabalho() {
+        return hhRetrabalho;
     }
 
     public BigDecimal hhApontadas() {

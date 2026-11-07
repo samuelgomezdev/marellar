@@ -12,12 +12,12 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | --- | --- | --- |
 | M1 | Maven multi-módulo, `data/*.json`, carregamento e validação | ✅ |
 | M2 | Motor: relógio, barcos, gates e produção | ✅ |
-| M3 | Qualidade e inspetor | ⏳ |
+| M3 | Qualidade e inspetor | ✅ |
 | M4 | Pessoas, fornecedores e eventos | ⏳ |
 | M5 | Finanças, DRE, valor da empresa, conselho | ⏳ |
 | M6 | `marellar-cli` | 🚧 roda a partida e imprime a produção; falta o relatório do conselho |
 | M7 | `marellar-api` | 🚧 criar, estado, avançar, ordens, barco e eventos; falta salvar/carregar e conselho |
-| M8 | `client-godot`: telas Fábrica, Barco, Conselho | 🚧 tela da Fábrica provisória ligada à API |
+| M8 | `client-godot`: telas Fábrica, Barco, Conselho | 🚧 Fábrica e ficha do barco (decisões de NC) com arte provisória |
 
 ---
 
@@ -406,9 +406,12 @@ java -jar marellar-cli/target/marellar-cli.jar --semente 42 --meses 1
 ./mvnw -pl marellar-api spring-boot:run      # API em http://localhost:8080/api/v1
 # abrir client-godot/project.godot no Godot 4 e rodar (com a API ligada)
 godot --path client-godot -- --rodar          # opcional: abre o jogo já em x4
+godot --path client-godot -- --dias 12 --selecionar 33-002   # opcional: pula dias e abre a ficha de um barco
 ```
 
-Controles da tela da Fábrica: **Espaço** pausa, **1/2/3** mudam a velocidade (x1, x2, x4), clique num barco para dar **Prioridade 1** ou **Segurar/Liberar gate**.
+A CLI decide sozinha: toda NC detectada vai para retrabalho. Use `--sem-decisoes` para ver os barcos travarem esperando decisão.
+
+Controles da tela da Fábrica: **Espaço** pausa, **1/2/3** mudam a velocidade (x1, x2, x4), **Esc** fecha a ficha. Clique num barco para dar **Prioridade 1**, **Segurar/Liberar gate** e decidir as NCs (**Retrabalho**, **Concessão** ou **RNC**) na ficha à direita.
 
 ---
 
@@ -423,4 +426,4 @@ Os documentos de design ficam **fora do repositório**, na pasta local do projet
 
 ## Licença
 
-[MIT](LICENSE).
+Código sob [MIT](LICENSE). Fontes [VT323](https://fonts.google.com/specimen/VT323) e [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) sob SIL Open Font License 1.1 (licenças em `client-godot/assets/fonts/`).

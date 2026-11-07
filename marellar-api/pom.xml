@@ -51,6 +51,14 @@
         <finalName>marellar-api</finalName>
         <plugins>
             <plugin>
+                <!-- Mockito carrega um agente em tempo de execucao; no JDK 21 isso precisa ser liberado -->
+                <groupId>org.apache.maven.plugins</groupId>
+                <artifactId>maven-surefire-plugin</artifactId>
+                <configuration>
+                    <argLine>-XX:+EnableDynamicAgentLoading -Xshare:off</argLine>
+                </configuration>
+            </plugin>
+            <plugin>
                 <groupId>org.springframework.boot</groupId>
                 <artifactId>spring-boot-maven-plugin</artifactId>
                 <executions>

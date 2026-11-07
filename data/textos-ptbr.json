@@ -46,6 +46,11 @@
     "gateConcluido": "{barco}: gate {gate} concluído, aguardando inspeção.",
     "gateAprovado": "{barco}: gate {gate} aprovado.",
     "barcoEntregue": "{barco} entregue ao cliente.",
-    "fimDoMes": "Fim do mês. O conselho está reunido."
+    "fimDoMes": "Fim do mês. O conselho está reunido.",
+    "ncDetectada": "{barco}: {quantidade} NC no gate {gate}. {inspetor}: “{fala}”",
+    "ncCritica": "{barco}: NC CRÍTICA no gate {gate} ({descricao}). Produção pausada.",
+    "retrabalhoConcluido": "{barco}: retrabalho concluído no gate {gate}.",
+    "concessao": "{barco}: concessão na NC {nc}. {inspetor}: “{fala}”",
+    "rncAberta": "{barco}: RNC aberta contra {fornecedor} pela NC {nc}."
   }
 }
