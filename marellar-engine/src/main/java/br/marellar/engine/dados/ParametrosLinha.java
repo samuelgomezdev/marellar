@@ -54,6 +54,12 @@ public record ParametrosLinha(
                 maxPessoasPorBarco, ticksInspecao, gates, novos);
     }
 
+    public ParametrosLinha comTicksInspecao(int ticks) {
+        return new ParametrosLinha(linha, nome, hhPorBarco, custoHh, materialPorBarco, precoVenda,
+                percentualConsumiveis, percentualImportados, prazoRecebimentoDias, cotaContratoPercentual,
+                maxPessoasPorBarco, ticks, gates, barcosIniciais);
+    }
+
     public ParametrosLinha comGates(List<Gate> novos) {
         return new ParametrosLinha(linha, nome, hhPorBarco, custoHh, materialPorBarco, precoVenda,
                 percentualConsumiveis, percentualImportados, prazoRecebimentoDias, cotaContratoPercentual,
