@@ -1,0 +1,16 @@
+{
+  "pesosScorecard": { "entrega": 40, "qualidade": 30, "custo": 20, "resposta": 10 },
+  "taxaAdministrativaChargeback": 0.10,
+  "prazo8dDiasUteis": 10,
+  "perfis": {
+    "PREMIUM_CONFIAVEL":  { "ppmBase": 800,   "probabilidadeAtraso": 0.03, "diasEntrega": 5,  "fatorPreco": 1.15, "diasResposta8d": 6 },
+    "BARATO_INSTAVEL":    { "ppmBase": 12000, "probabilidadeAtraso": 0.20, "diasEntrega": 7,  "fatorPreco": 0.88, "diasResposta8d": 14 },
+    "GRANDE_INDIFERENTE": { "ppmBase": 3000,  "probabilidadeAtraso": 0.10, "diasEntrega": 10, "fatorPreco": 1.00, "diasResposta8d": 12 },
+    "PEQUENO_DEDICADO":   { "ppmBase": 4000,  "probabilidadeAtraso": 0.08, "diasEntrega": 6,  "fatorPreco": 1.05, "diasResposta8d": 5 }
+  },
+  "fornecedores": [
+    { "id": "F01", "nome": "Fibras Litoral",          "perfil": "PREMIUM_CONFIAVEL",  "itens": ["fibra", "resina"] },
+    { "id": "F02", "nome": "Resinas Vale Barato",     "perfil": "BARATO_INSTAVEL",    "itens": ["gelcoat", "vidro"] },
+    { "id": "F03", "nome": "MegaNáutica Distribuidora", "perfil": "GRANDE_INDIFERENTE", "itens": ["eletrica", "motor"] }
+  ]
+}

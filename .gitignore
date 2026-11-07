@@ -1,0 +1,37 @@
+# Build Java
+target/
+*.class
+*.log
+
+# IDEs
+.idea/
+*.iml
+.vscode/
+.classpath
+.project
+.settings/
+
+# Godot
+client-godot/.godot/
+client-godot/export/
+*.import.tmp
+
+# Saves de partida
+saves/
+
+# Documentos de referencia ficam FORA do repositorio (nenhum dado real de empresa)
+*.docx
+*.doc
+*.pptx
+*.ppt
+*.xlsx
+*.xlsm
+*.xlsb
+*.xls
+*.pdf
+*.zip
+
+# Sistema
+.DS_Store
+Thumbs.db
+desktop.ini

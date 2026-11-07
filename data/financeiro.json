@@ -1,0 +1,8 @@
+{
+  "caixaInicial": 3000000.00,
+  "despesasFixasMensais": 180000.00,
+  "multiploValuation": 6,
+  "descontoPorAcidenteComAfastamento": 0.05,
+  "descontoPorNcEscapada": 0.03,
+  "mesesCaixaNegativoParaDerrota": 3
+}

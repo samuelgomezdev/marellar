@@ -1,0 +1,22 @@
+{
+  "quebraPeca": {
+    "probabilidadePorGate": 0.03,
+    "multiplicadorPressa": 1.5,
+    "multiplicadorMoralBaixa": 1.5,
+    "hhRetrabalho": 12,
+    "custoMaterial": 1500.00
+  },
+  "acidente": {
+    "probabilidadePorHh": 0.00002,
+    "multiplicadorTreinoVencido": 2.0,
+    "multiplicadorSobrecarga": 1.5,
+    "diasPerdidosMin": 1,
+    "diasPerdidosMax": 15,
+    "quedaMoralEquipe": 10
+  },
+  "demissao": {
+    "probabilidadeDiariaBase": 0.0005,
+    "probabilidadeDiariaMoralBaixa": 0.01,
+    "limiarMoralBaixa": 40
+  }
+}

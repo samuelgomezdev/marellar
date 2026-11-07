@@ -1,0 +1,18 @@
+{
+  "deteccaoBase": { "LEVE": 0.60, "MEDIA": 0.80, "CRITICA": 0.95 },
+  "maxNcsPorGate": 3,
+  "tipos": [
+    { "codigo": "LAM-BOLHA",     "descricao": "Bolha na laminação",                 "gravidade": "MEDIA",   "origem": "PROCESSO",   "gates": ["DM"],             "probabilidade": 0.20, "hhRetrabalho": 16, "custoMaterial": 800.00 },
+    { "codigo": "LAM-SECO",      "descricao": "Fibra seca (resina insuficiente)",   "gravidade": "CRITICA", "origem": "PROCESSO",   "gates": ["DM"],             "probabilidade": 0.05, "hhRetrabalho": 40, "custoMaterial": 3500.00 },
+    { "codigo": "GEL-TRINCA",    "descricao": "Trinca no gelcoat",                  "gravidade": "LEVE",    "origem": "PROCESSO",   "gates": ["DM", "BA"],       "probabilidade": 0.15, "hhRetrabalho": 6,  "custoMaterial": 250.00 },
+    { "codigo": "GEL-LOTE",      "descricao": "Gelcoat com cor fora do padrão",     "gravidade": "MEDIA",   "origem": "FORNECEDOR", "gates": ["DM"],             "probabilidade": 0.06, "hhRetrabalho": 24, "custoMaterial": 2200.00 },
+    { "codigo": "MON-FIXACAO",   "descricao": "Fixação solta em móvel",             "gravidade": "LEVE",    "origem": "PROCESSO",   "gates": ["BA", "BF"],       "probabilidade": 0.18, "hhRetrabalho": 3,  "custoMaterial": 60.00 },
+    { "codigo": "ELE-CHICOTE",   "descricao": "Chicote elétrico sem identificação", "gravidade": "MEDIA",   "origem": "PROCESSO",   "gates": ["BF", "CT"],       "probabilidade": 0.12, "hhRetrabalho": 8,  "custoMaterial": 150.00 },
+    { "codigo": "ELE-PAINEL",    "descricao": "Painel elétrico com defeito",        "gravidade": "MEDIA",   "origem": "FORNECEDOR", "gates": ["CT"],             "probabilidade": 0.08, "hhRetrabalho": 10, "custoMaterial": 4800.00 },
+    { "codigo": "EST-INFILTRA",  "descricao": "Infiltração no teste de estanqueidade", "gravidade": "CRITICA", "origem": "PROCESSO", "gates": ["ST"],           "probabilidade": 0.07, "hhRetrabalho": 20, "custoMaterial": 400.00 },
+    { "codigo": "VID-VEDACAO",   "descricao": "Vidro laminado com falha de vedação", "gravidade": "MEDIA",  "origem": "FORNECEDOR", "gates": ["ST", "PI"],       "probabilidade": 0.05, "hhRetrabalho": 12, "custoMaterial": 6000.00 },
+    { "codigo": "ACA-RISCO",     "descricao": "Risco de acabamento",                "gravidade": "LEVE",    "origem": "PROCESSO",   "gates": ["PI", "ET"],       "probabilidade": 0.25, "hhRetrabalho": 2,  "custoMaterial": 40.00 },
+    { "codigo": "MOT-VIBRACAO",  "descricao": "Vibração anormal no motor",          "gravidade": "CRITICA", "origem": "FORNECEDOR", "gates": ["TM"],             "probabilidade": 0.04, "hhRetrabalho": 16, "custoMaterial": 9000.00 },
+    { "codigo": "TRA-AVARIA",    "descricao": "Avaria no transporte",               "gravidade": "MEDIA",   "origem": "PROCESSO",   "gates": ["TR"],             "probabilidade": 0.04, "hhRetrabalho": 10, "custoMaterial": 1200.00 }
+  ]
+}

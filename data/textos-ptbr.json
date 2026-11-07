@@ -1,0 +1,51 @@
+{
+  "inspetor": {
+    "ncDetectada": [
+      "Achei. Não passa assim.",
+      "Isso aqui o cliente ia achar no primeiro fim de semana.",
+      "Anotado. Quero ver o retrabalho antes de assinar."
+    ],
+    "gateAprovado": [
+      "Gate aprovado. Pode seguir.",
+      "Limpo. Raro, mas acontece.",
+      "Aprovado. Guardem esse padrão."
+    ],
+    "concessaoDemais": [
+      "Mais uma concessão e eu começo a assinar com lápis.",
+      "Concessão não é processo, é aposta.",
+      "Se der garantia, eu avisei. Por escrito."
+    ],
+    "filaCheia": [
+      "Tem barco na fila. Ou vem gente, ou vem paciência.",
+      "Três gates esperando e um inspetor. A conta não fecha."
+    ]
+  },
+  "conselheiros": [
+    { "id": "C1", "nome": "Heitor Valadares", "papel": "Conselheiro financeiro" },
+    { "id": "C2", "nome": "Lúcia Brandão",    "papel": "Conselheira de operações" }
+  ],
+  "conselho": {
+    "serio": {
+      "acidente": "Teve gente machucada. Antes de falar de número, quero o plano para isso não se repetir.",
+      "caixaRuim": "O caixa não aguenta outro mês assim. O que muda a partir de segunda?",
+      "metaPerdida": "Meta é compromisso. Quero saber o que travou."
+    },
+    "humor": {
+      "materialDemais": "Compramos resina para laminar o Titanic. Alguém explica?",
+      "tudoBem": "Mês tranquilo. Estou desconfiado.",
+      "zeroNc": "Zero NC? Conferiram se o inspetor veio trabalhar?"
+    }
+  },
+  "metas": [
+    { "id": "M-DM2",   "descricao": "Concluir o gate DM em 2 cascos" },
+    { "id": "M-CAIXA", "descricao": "Caixa acima de R$ 2 milhões" },
+    { "id": "M-ACID",  "descricao": "Zero acidente com afastamento" },
+    { "id": "M-RNC",   "descricao": "Menos de 4 RNCs por barco" }
+  ],
+  "eventos": {
+    "gateConcluido": "{barco}: gate {gate} concluído, aguardando inspeção.",
+    "gateAprovado": "{barco}: gate {gate} aprovado.",
+    "barcoEntregue": "{barco} entregue ao cliente.",
+    "fimDoMes": "Fim do mês. O conselho está reunido."
+  }
+}

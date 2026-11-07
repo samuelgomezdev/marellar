@@ -1,0 +1,29 @@
+{
+  "fatorNivel": { "1": 0.60, "2": 0.75, "3": 0.90, "4": 1.00, "5": 1.10 },
+  "salarioPorNivel": { "1": 2900.00, "2": 3300.00, "3": 3800.00, "4": 4500.00, "5": 5300.00 },
+  "salarioInspetor": 5200.00,
+  "diasChegadaContratacao": 10,
+  "diasParaSubirNivel": 30,
+  "nivelMaximoPorTempo": 3,
+  "diasTreinamento": 3,
+  "ganhoMoralUmAUm": 5,
+  "horasLiderUmAUm": 0.5,
+  "diasSemUmAUmAntesDeCair": 30,
+  "quedaMoralDiariaSemUmAUm": 1,
+  "equipe": [
+    { "id": "P01", "nome": "Ana Ribeiro",     "funcao": "PRODUCAO", "nivel": 4, "moral": 75 },
+    { "id": "P02", "nome": "Bruno Tavares",   "funcao": "PRODUCAO", "nivel": 3, "moral": 70 },
+    { "id": "P03", "nome": "Carla Nunes",     "funcao": "PRODUCAO", "nivel": 3, "moral": 65 },
+    { "id": "P04", "nome": "Diego Prado",     "funcao": "PRODUCAO", "nivel": 2, "moral": 80 },
+    { "id": "P05", "nome": "Elisa Moura",     "funcao": "PRODUCAO", "nivel": 5, "moral": 60 },
+    { "id": "P06", "nome": "Fábio Lins",      "funcao": "PRODUCAO", "nivel": 2, "moral": 55 },
+    { "id": "P07", "nome": "Gisele Rocha",    "funcao": "PRODUCAO", "nivel": 3, "moral": 72 },
+    { "id": "P08", "nome": "Hugo Sales",      "funcao": "PRODUCAO", "nivel": 1, "moral": 85 },
+    { "id": "P09", "nome": "Irene Campos",    "funcao": "PRODUCAO", "nivel": 4, "moral": 68 },
+    { "id": "P10", "nome": "João Vieira",     "funcao": "PRODUCAO", "nivel": 2, "moral": 50 },
+    { "id": "P11", "nome": "Karina Dias",     "funcao": "PRODUCAO", "nivel": 3, "moral": 77 },
+    { "id": "P12", "nome": "Leandro Pires",   "funcao": "PRODUCAO", "nivel": 1, "moral": 90 },
+    { "id": "Q01", "nome": "Marta Quintela",  "funcao": "INSPETOR", "nivel": 4, "moral": 70,
+      "personalidade": { "rigor": 75, "velocidade": 50, "paciencia": 40 } }
+  ]
+}

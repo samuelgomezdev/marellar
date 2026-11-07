@@ -1,0 +1,32 @@
+{
+  "linha": "L33",
+  "nome": "Linha de 33 pés",
+  "hhPorBarco": 1900,
+  "custoHh": 57.00,
+  "materialPorBarco": 400000.00,
+  "precoVenda": 800000.00,
+  "percentualConsumiveis": 3,
+  "percentualImportados": 15,
+  "prazoRecebimentoDias": 5,
+  "cotaContratoPercentual": 30,
+  "maxPessoasPorBarco": 6,
+  "ticksInspecao": 2,
+  "gates": [
+    { "codigo": "RE", "nome": "Recebimento de materiais",     "pesoHhPercentual": 2,  "cotaPercentual": 0 },
+    { "codigo": "DM", "nome": "Desmoldagem (casco laminado)", "pesoHhPercentual": 28, "cotaPercentual": 10 },
+    { "codigo": "BA", "nome": "Base / montagem inicial",      "pesoHhPercentual": 20, "cotaPercentual": 0 },
+    { "codigo": "BF", "nome": "Fechamento do barco",          "pesoHhPercentual": 18, "cotaPercentual": 10 },
+    { "codigo": "ST", "nome": "Teste de estanqueidade",       "pesoHhPercentual": 4,  "cotaPercentual": 10 },
+    { "codigo": "CT", "nome": "Comissionamento e testes",     "pesoHhPercentual": 10, "cotaPercentual": 0 },
+    { "codigo": "PI", "nome": "Pré-inspeção",                 "pesoHhPercentual": 6,  "cotaPercentual": 10 },
+    { "codigo": "TM", "nome": "Teste de mar",                 "pesoHhPercentual": 6,  "cotaPercentual": 0 },
+    { "codigo": "TR", "nome": "Transporte",                   "pesoHhPercentual": 3,  "cotaPercentual": 0 },
+    { "codigo": "ET", "nome": "Entrega técnica",              "pesoHhPercentual": 3,  "cotaPercentual": 30 }
+  ],
+  "barcosIniciais": [
+    { "id": "33-001", "cliente": "Cliente Alfa",  "gateInicial": "BF" },
+    { "id": "33-002", "cliente": "Cliente Bravo", "gateInicial": "BA" },
+    { "id": "33-003", "cliente": "Cliente Delta", "gateInicial": "DM" },
+    { "id": "33-004", "cliente": "Cliente Eco", "gateInicial": "RE" }
+  ]
+}
