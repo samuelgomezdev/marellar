@@ -12,3 +12,7 @@ Registro das decisões tomadas durante a programação, quando a especificação
 | 2026-11-07 | Identificadores (barco, pessoa, NC) são `String` nas ordens e na API, em vez de `record BarcoId`. | JSON mais simples para o cliente Godot; o formato do id (ex.: `33-007`) é validado no motor. | `ordens/` |
 | 2026-11-07 | A pausa automática é um aviso: o motor para o `avancar` no tick do evento e devolve `pausado: true`; a próxima chamada de `avancar` continua. | O cliente controla o relógio; quem decide parar o loop é ele. | `Simulacao` |
 | 2026-11-07 | Maven Wrapper (`mvnw`) no repositório. | Ninguém precisa instalar Maven para rodar o projeto. | raiz |
+| 2026-11-07 | O mês de jogo tem 21 dias úteis corridos a partir de 01/03/2027 e é rotulado pelo mês de início (1º mês = mar/2027, 2º = abr/2027…). A data no relógio é o calendário real, sem fins de semana. | A spec fixa 21 dias úteis; o calendário real tem de 20 a 23. O rótulo segue a contagem de meses de jogo. | `Relogio` |
+| 2026-11-07 | O evento de fim do mês é registrado na última hora do 21º dia útil, antes de o relógio virar. | A linha do tempo mostra a data certa do fechamento. | `Simulacao` |
+| 2026-11-07 | HH padrão (`hhProduzidas`) e horas pagas (`hhApontadas`) são contadas separado. | A diferença entre as duas é a perda por nível e moral; vai para a DRE no M5. | `Barco` |
+| 2026-11-07 | Cliente Godot com renderizador *GL Compatibility*. | Roda em PCs fracos e é o mesmo renderizador usado no celular. | `client-godot/project.godot` |

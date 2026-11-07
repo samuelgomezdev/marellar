@@ -1,0 +1,26 @@
+class_name Paleta
+extends RefCounted
+## Paleta Endesga 32 com papéis fixos (GDD, Direção de arte).
+## O jogador lê a fábrica pela cor, como na planta do layout.
+
+const PRODUCAO_SUJA := Color("#b86f50")
+const PRODUCAO_SUJA_ESCURA := Color("#733e39")
+const MONTAGEM_LIMPA := Color("#63c74d")
+const MONTAGEM_LIMPA_ESCURA := Color("#3e8948")
+const AGUA := Color("#0099db")
+const AGUA_ESCURA := Color("#124e89")
+const ARMAZEM := Color("#5a6988")
+const ARMAZEM_ESCURO := Color("#3a4466")
+const NAO_CONFORME := Color("#e43b44")
+const NAO_CONFORME_ESCURO := Color("#a22633")
+const CASCO := Color("#ffffff")
+const CASCO_SOMBRA := Color("#c0cbdc")
+const PISO := Color("#c0cbdc")
+const PISO_ESCURO := Color("#8b9bb4")
+const FUNDO := Color("#262b44")
+const FUNDO_ESCURO := Color("#181425")
+const TEXTO := Color("#ead4aa")
+const TEXTO_CLARO := Color("#ffffff")
+const ALERTA := Color("#feae34")
+const ALERTA_ESCURO := Color("#f77622")
+const CRITICO := Color("#ff0044")

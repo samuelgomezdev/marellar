@@ -13,6 +13,8 @@
 
     <modules>
         <module>marellar-engine</module>
+        <module>marellar-cli</module>
+        <module>marellar-api</module>
     </modules>
 
     <properties>
