@@ -20,7 +20,8 @@ import java.util.Map;
  * <ul>
  *   <li>As pessoas de producao livres vao para o barco de maior prioridade, ate {@code maxPessoasPorBarco}.</li>
  *   <li>Cada pessoa produz {@code 1 h x fatorNivel x fatorMoral} HH padrao.</li>
- *   <li>Quando as HH do gate acabam, o barco vai para a fila de inspecao.</li>
+ *   <li>Quando as HH do gate acabam, sorteiam-se as NCs e o barco vai para a fila de inspecao.</li>
+ *   <li>Barco em retrabalho tambem recebe gente; ao terminar, o gate e aprovado.</li>
  * </ul>
  */
 public final class ProducaoRegra {
@@ -46,20 +47,28 @@ public final class ProducaoRegra {
                 });
 
         for (Barco barco : partida.barcosPorPrioridade()) {
-            if (barco.status() != StatusBarco.EM_PRODUCAO || livres.isEmpty()) {
+            if (!barco.trabalhando() || livres.isEmpty()) {
                 continue;
             }
             BigDecimal producao = BigDecimal.ZERO;
             int horasPagas = 0;
+            int somaNiveis = 0;
             while (horasPagas < maxPorBarco && !livres.isEmpty()) {
                 Pessoa p = livres.pollFirst();
                 p.alocar(barco.id());
                 producao = producao.add(produtividade(p, regrasPessoas));
+                somaNiveis += p.nivel();
                 horasPagas++;
             }
-            barco.produzir(producao, horasPagas);
-
-            if (barco.gateTerminado()) {
+            boolean retrabalho = barco.status() == StatusBarco.EM_RETRABALHO;
+            barco.produzir(producao, horasPagas, somaNiveis);
+            if (!barco.trabalhoTerminado()) {
+                continue;
+            }
+            if (retrabalho) {
+                QualidadeRegra.retrabalhoConcluido(partida, barco);
+            } else {
+                QualidadeRegra.sortearNcs(partida, barco);
                 barco.mudarStatus(StatusBarco.AGUARDANDO_INSPECAO);
                 partida.entrarNaFilaDeInspecao(barco.id());
                 partida.registrarEvento(TipoEvento.GATE_CONCLUIDO, barco.id(), "eventos.gateConcluido",

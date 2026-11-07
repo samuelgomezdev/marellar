@@ -35,6 +35,7 @@ public final class ValidadorDados {
         v.eventos(p.eventos());
         v.financeiro(p.financeiro());
         v.textos(p.textos());
+        v.itensDeFornecedor(p.catalogoNc(), p.fornecedores());
         if (!v.erros.isEmpty()) {
             throw new DadosInvalidosException(v.erros);
         }
@@ -86,6 +87,20 @@ public final class ValidadorDados {
             probabilidade(arq, "deteccaoBase." + g, d);
         }
         regra(c.maxNcsPorGate() >= 0, arq, "maxNcsPorGate nao pode ser negativo");
+        IntStream.rangeClosed(1, 5).forEach(n -> positivo(arq, "fatorNivelEquipe." + n, c.fatorNivelEquipe().get(n)));
+        CatalogoNc.Inspecao i = c.inspecao();
+        regra(i != null, arq, "inspecao e obrigatorio");
+        if (i != null) {
+            positivo(arq, "inspecao.deteccaoBase", i.deteccaoBase());
+            naoNegativo(arq, "inspecao.pesoRigorNaDeteccao", i.pesoRigorNaDeteccao());
+            naoNegativo(arq, "inspecao.pesoVelocidadeNaDeteccao", i.pesoVelocidadeNaDeteccao());
+            probabilidade(arq, "inspecao.pesoRigorNoTempo", i.pesoRigorNoTempo());
+            probabilidade(arq, "inspecao.pesoVelocidadeNoTempo", i.pesoVelocidadeNoTempo());
+            regra(i.filaSemPerda() >= 0, arq, "inspecao.filaSemPerda nao pode ser negativo");
+            probabilidade(arq, "inspecao.perdaPorBarcoNaFila", i.perdaPorBarcoNaFila());
+            probabilidade(arq, "inspecao.fatorCargaMinimo", i.fatorCargaMinimo());
+            naoNegativo(arq, "inspecao.quedaMoralPorConcessao", i.quedaMoralPorConcessao());
+        }
         regra(!c.tipos().isEmpty(), arq, "tipos nao pode ser vazio");
         Set<String> codigos = new HashSet<>();
         for (CatalogoNc.TipoNc t : c.tipos()) {
@@ -98,6 +113,20 @@ public final class ValidadorDados {
             probabilidade(arq, nome + ".probabilidade", t.probabilidade());
             naoNegativo(arq, nome + ".hhRetrabalho", t.hhRetrabalho());
             naoNegativo(arq, nome + ".custoMaterial", t.custoMaterial());
+        }
+    }
+
+    /** Toda NC de origem FORNECEDOR precisa de um item que algum fornecedor entrega. */
+    private void itensDeFornecedor(CatalogoNc c, ParametrosFornecedores f) {
+        for (CatalogoNc.TipoNc t : c.tipos()) {
+            if (t.origem() != br.marellar.engine.dominio.Origem.FORNECEDOR) {
+                continue;
+            }
+            boolean temFornecedor = t.item() != null
+                    && f.fornecedores().stream().anyMatch(forn -> forn.itens().contains(t.item()));
+            regra(temFornecedor, CarregadorDados.NC_CATALOGO,
+                    "tipos[" + t.codigo() + "]: origem FORNECEDOR precisa de um item entregue por algum fornecedor ("
+                            + t.item() + ")");
         }
     }
 
@@ -189,10 +218,13 @@ public final class ValidadorDados {
 
     private void textos(Textos t) {
         String arq = CarregadorDados.TEXTOS;
-        for (String caminho : List.of("inspetor.ncDetectada", "inspetor.gateAprovado", "conselheiros", "metas")) {
+        for (String caminho : List.of("inspetor.ncDetectada", "inspetor.gateAprovado", "inspetor.concessaoDemais",
+                "conselheiros", "metas")) {
             regra(t.no(caminho).isArray() && !t.no(caminho).isEmpty(), arq, caminho + " deve ser uma lista nao vazia");
         }
-        for (String caminho : List.of("eventos.gateConcluido", "eventos.gateAprovado", "eventos.barcoEntregue", "eventos.fimDoMes")) {
+        for (String caminho : List.of("eventos.gateConcluido", "eventos.gateAprovado", "eventos.barcoEntregue",
+                "eventos.fimDoMes", "eventos.ncDetectada", "eventos.ncCritica", "eventos.retrabalhoConcluido",
+                "eventos.concessao", "eventos.rncAberta")) {
             regra(t.no(caminho).isTextual(), arq, caminho + " ausente");
         }
     }

@@ -15,6 +15,13 @@ import br.marellar.engine.ordens.Ordem;
 import br.marellar.engine.ordens.OrdemInvalidaException;
 import br.marellar.engine.regras.InspecaoRegra;
 import br.marellar.engine.regras.ProducaoRegra;
+import br.marellar.engine.regras.QualidadeRegra;
+import br.marellar.engine.dominio.NaoConformidade;
+import br.marellar.engine.dominio.StatusNc;
+import br.marellar.engine.estado.EstadoPartida.InspetorVisao;
+import br.marellar.engine.estado.EstadoPartida.NcVisao;
+import br.marellar.engine.estado.EstadoPartida.QualidadeVisao;
+import br.marellar.engine.relatorio.IndicadoresQualidade;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -92,6 +99,7 @@ public final class Simulacao {
             case Ordem.DefinirPrioridade o -> definirPrioridade(o.barcoId(), o.posicao());
             case Ordem.SegurarGate o -> barcoAtivo(o.barcoId()).definirRetido(true);
             case Ordem.LiberarGate o -> liberarGate(o.barcoId());
+            case Ordem.DecidirNc o -> QualidadeRegra.decidir(partida, o.ncId(), o.decisao());
             case Ordem.MudarVelocidade o -> partida.definirVelocidade(o.velocidade());
         }
     }
@@ -145,8 +153,10 @@ public final class Simulacao {
                 partida.motivoPausa().orElse(null),
                 partida.barcos().stream().map(this::visao).toList(),
                 partida.pessoas().stream().map(Simulacao::visao).toList(),
+                inspetorVisao(),
                 partida.barcoEmInspecao().orElse(null),
                 partida.filaInspecao(),
+                qualidadeVisao(),
                 partida.horasOciosas(),
                 partida.eventos().size());
     }
@@ -172,9 +182,44 @@ public final class Simulacao {
                 b.id(), b.linha(), b.cliente(), b.gateAtual(),
                 partida.parametros().linha33().gate(b.gateAtual()).nome(),
                 b.status(), b.retido(), b.prioridade(),
-                b.hhTotalDoGate(), b.hhRestantesNoGate(), progresso,
-                b.hhProduzidas(), b.hhApontadas(),
-                List.copyOf(b.gatesAprovados()), alocadas);
+                b.hhTotalDoGate(), b.hhRestantesNoGate(), progresso, b.hhRetrabalhoPendente(),
+                b.hhProduzidas(), b.hhRetrabalho(), b.hhApontadas(),
+                List.copyOf(b.gatesAprovados()), alocadas,
+                partida.ncsDoBarco(b.id()).stream().filter(NaoConformidade::visivel).map(Simulacao::visao).toList());
+    }
+
+    private static NcVisao visao(NaoConformidade nc) {
+        return new NcVisao(nc.id(), nc.gate(), nc.tipo(), nc.descricao(), nc.gravidade(), nc.origem(),
+                nc.fornecedorId().orElse(null), nc.status(), nc.decisao().orElse(null),
+                nc.hhRetrabalho(), nc.custoMaterial());
+    }
+
+    private InspetorVisao inspetorVisao() {
+        Pessoa i = partida.inspetor();
+        var p = i.personalidade().orElseThrow();
+        return new InspetorVisao(i.id(), i.nome(), i.moral(), p.rigor(), p.velocidade(), p.paciencia());
+    }
+
+    private QualidadeVisao qualidadeVisao() {
+        IndicadoresQualidade q = calcularIndicadores();
+        return new QualidadeVisao(q.ncsDetectadas(), q.ncsAbertas(), q.concessoes(), q.rncs(),
+                q.hhRetrabalho(), q.custoMaterialRetrabalho());
+    }
+
+    /** Indicadores completos, inclusive as NCs que escaparam (o jogador nao ve estas). */
+    public synchronized IndicadoresQualidade indicadoresQualidade() {
+        return calcularIndicadores();
+    }
+
+    private IndicadoresQualidade calcularIndicadores() {
+        List<NaoConformidade> ncs = partida.ncs();
+        int escapadas = (int) ncs.stream().filter(n -> n.status() == StatusNc.ESCAPADA).count();
+        int pendentesInspecao = (int) ncs.stream().filter(n -> n.status() == StatusNc.PENDENTE_INSPECAO).count();
+        int abertas = (int) ncs.stream().filter(n -> n.status() == StatusNc.ABERTA).count();
+        BigDecimal hhRetrabalho = partida.barcos().stream().map(Barco::hhRetrabalho)
+                .reduce(BigDecimal.ZERO, BigDecimal::add);
+        return new IndicadoresQualidade(ncs.size(), ncs.size() - escapadas - pendentesInspecao, escapadas, abertas,
+                partida.concessoes(), partida.rncs(), hhRetrabalho, partida.custoMaterialRetrabalho());
     }
 
     private static PessoaVisao visao(Pessoa p) {

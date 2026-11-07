@@ -24,6 +24,13 @@ class SimulacaoTest {
 
     private static final ParametrosJogo PARAMETROS = CarregadorDados.carregarDoClasspath();
 
+    /** Mesmos parametros, mas com probabilidade zero de NC (para testar so a producao). */
+    static ParametrosJogo semNcs(ParametrosJogo p) {
+        var c = p.catalogoNc();
+        return p.comCatalogoNc(c.comTipos(c.tipos().stream()
+                .map(t -> t.comProbabilidade(java.math.BigDecimal.ZERO)).toList()));
+    }
+
     private static ParametrosJogo comBarcos(BarcoInicial... barcos) {
         return PARAMETROS.comLinha33(PARAMETROS.linha33().comBarcosIniciais(List.of(barcos)));
     }
@@ -41,7 +48,7 @@ class SimulacaoTest {
 
     @Test
     void umBarcoSemNcPassaDeREaETcom1900HH() {
-        Simulacao sim = Simulacao.novaPartida(42, comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.RE)));
+        Simulacao sim = Simulacao.novaPartida(42, semNcs(comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.RE))));
 
         avancarAteEntregar(sim, "33-100", 200);
 
@@ -55,7 +62,7 @@ class SimulacaoTest {
 
     @Test
     void barcoPassaPelosGatesNaOrdem() {
-        Simulacao sim = Simulacao.novaPartida(1, comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.RE)));
+        Simulacao sim = Simulacao.novaPartida(1, semNcs(comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.RE))));
 
         avancarAteEntregar(sim, "33-100", 200);
 
@@ -180,7 +187,7 @@ class SimulacaoTest {
 
     @Test
     void horasOciosasContamQuemFicouSemBarco() {
-        Simulacao sim = Simulacao.novaPartida(42, comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.DM)));
+        Simulacao sim = Simulacao.novaPartida(42, semNcs(comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.DM))));
 
         sim.avancar(1);
 

@@ -1,6 +1,8 @@
 package br.marellar.engine.regras;
 
 import br.marellar.engine.Partida;
+import br.marellar.engine.agentes.Inspetor;
+import br.marellar.engine.dominio.NaoConformidade;
 import br.marellar.engine.dominio.Barco;
 import br.marellar.engine.dominio.CodigoGate;
 import br.marellar.engine.dominio.StatusBarco;
@@ -11,10 +13,8 @@ import java.util.Optional;
 
 /**
  * Inspecao de 1 tick. O inspetor atende um barco por vez, em ordem de chegada,
- * e leva {@code ticksInspecao} ticks por gate.
- * <p>
- * No M2 todo gate inspecionado e aprovado. O sorteio de NC e a deteccao pelo
- * inspetor entram no M3.
+ * e o tempo depende da personalidade dele (rigor e velocidade). Ao terminar,
+ * a QualidadeRegra decide o que foi detectado.
  */
 public final class InspecaoRegra {
 
@@ -29,17 +29,24 @@ public final class InspecaoRegra {
             }
             Barco barco = partida.barco(proximo.get()).orElseThrow();
             barco.mudarStatus(StatusBarco.EM_INSPECAO);
-            partida.iniciarInspecao(barco.id(), partida.parametros().linha33().ticksInspecao());
+            int ticks = Inspetor.ticksInspecao(partida.parametros().linha33().ticksInspecao(),
+                    partida.inspetor().personalidade().orElseThrow(),
+                    partida.parametros().catalogoNc().inspecao());
+            partida.iniciarInspecao(barco.id(), ticks);
         }
 
         if (partida.trabalharInspecao()) {
             Barco barco = partida.barco(partida.barcoEmInspecao().orElseThrow()).orElseThrow();
             partida.encerrarInspecao();
-            aprovarGate(partida, barco);
+            QualidadeRegra.aposInspecao(partida, barco);
         }
     }
 
+    /** Aprova o gate atual. Nunca aprova com NC pendente (esperando inspecao, decisao ou retrabalho). */
     static void aprovarGate(Partida partida, Barco barco) {
+        if (partida.ncsDoGateAtual(barco).stream().anyMatch(NaoConformidade::pendente)) {
+            throw new IllegalStateException("Gate " + barco.gateAtual() + " de " + barco.id() + " tem NC pendente");
+        }
         barco.registrarAprovacao();
         partida.registrarEvento(TipoEvento.GATE_APROVADO, barco.id(), "eventos.gateAprovado",
                 Map.of("barco", barco.id(), "gate", barco.gateAtual().name()));

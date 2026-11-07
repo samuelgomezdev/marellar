@@ -5,10 +5,14 @@ import br.marellar.engine.Simulacao;
 import br.marellar.engine.dados.CarregadorDados;
 import br.marellar.engine.dados.DadosInvalidosException;
 import br.marellar.engine.dados.ParametrosJogo;
+import br.marellar.engine.dominio.DecisaoNc;
 import br.marellar.engine.dominio.Evento;
+import br.marellar.engine.dominio.StatusNc;
+import br.marellar.engine.ordens.Ordem;
 import br.marellar.engine.dominio.TipoEvento;
 import br.marellar.engine.estado.EstadoPartida;
 import br.marellar.engine.estado.EstadoPartida.BarcoVisao;
+import br.marellar.engine.relatorio.IndicadoresQualidade;
 
 import java.io.PrintStream;
 import java.math.RoundingMode;
@@ -21,10 +25,11 @@ import java.util.TreeMap;
 import java.util.stream.Collectors;
 
 /**
- * Roda uma partida inteira pelo terminal, sem ordens do jogador, e imprime o resumo.
+ * Roda uma partida inteira pelo terminal e imprime o resumo.
  * <pre>
- * java -jar marellar-cli.jar --semente 42 --meses 1 [--dados caminho/para/data] [--eventos]
+ * java -jar marellar-cli.jar --semente 42 --meses 1 [--dados caminho/para/data] [--eventos] [--sem-decisoes]
  * </pre>
+ * Por padrao, um jogador automatico manda toda NC detectada para retrabalho.
  * O relatorio completo do conselho entra no M5/M6; por enquanto sai o resumo da producao.
  */
 public final class Main {
@@ -41,7 +46,7 @@ public final class Main {
             a = Argumentos.ler(args);
         } catch (IllegalArgumentException e) {
             System.err.println(e.getMessage());
-            System.err.println("Uso: java -jar marellar-cli.jar --semente 42 --meses 1 [--dados pasta] [--eventos]");
+            System.err.println("Uso: java -jar marellar-cli.jar --semente 42 --meses 1 [--dados pasta] [--eventos] [--sem-decisoes]");
             System.exit(2);
             return;
         }
@@ -61,10 +66,25 @@ public final class Main {
         long alvo = (long) a.meses() * Relogio.TICKS_POR_MES;
         long rodados = 0;
         while (rodados < alvo) {
-            rodados += sim.avancar((int) Math.min(Integer.MAX_VALUE, alvo - rodados)).ticksExecutados();
+            // de hora em hora, para o jogador automatico decidir as NCs assim que aparecem
+            rodados += sim.avancar(1).ticksExecutados();
+            if (a.decidirNcs()) {
+                decidirTudoComoRetrabalho(sim);
+            }
         }
 
         imprimir(out, sim, a);
+    }
+
+    /** Jogador automatico da CLI: toda NC detectada vai para retrabalho. */
+    static void decidirTudoComoRetrabalho(Simulacao sim) {
+        for (BarcoVisao b : sim.estado().barcos()) {
+            for (EstadoPartida.NcVisao nc : b.ncs()) {
+                if (nc.status() == StatusNc.ABERTA) {
+                    sim.aplicarOrdem(new Ordem.DecidirNc(nc.id(), DecisaoNc.RETRABALHO));
+                }
+            }
+        }
     }
 
     static void imprimir(PrintStream out, Simulacao sim, Argumentos a) {
@@ -72,7 +92,8 @@ public final class Main {
         List<Evento> eventos = sim.eventosDesde(0);
 
         out.println("==============================================================");
-        out.printf(" MARELLAR  |  semente %d  |  %d mes(es)%n", a.semente(), a.meses());
+        out.printf(" MARELLAR  |  semente %d  |  %d mes(es)  |  NCs: %s%n", a.semente(), a.meses(),
+                a.decidirNcs() ? "retrabalho automático" : "sem decisões");
         out.printf(" %d tick(s) jogados; o relógio está em %s, início de %s%n",
                 e.tick(), DATA.format(e.data()), e.mesReferencia());
         out.println("==============================================================");
@@ -90,6 +111,17 @@ public final class Main {
         out.println();
         out.printf(" Horas ociosas da equipe: %s h%n", e.horasOciosas().toPlainString());
 
+        IndicadoresQualidade q = sim.indicadoresQualidade();
+        out.println();
+        out.println(" Qualidade");
+        out.println(" ------------------------------------------------------------");
+        out.printf(" NCs geradas: %d | detectadas: %d | escapadas (o jogador não vê): %d | abertas: %d%n",
+                q.ncsGeradas(), q.ncsDetectadas(), q.ncsEscapadas(), q.ncsAbertas());
+        out.printf(" Concessões: %d | RNCs: %d | HH de retrabalho: %s | material de retrabalho: R$ %s%n",
+                q.concessoes(), q.rncs(), q.hhRetrabalho().setScale(0, RoundingMode.HALF_EVEN).toPlainString(),
+                q.custoMaterialRetrabalho().toPlainString());
+        out.printf(" Inspetora %s: moral %d%n", e.inspetor().nome(), e.inspetor().moral());
+
         Map<TipoEvento, Long> porTipo = eventos.stream()
                 .collect(Collectors.groupingBy(Evento::tipo, TreeMap::new, Collectors.counting()));
         out.println(" Eventos: " + porTipo);
@@ -104,26 +136,28 @@ public final class Main {
         }
     }
 
-    record Argumentos(long semente, int meses, Path dados, boolean listarEventos) {
+    record Argumentos(long semente, int meses, Path dados, boolean listarEventos, boolean decidirNcs) {
 
         static Argumentos ler(String[] args) {
             long semente = 42;
             int meses = 1;
             Path dados = null;
             boolean eventos = false;
+            boolean decidir = true;
             for (int i = 0; i < args.length; i++) {
                 switch (args[i]) {
                     case "--semente" -> semente = Long.parseLong(valor(args, ++i, "--semente"));
                     case "--meses" -> meses = Integer.parseInt(valor(args, ++i, "--meses"));
                     case "--dados" -> dados = Path.of(valor(args, ++i, "--dados"));
                     case "--eventos" -> eventos = true;
+                    case "--sem-decisoes" -> decidir = false;
                     default -> throw new IllegalArgumentException("Argumento desconhecido: " + args[i]);
                 }
             }
             if (meses < 1) {
                 throw new IllegalArgumentException("--meses deve ser pelo menos 1");
             }
-            return new Argumentos(semente, meses, dados, eventos);
+            return new Argumentos(semente, meses, dados, eventos, decidir);
         }
 
         private static String valor(String[] args, int i, String nome) {
