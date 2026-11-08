@@ -44,7 +44,10 @@ var velocidade := 0
 var acumulado := 0.0
 var ocupado := false
 var ultimo_evento := 0
-var avisos: Array[String] = []
+var avisos: Array[Dictionary] = []  # {texto, quando}
+var area_cartao := Rect2()
+var area_alerta_nc := Rect2()
+var barco_alerta_nc := ""
 var erro_api := ""
 var selecionado := ""
 var areas_barcos := {}  # id do barco -> Rect2 clicável
@@ -294,6 +297,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		if area_alerta_nc.has_point(event.position) and not barco_alerta_nc.is_empty():
+			selecionado = barco_alerta_nc
+			_abrir_ficha_completa()
+			return
+		if area_cartao.has_point(event.position):
+			_abrir_ficha_completa()
+			return
 		for id in areas_barcos:
 			if areas_barcos[id].has_point(event.position):
 				selecionado = id
@@ -428,17 +438,15 @@ func _atualizar_interface() -> void:
 		PAINEL_FORNECEDORES:
 			_reconstruir_fornecedores()
 		_:
-			_reconstruir_ficha(barco)
+			assinatura_ficha = ""  # o próximo painel aberto se refaz
 
 
-## Na ficha do barco o painel divide espaço com os avisos; equipe e fornecedores usam a altura toda.
+## Equipe e fornecedores abrem por cima da fábrica, à direita.
 func _posicionar_rolagem() -> void:
 	var topo := ALTURA_TOPO + 22
-	var altura := size.y - ALTURA_BASE - 6 - topo
-	if painel == PAINEL_BARCO:
-		altura = altura * 0.5 - 14
+	rolagem.visible = painel != PAINEL_BARCO
 	rolagem.position = Vector2(size.x - LARGURA_PAINEL, topo)
-	rolagem.size = Vector2(LARGURA_PAINEL - 4, altura)
+	rolagem.size = Vector2(LARGURA_PAINEL - 4, size.y - ALTURA_BASE - 6 - topo)
 
 
 func _limpar_ficha(assinatura: String) -> bool:
@@ -511,40 +519,8 @@ func _reconstruir_fornecedores() -> void:
 		ficha.add_child(_rotulo("  a caminho: %d %s, prev. %s/%s" % [int(pedido["kits"]), pedido["item"], partes[2], partes[1]], Paleta.PISO_ESCURO))
 
 
-## Refaz os Controls da ficha só quando algo nela mudou (evita piscar a cada tick).
-func _reconstruir_ficha(barco: Dictionary) -> void:
-	var assinatura := "barco" if barco.is_empty() else JSON.stringify([barco["id"], barco["status"], barco["ncs"]])
-	if not _limpar_ficha(assinatura) or barco.is_empty():
-		return
-
-	for nc in barco["ncs"]:
-		var aberta: bool = nc["status"] == "ABERTA"
-		var linha := Label.new()
-		linha.text = "%s %s: %s" % [nc["gate"], NOMES_GRAVIDADE.get(nc["gravidade"], nc["gravidade"]), nc["descricao"]]
-		linha.autowrap_mode = TextServer.AUTOWRAP_WORD
-		linha.custom_minimum_size.x = LARGURA_PAINEL - 8
-		linha.add_theme_color_override("font_color", Paleta.CRITICO if aberta else Paleta.PISO_ESCURO)
-		ficha.add_child(linha)
-		if not aberta:
-			var situacao := Label.new()
-			situacao.text = "  %s (%s HH)" % [NOMES_STATUS_NC.get(nc["status"], nc["status"]), str(int(nc["hhRetrabalho"]))]
-			situacao.add_theme_color_override("font_color", Paleta.PISO_ESCURO)
-			ficha.add_child(situacao)
-			continue
-		var acoes := HBoxContainer.new()
-		acoes.add_theme_constant_override("separation", 2)
-		acoes.add_child(_botao("Retrabalho", _decidir_nc.bind(nc["id"], "RETRABALHO")))
-		var concessao := _botao("Concessão", _decidir_nc.bind(nc["id"], "CONCESSAO"))
-		concessao.disabled = nc["gravidade"] == "CRITICA"
-		concessao.tooltip_text = "NC crítica não aceita concessão." if concessao.disabled else "Libera sem consertar: risco de garantia."
-		acoes.add_child(concessao)
-		if nc["origem"] == "FORNECEDOR":
-			acoes.add_child(_botao("RNC", _decidir_nc.bind(nc["id"], "RNC_FORNECEDOR")))
-		ficha.add_child(acoes)
-
-
 func _avisar(texto: String) -> void:
-	avisos.push_front(texto)
+	avisos.push_front({"texto": texto, "quando": Time.get_ticks_msec() / 1000.0})
 	if avisos.size() > MAX_AVISOS:
 		avisos.resize(MAX_AVISOS)
 
@@ -559,154 +535,142 @@ func _draw() -> void:
 		draw_multiline_string(fonte, Vector2(16, 64), texto, HORIZONTAL_ALIGNMENT_LEFT, size.x - 32,
 				TAMANHO_TEXTO, -1, Paleta.ALERTA)
 		return
+	var t := Time.get_ticks_msec() / 1000.0
+	if not tela_ficha.visible:
+		var area := Rect2(0, ALTURA_TOPO, size.x, size.y - ALTURA_TOPO - ALTURA_BASE)
+		areas_barcos = Planta.desenhar(self, area, estado, selecionado, t, velocidade > 0, fonte)
+		_desenhar_cartao()
+		_desenhar_alertas(t)
+		_desenhar_painel()
+	else:
+		areas_barcos = {}
+		area_cartao = Rect2()
+		area_alerta_nc = Rect2()
 	_desenhar_topo()
-	_desenhar_baias()
-	_desenhar_painel()
 	draw_rect(Rect2(0, size.y - ALTURA_BASE, size.x, ALTURA_BASE), Paleta.FUNDO)
 
 
+## Barra de cima em blocos, como no mockup: data, caixa, valor, moral, NCs abertas e conselho.
 func _desenhar_topo() -> void:
-	draw_rect(Rect2(0, 0, size.x, ALTURA_TOPO), Paleta.FUNDO)
-	var partes := str(estado["data"]).split("-")
-	var em_inspecao = estado["barcoEmInspecao"]
 	var fin: Dictionary = estado["financeiro"]
-	var texto := "%s/%s %02dh | %s %d/21 | Caixa %s | Valor %s | Conselho %d/%d | Acid. %d" % [
-		partes[2], partes[1], int(estado["hora"]), estado["mesReferencia"], int(estado["diaUtilDoMes"]),
-		_milhoes(fin["caixa"]), _milhoes(fin["valorEmpresa"]), int(fin["pacienciaConselho"]), int(fin["pacienciaMaxima"]),
-		int(estado["seguranca"]["acidentes"])]
-	if float(fin["caixa"]) < 0:
-		draw_rect(Rect2(0, 0, size.x, ALTURA_TOPO), Paleta.NAO_CONFORME_ESCURO)
-	draw_string(fonte, Vector2(5, 12), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.TEXTO)
+	draw_rect(Rect2(0, 0, size.x, ALTURA_TOPO), Paleta.NAO_CONFORME_ESCURO if float(fin["caixa"]) < 0 else Paleta.FUNDO)
+	var soma := 0
+	var quantas := 0
+	for p in estado["pessoas"]:
+		if p["funcao"] == "PRODUCAO" and p["situacao"] in ["ATIVA", "TREINAMENTO", "AFASTADA"]:
+			soma += int(p["moral"])
+			quantas += 1
+	var moral := soma / maxi(1, quantas)
+	var ncs := int(estado["qualidade"]["ncsAbertas"])
+	var paciencia := int(fin["pacienciaConselho"])
+	var blocos := [
+		["", "%s · dia %d · %02dh" % [estado["mesReferencia"], int(estado["diaUtilDoMes"]), int(estado["hora"])], Paleta.TEXTO_CLARO],
+		["Caixa", _milhoes(fin["caixa"]), Paleta.MONTAGEM_LIMPA if float(fin["caixa"]) >= 0 else Paleta.CRITICO],
+		["Valor", _milhoes(fin["valorEmpresa"]), Paleta.AGUA],
+		["Moral", "%d%%" % moral, Paleta.MONTAGEM_LIMPA if moral >= 60 else (Paleta.ALERTA if moral >= 40 else Paleta.CRITICO)],
+		["NCs", str(ncs), Paleta.CRITICO if ncs > 0 else Paleta.MONTAGEM_LIMPA],
+		["Conselho", "%d/%d" % [paciencia, int(fin["pacienciaMaxima"])], Paleta.ALERTA if paciencia <= 2 else Paleta.TEXTO_CLARO],
+	]
+	var x := 2.0
+	for b in blocos:
+		var rotulo: String = b[0]
+		var valor: String = b[1]
+		var largura_rotulo := 0.0 if rotulo.is_empty() else fonte.get_string_size(rotulo + " ", HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO).x
+		var largura := largura_rotulo + fonte.get_string_size(valor, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO).x + 6
+		draw_rect(Rect2(x, 1, largura, ALTURA_TOPO - 2), Paleta.FUNDO_ESCURO)
+		draw_rect(Rect2(x, 1, largura, ALTURA_TOPO - 2).grow(-0.5), Paleta.ARMAZEM_ESCURO, false, 1.0)
+		draw_string(fonte, Vector2(x + 3, 12), rotulo, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.TEXTO)
+		draw_string(fonte, Vector2(x + 3 + largura_rotulo, 12), valor, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, b[2])
+		x += largura + 2
 	var vel := "PAUSA" if velocidade == 0 else "x%d" % velocidade
-	draw_string(fonte_titulo, Vector2(size.x - 44, 12), vel, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO,
+	draw_string(fonte, Vector2(x + 2, 12), vel, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO,
 			Paleta.ALERTA if velocidade == 0 else Paleta.MONTAGEM_LIMPA)
 
 
-func _desenhar_baias() -> void:
-	areas_barcos.clear()
-	var area := Rect2(4, ALTURA_TOPO + 4, size.x - LARGURA_PAINEL - 10, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
-	var barcos: Array = estado["barcos"]
-	var colunas := 2
-	var linhas := maxi(1, int(ceil(barcos.size() / float(colunas))))
-	var tam := Vector2(floor((area.size.x - 4 * (colunas - 1)) / colunas), floor((area.size.y - 4 * (linhas - 1)) / linhas))
-	for i in barcos.size():
-		var pos := area.position + Vector2((i % colunas) * (tam.x + 4), (i / colunas) * (tam.y + 4))
-		_desenhar_baia(barcos[i], Rect2(pos, tam))
-
-
-func _desenhar_baia(barco: Dictionary, baia: Rect2) -> void:
-	var id: String = barco["id"]
-	var gate: String = barco["gateAtual"]
-	var status: String = barco["status"]
-	var entregue := status == "ENTREGUE"
-	var etapa := Sprites.etapa_do_gate(gate, entregue)
-	var zona_suja := etapa == Sprites.ETAPA_MOLDE
-	var cor_zona := Paleta.PRODUCAO_SUJA if zona_suja else Paleta.MONTAGEM_LIMPA
-	var t := Time.get_ticks_msec() / 1000.0
-	areas_barcos[id] = baia
-
-	# piso, faixa da zona (suja = laminação, limpa = montagem) e grade de tiles 16 px
-	draw_rect(baia, Paleta.ARMAZEM_ESCURO)
-	for x in range(int(baia.position.x) + 16, int(baia.end.x), 16):
-		draw_line(Vector2(x, baia.position.y + 3), Vector2(x, baia.end.y), Color(Paleta.ARMAZEM, 0.35))
-	draw_rect(Rect2(baia.position, Vector2(baia.size.x, 3)), cor_zona)
-
-	# barco
-	var linha_dagua := baia.position + Vector2(baia.size.x / 2 - 44, baia.size.y * 0.62)
-	Sprites.barco(self, linha_dagua, etapa, float(barco["progressoGate"]), t)
-
-	# bonequinhos trabalhando (laminação de marrom, montagem de verde)
-	var uniforme := Paleta.PRODUCAO_SUJA if zona_suja else Paleta.MONTAGEM_LIMPA_ESCURA
-	var alocadas: Array = barco["pessoasAlocadas"]
-	for k in alocadas.size():
-		var frente := k % 2 == 0
-		var x := linha_dagua.x + 8 + (k / 2) * 26
-		var y := linha_dagua.y + (12.0 if frente else -16.0)
-		if frente and etapa == Sprites.ETAPA_PISCINA:
-			y += 4.0  # na borda da piscina, não dentro d'água
-		var quadro := int(t * 4 + k) % 2 if velocidade > 0 else 0
-		Sprites.pessoa(self, Vector2(x, y), uniforme, quadro)
-
-	# inspetora ao lado do barco em inspeção
-	if estado["barcoEmInspecao"] == id:
-		Sprites.inspetor(self, linha_dagua + Vector2(96, 10), int(t * 2) % 2)
-
-	# selo de NC aberta
+## Cartão do barco selecionado no canto de baixo, à esquerda (clique abre a ficha).
+func _desenhar_cartao() -> void:
+	var barco := _barco(selecionado)
+	area_cartao = Rect2()
+	if barco.is_empty():
+		return
+	var r := Rect2(6, size.y - ALTURA_BASE - 70, 178, 66)
+	area_cartao = r
+	draw_rect(r, Paleta.FUNDO)
+	draw_rect(r.grow(-0.5), Paleta.ARMAZEM, false, 1.0)
+	var x := r.position.x + 6
+	draw_string(fonte_titulo, Vector2(x, r.position.y + 12), "CASCO %s" % barco["id"], HORIZONTAL_ALIGNMENT_LEFT, -1,
+			TAMANHO_TITULO, Paleta.ALERTA)
+	draw_string(fonte, Vector2(x, r.position.y + 26), "Gate", HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.PISO_ESCURO)
+	draw_string(fonte, Vector2(x, r.position.y + 26), "%s · %s" % [barco["gateAtual"], barco["nomeGate"]],
+			HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 12, TAMANHO_TEXTO, Paleta.TEXTO_CLARO)
+	var progresso := float(barco["progressoGate"])
+	draw_rect(Rect2(x, r.position.y + 31, r.size.x - 12, 3), Paleta.FUNDO_ESCURO)
+	draw_rect(Rect2(x, r.position.y + 31, (r.size.x - 12) * progresso, 3), Paleta.MONTAGEM_LIMPA)
 	var abertas := 0
 	for nc in barco["ncs"]:
 		if nc["status"] == "ABERTA":
 			abertas += 1
-	if abertas > 0:
-		Sprites.selo_nc(self, linha_dagua + Vector2(88, -26), fonte, abertas, int(t * 3) % 2 == 0)
-
-	# textos e barra de progresso
-	var esquerda := baia.position.x + 4
-	draw_string(fonte_titulo, Vector2(esquerda, baia.position.y + 14), id, HORIZONTAL_ALIGNMENT_LEFT, -1,
-			TAMANHO_TITULO, Paleta.TEXTO_CLARO)
-	draw_string(fonte, Vector2(baia.end.x - 22, baia.position.y + 15), "P%d" % int(barco["prioridade"]),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.ALERTA)
-	draw_string(fonte, Vector2(esquerda, baia.position.y + 27), "%s - %s" % [gate, barco["nomeGate"]],
-			HORIZONTAL_ALIGNMENT_LEFT, baia.size.x - 8, TAMANHO_TEXTO, Paleta.TEXTO)
-
-	var barra := Rect2(esquerda, baia.end.y - 17, baia.size.x - 8, 3)
-	draw_rect(barra, Paleta.FUNDO_ESCURO)
-	draw_rect(Rect2(barra.position, Vector2(barra.size.x * float(barco["progressoGate"]), barra.size.y)), cor_zona)
-	var detalhe := ""
-	if status == "EM_RETRABALHO":
-		detalhe = "faltam %d HH de retrabalho" % int(ceil(float(barco["hhRetrabalhoPendente"])))
-	elif status == "EM_PRODUCAO":
-		detalhe = "faltam %d HH" % int(ceil(float(barco["hhRestantesNoGate"])))
-	var texto_status: String = NOMES_STATUS.get(status, status)
-	if barco["retido"] and status != "APROVADO":
-		texto_status += " (segurar)"
-	draw_string(fonte, Vector2(esquerda, baia.end.y - 3), "%s  %s" % [texto_status, detalhe],
-			HORIZONTAL_ALIGNMENT_LEFT, baia.size.x - 8, TAMANHO_TEXTO, _cor_status(status))
-
-	if id == selecionado:
-		draw_rect(baia.grow(-0.5), Paleta.ALERTA, false, 1.0)
+	var status: String = NOMES_STATUS.get(str(barco["status"]), str(barco["status"]))
+	draw_string(fonte, Vector2(x, r.position.y + 46), "%s · %d%%" % [status, int(progresso * 100)], HORIZONTAL_ALIGNMENT_LEFT,
+			r.size.x - 12, TAMANHO_TEXTO, _cor_status(str(barco["status"])))
+	draw_string(fonte, Vector2(x, r.position.y + 60), "Equipe %d" % (barco["pessoasAlocadas"] as Array).size(),
+			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.TEXTO)
+	draw_string(fonte, Vector2(x, r.position.y + 60), "%d NC  ·  ficha >" % abertas, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 12,
+			TAMANHO_TEXTO, Paleta.CRITICO if abertas > 0 else Paleta.PISO_ESCURO)
 
 
-func _desenhar_painel() -> void:
-	var painel: Rect2 = Rect2(size.x - LARGURA_PAINEL - 2, ALTURA_TOPO + 4, LARGURA_PAINEL, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
-	draw_rect(painel, Paleta.FUNDO)
-	var x := painel.position.x + 6
-	var barco := _barco(selecionado)
-
-	# título do painel (o conteúdo são Controls dentro da rolagem)
-	var titulo := "FICHA DO BARCO" if barco.is_empty() else "BARCO %s" % selecionado
-	if self.painel == PAINEL_EQUIPE:
-		titulo = "EQUIPE"
-	elif self.painel == PAINEL_FORNECEDORES:
-		titulo = "FORNECEDORES"
-	draw_string(fonte_titulo, Vector2(x, painel.position.y + 12), titulo, HORIZONTAL_ALIGNMENT_LEFT, -1,
-			TAMANHO_TITULO, Paleta.ALERTA)
-	if self.painel != PAINEL_BARCO:
-		return
-	if barco.is_empty():
-		draw_string(fonte, Vector2(x, painel.position.y + 28), "Clique num barco.", HORIZONTAL_ALIGNMENT_LEFT, -1,
-				TAMANHO_TEXTO, Paleta.PISO_ESCURO)
-	elif (barco["ncs"] as Array).is_empty():
-		draw_string(fonte, Vector2(x, painel.position.y + 28), "%s · sem NC" % barco["cliente"],
-			HORIZONTAL_ALIGNMENT_LEFT, LARGURA_PAINEL - 10, TAMANHO_TEXTO, Paleta.TEXTO)
-		draw_string(fonte, Vector2(x, painel.position.y + 44), "Duplo clique: ficha completa",
-			HORIZONTAL_ALIGNMENT_LEFT, LARGURA_PAINEL - 10, TAMANHO_TEXTO, Paleta.PISO_ESCURO)
-
-	# avisos na metade de baixo
-	var topo_avisos := rolagem.position.y + rolagem.size.y + 8
-	draw_line(Vector2(painel.position.x, topo_avisos - 4), Vector2(painel.end.x, topo_avisos - 4), Paleta.ARMAZEM_ESCURO)
-	draw_string(fonte_titulo, Vector2(x, topo_avisos + 8), "AVISOS", HORIZONTAL_ALIGNMENT_LEFT, -1,
-			TAMANHO_TITULO, Paleta.ALERTA)
-	var y := topo_avisos + 22
+## Alertas no canto de cima, à direita: NC esperando decisão (clicável) e os avisos recentes.
+func _desenhar_alertas(t: float) -> void:
+	var largura := 176.0
+	var x := size.x - largura - 4
+	var y := ALTURA_TOPO + 4.0
+	area_alerta_nc = Rect2()
+	barco_alerta_nc = ""
+	for barco in estado["barcos"]:
+		for nc in barco["ncs"]:
+			if nc["status"] != "ABERTA" or not barco_alerta_nc.is_empty():
+				continue
+			barco_alerta_nc = barco["id"]
+			var texto := "%s · %s. Decidir?" % [barco["id"], str(nc["descricao"]).to_lower()]
+			var altura := fonte.get_multiline_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10, TAMANHO_TEXTO).y + 22
+			area_alerta_nc = Rect2(x, y, largura, altura)
+			draw_rect(area_alerta_nc, Paleta.NAO_CONFORME_ESCURO)
+			draw_rect(area_alerta_nc.grow(-0.5), Paleta.CRITICO if int(t * 2) % 2 == 0 else Paleta.NAO_CONFORME, false, 1.0)
+			Sprites.selo_nc(self, Vector2(x + 10, y + 9), fonte, 1, true)
+			draw_string(fonte, Vector2(x + 20, y + 14), "NC no gate %s" % nc["gate"], HORIZONTAL_ALIGNMENT_LEFT, -1,
+					TAMANHO_TEXTO, Paleta.TEXTO_CLARO)
+			draw_multiline_string(fonte, Vector2(x + 5, y + 28), texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10,
+					TAMANHO_TEXTO, -1, Paleta.TEXTO)
+			y += altura + 3
+	var agora := Time.get_ticks_msec() / 1000.0
+	var mostrados := 0
 	for aviso in avisos:
-		if y > painel.end.y - 8:
+		var idade: float = agora - float(aviso["quando"])
+		if idade > 12.0 or mostrados >= 3:
 			break
-		var linhas := fonte.get_multiline_string_size(aviso, HORIZONTAL_ALIGNMENT_LEFT, LARGURA_PAINEL - 12, TAMANHO_TEXTO)
-		draw_multiline_string(fonte, Vector2(x, y), aviso, HORIZONTAL_ALIGNMENT_LEFT, LARGURA_PAINEL - 12,
-				TAMANHO_TEXTO, -1, Paleta.TEXTO)
-		y += linhas.y + 3
+		var texto: String = aviso["texto"]
+		var altura := fonte.get_multiline_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10, TAMANHO_TEXTO).y + 6
+		var opaco := clampf((12.0 - idade) / 2.0, 0.0, 1.0)
+		draw_rect(Rect2(x, y, largura, altura), Color(Paleta.FUNDO, 0.92 * opaco))
+		draw_rect(Rect2(x, y, 2, altura), Color(Paleta.ALERTA, opaco))
+		draw_multiline_string(fonte, Vector2(x + 6, y + 13), texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10,
+				TAMANHO_TEXTO, -1, Color(Paleta.TEXTO, opaco))
+		y += altura + 3
+		mostrados += 1
 	if not erro_api.is_empty():
-		draw_multiline_string(fonte, Vector2(x, painel.end.y - 24), erro_api, HORIZONTAL_ALIGNMENT_LEFT,
-				LARGURA_PAINEL - 12, TAMANHO_TEXTO, 2, Paleta.CRITICO)
+		draw_multiline_string(fonte, Vector2(x, y + 12), erro_api, HORIZONTAL_ALIGNMENT_LEFT, largura, TAMANHO_TEXTO, 3,
+				Paleta.CRITICO)
+
+
+## Equipe e fornecedores: painel por cima da fábrica, à direita (o conteúdo são Controls na rolagem).
+func _desenhar_painel() -> void:
+	if painel == PAINEL_BARCO:
+		return
+	var r := Rect2(size.x - LARGURA_PAINEL - 2, ALTURA_TOPO + 4, LARGURA_PAINEL, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
+	draw_rect(r, Paleta.FUNDO)
+	draw_rect(r.grow(-0.5), Paleta.ALERTA_ESCURO, false, 1.0)
+	draw_string(fonte_titulo, Vector2(r.position.x + 6, r.position.y + 12), "EQUIPE" if painel == PAINEL_EQUIPE else "FORNECEDORES",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO, Paleta.ALERTA)
 
 
 # ---------------------------------------------------------------- lista de saves

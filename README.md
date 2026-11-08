@@ -17,7 +17,7 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | M5 | Finanças, DRE, valor da empresa, conselho | ✅ |
 | M6 | `marellar-cli` | ✅ roda N meses com jogador automático e imprime o relatório do conselho |
 | M7 | `marellar-api` | ✅ criar, estado, avançar, ordens, barco, eventos, conselho, salvar/carregar |
-| M8 | `client-godot`: telas Fábrica, Barco, Conselho | ✅ Fábrica, ficha completa do barco, Equipe, Fornecedores, Conselho e saves, tudo pelo mouse (arte provisória) |
+| M8 | `client-godot`: telas Fábrica, Barco, Conselho | ✅ Fábrica, ficha completa do barco, Equipe, Fornecedores, Conselho e saves, tudo pelo mouse; arte v1 da planta vista de cima |
 
 ---
 
