@@ -506,6 +506,8 @@ func _desenhar_baia(barco: Dictionary, baia: Rect2) -> void:
 		var frente := k % 2 == 0
 		var x := linha_dagua.x + 8 + (k / 2) * 26
 		var y := linha_dagua.y + (12.0 if frente else -16.0)
+		if frente and etapa == Sprites.ETAPA_PISCINA:
+			y += 4.0  # na borda da piscina, não dentro d'água
 		var quadro := int(t * 4 + k) % 2 if velocidade > 0 else 0
 		Sprites.pessoa(self, Vector2(x, y), uniforme, quadro)
 

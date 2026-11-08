@@ -156,14 +156,14 @@ Os barcos passam pelos gates abaixo, em ordem. A lista completa de 15 gates est�
 | --- | --- | --- | --- | --- |
 | 0 | — | Contrato assinado | — | **30%** |
 | 1 | RE | Recebimento de materiais | 2% | — |
-| 2 | DM | Desmoldagem (casco laminado) | 28% | **10%** |
-| 3 | BA | Base / montagem inicial | 20% | — |
-| 4 | BF | Fechamento do barco | 18% | **10%** |
-| 5 | ST | Teste de estanqueidade | 4% | **10%** |
-| 6 | CT | Comissionamento e testes | 10% | — |
-| 7 | PI | Pré-inspeção | 6% | **10%** |
-| 8 | TM | Teste de mar | 6% | — |
-| 9 | TR | Transporte | 3% | — |
+| 2 | DM | Desmolde (casco laminado) | 28% | **10%** |
+| 3 | BA | Barco aberto | 20% | — |
+| 4 | BF | Barco fechado | 18% | **10%** |
+| 5 | ST | Sistemas (estanqueidade diesel, isolamento, pressão, incêndio) | 4% | **10%** |
+| 6 | CT | Collaudo terra (funcional completo em seco) | 10% | — |
+| 7 | PI | Collaudo piscina (flutuação, trim, bombas, infiltração) | 6% | **10%** |
+| 8 | TR | Carreta (Osasco → marina) | 3% | — |
+| 9 | TM | Teste de mar (marina) | 6% | — |
 | 10 | ET | Entrega técnica | 3% | **30%** |
 
 A cota só entra no caixa quando o gate é **aprovado pela qualidade**, e entra após `prazoRecebimentoDias` (parâmetro, padrão 5 dias úteis).
@@ -272,7 +272,7 @@ Use `record` do Java 21 para objetos de valor e classes para entidades com estad
 // identificação
 record BarcoId(String valor) {}          // ex.: "33-007"
 enum Linha { L33 }                        // L47, L59 depois do MVP
-enum CodigoGate { RE, DM, BA, BF, ST, CT, PI, TM, TR, ET }
+enum CodigoGate { RE, DM, BA, BF, ST, CT, PI, TR, TM, ET }
 enum Gravidade { LEVE, MEDIA, CRITICA }
 enum DecisaoNc { RETRABALHO, CONCESSAO, RNC_FORNECEDOR }
 
