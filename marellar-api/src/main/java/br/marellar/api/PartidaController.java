@@ -26,7 +26,6 @@ import java.util.List;
 
 /**
  * Rotas do README, secao 7. A API nao calcula regra nenhuma: so repassa ao motor.
- * Salvar e carregar entram no M7.
  */
 @RestController
 @RequestMapping("/api/v1/partidas")
@@ -83,6 +82,23 @@ public class PartidaController {
     public RelatorioConselho conselho(@PathVariable String id) {
         return service.buscar(id).conselho()
                 .orElseThrow(() -> new OrdemInvalidaException("Ainda nao houve reuniao do conselho nesta partida"));
+    }
+
+    @PostMapping("/{id}/salvar")
+    public PartidaService.ResumoSave salvar(@PathVariable String id) {
+        return service.salvar(id);
+    }
+
+    public record CarregarRequest(@NotNull String id) {}
+
+    @PostMapping("/carregar")
+    public CriarPartidaResponse carregar(@Valid @RequestBody CarregarRequest req) {
+        return new CriarPartidaResponse(service.carregar(req.id()));
+    }
+
+    @GetMapping("/saves")
+    public List<PartidaService.ResumoSave> saves() {
+        return service.listarSaves();
     }
 
     @GetMapping("/{id}/eventos")

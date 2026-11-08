@@ -37,6 +37,8 @@ import br.marellar.engine.estado.EstadoPartida.InspetorVisao;
 import br.marellar.engine.estado.EstadoPartida.NcVisao;
 import br.marellar.engine.estado.EstadoPartida.QualidadeVisao;
 import br.marellar.engine.relatorio.IndicadoresQualidade;
+import br.marellar.engine.save.Save;
+import br.marellar.engine.save.SaveIncompativelException;
 
 import java.math.BigDecimal;
 import java.math.RoundingMode;
@@ -58,9 +60,13 @@ public final class Simulacao {
     private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
 
     private final Partida partida;
+    private final LocalDate inicio;
+    /** Ordens aceitas, com o tick em que entraram: e o que vai para o save. */
+    private final List<Save.OrdemNoTempo> historico = new ArrayList<>();
 
-    private Simulacao(Partida partida) {
+    private Simulacao(Partida partida, LocalDate inicio) {
         this.partida = partida;
+        this.inicio = inicio;
     }
 
     public static Simulacao novaPartida(long semente) {
@@ -72,7 +78,73 @@ public final class Simulacao {
     }
 
     public static Simulacao novaPartida(long semente, ParametrosJogo parametros, LocalDate inicio) {
-        return new Simulacao(new Partida(semente, parametros, inicio));
+        return new Simulacao(new Partida(semente, parametros, inicio), inicio);
+    }
+
+    // ----- salvar e carregar -----
+
+    /** Retrato da partida para gravar em disco (ver {@link Save}). */
+    public synchronized Save salvar() {
+        Relogio r = partida.relogio();
+        return new Save(Save.VERSAO_ATUAL, partida.semente(), inicio.toString(), r.tick(), historico,
+                new Save.Verificacao(r.data().toString(), r.hora(), partida.caixa(), partida.eventos().size(),
+                        assinatura()));
+    }
+
+    /** SHA-256 de barcos, pessoas, eventos e caixa (records sem Map: o texto e estavel entre execucoes). */
+    private String assinatura() {
+        StringBuilder texto = new StringBuilder();
+        partida.barcos().forEach(b -> texto.append(visao(b)).append('\n'));
+        partida.pessoas().forEach(p -> texto.append(visao(p)).append('\n'));
+        partida.eventos().forEach(e -> texto.append(e).append('\n'));
+        texto.append(partida.caixa().toPlainString());
+        try {
+            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
+                    .digest(texto.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
+            return java.util.HexFormat.of().formatHex(hash);
+        } catch (java.security.NoSuchAlgorithmException e) {
+            throw new IllegalStateException("SHA-256 indisponivel", e);
+        }
+    }
+
+    /**
+     * Recria a partida jogando de novo: avanca ate o tick de cada ordem, aplica a ordem e segue
+     * ate o tick final. Se o resultado nao bater com a verificacao do save, os parametros mudaram.
+     */
+    public static Simulacao carregar(Save save, ParametrosJogo parametros) {
+        if (save.versao() != Save.VERSAO_ATUAL) {
+            throw new SaveIncompativelException("Versao de save desconhecida: " + save.versao());
+        }
+        Simulacao sim = novaPartida(save.semente(), parametros, LocalDate.parse(save.inicio()));
+        try {
+            for (Save.OrdemNoTempo o : save.ordens()) {
+                sim.avancarAte(o.tick());
+                sim.aplicarOrdem(o.ordem());
+            }
+            sim.avancarAte(save.tick());
+        } catch (OrdemInvalidaException e) {
+            throw new SaveIncompativelException("O save nao reproduz com os parametros atuais: " + e.getMessage(), e);
+        }
+        Save.Verificacao esperado = save.verificacao();
+        Save.Verificacao obtido = sim.salvar().verificacao();
+        if (esperado == null || !obtido.assinatura().equals(esperado.assinatura())
+                || obtido.caixa().compareTo(esperado.caixa()) != 0 || !obtido.data().equals(esperado.data())
+                || obtido.hora() != esperado.hora() || obtido.eventos() != esperado.eventos()) {
+            throw new SaveIncompativelException("O save foi feito com outros parametros de data/ (ou foi alterado): "
+                    + "esperado " + esperado + ", obtido " + obtido);
+        }
+        return sim;
+    }
+
+    /** Avanca, atravessando as pausas automaticas, ate o relogio chegar ao tick pedido. */
+    private void avancarAte(long tickAlvo) {
+        while (partida.relogio().tick() < tickAlvo) {
+            long faltam = tickAlvo - partida.relogio().tick();
+            ResultadoAvanco r = avancar((int) Math.min(faltam, Integer.MAX_VALUE));
+            if (r.ticksExecutados() == 0) {
+                throw new SaveIncompativelException("A partida acabou antes do tick " + tickAlvo + " do save");
+            }
+        }
     }
 
     /**
@@ -136,6 +208,7 @@ public final class Simulacao {
             case Ordem.EscolherDecisaoConselho o -> ConselhoRegra.escolher(partida, o.opcaoId());
             case Ordem.MudarVelocidade o -> partida.definirVelocidade(o.velocidade());
         }
+        historico.add(new Save.OrdemNoTempo(partida.relogio().tick(), ordem));
     }
 
     private void definirPrioridade(String barcoId, int posicao) {

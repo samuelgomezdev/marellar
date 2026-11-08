@@ -92,6 +92,10 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 			estado = resposta["estado"]
 			faltam -= int(resposta["resultado"]["ticksExecutados"])
 		await _buscar_eventos()
+	if args.has("--salvar"):
+		await _salvar()
+	if args.has("--carregar"):
+		await _carregar_ultimo_save()
 	i = args.find("--selecionar")
 	if i >= 0 and i + 1 < args.size():
 		selecionado = args[i + 1]
@@ -198,6 +202,42 @@ func _decidir_nc(nc_id: String, decisao: String) -> void:
 	_enviar_ordem({"tipo": "DecidirNc", "ncId": nc_id, "decisao": decisao}, "")
 
 
+func _salvar() -> void:
+	var resumo = await Api.salvar()
+	if resumo != null:
+		_avisar("Partida salva (%s, %02dh). F9 carrega o último save." % [_data_curta(str(resumo["data"])), int(resumo["hora"])])
+
+
+## Carrega o save mais recente. O motor joga de novo as mesmas ordens com a mesma semente.
+func _carregar_ultimo_save() -> void:
+	_mudar_velocidade(0)
+	var lista = await Api.saves()
+	if lista == null:
+		return
+	if lista.is_empty():
+		_avisar("Nenhum save ainda. F5 salva a partida.")
+		return
+	var save: Dictionary = lista[0]
+	_avisar("Carregando o save de %s..." % _data_curta(str(save["data"])))
+	if not await Api.carregar(str(save["id"])):
+		return
+	_fechar_conselho()
+	selecionado = ""
+	painel = PAINEL_BARCO
+	await _atualizar_estado()
+	ultimo_evento = int(estado["ultimoEventoId"])  # eventos antigos já foram vistos
+	_avisar("Save carregado: %s, %02dh." % [_data_curta(str(estado["data"])), int(estado["hora"])])
+	if estado.get("motivoPausa") in ["FIM_DO_MES", "DERROTA"] and estado.get("conselho") != null:
+		_abrir_conselho()
+	_atualizar_interface()
+
+
+## "2027-04-12" -> "12/04/2027".
+func _data_curta(iso: String) -> String:
+	var p := iso.split("-")
+	return iso if p.size() != 3 else "%s/%s/%s" % [p[2], p[1], p[0]]
+
+
 func _on_erro_api(mensagem: String) -> void:
 	erro_api = mensagem
 	push_warning(mensagem)
@@ -222,6 +262,10 @@ func _unhandled_input(event: InputEvent) -> void:
 				_abrir_painel(PAINEL_EQUIPE)
 			KEY_F2:
 				_abrir_painel(PAINEL_FORNECEDORES)
+			KEY_F5:
+				_salvar()
+			KEY_F9:
+				_carregar_ultimo_save()
 			KEY_ESCAPE:
 				selecionado = ""
 				painel = PAINEL_BARCO

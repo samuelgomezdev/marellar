@@ -33,6 +33,23 @@ func eventos(desde: int) -> Variant:
 	return await _requisitar(HTTPClient.METHOD_GET, "/partidas/%s/eventos?desde=%d" % [partida_id, desde])
 
 
+func salvar() -> Variant:
+	return await _requisitar(HTTPClient.METHOD_POST, "/partidas/%s/salvar" % partida_id)
+
+
+## Saves gravados, do mais recente para o mais antigo.
+func saves() -> Variant:
+	return await _requisitar(HTTPClient.METHOD_GET, "/partidas/saves")
+
+
+func carregar(id: String) -> bool:
+	var resposta = await _requisitar(HTTPClient.METHOD_POST, "/partidas/carregar", {"id": id})
+	if resposta == null:
+		return false
+	partida_id = resposta["id"]
+	return true
+
+
 func _requisitar(metodo: int, caminho: String, corpo = null) -> Variant:
 	var http := HTTPRequest.new()
 	add_child(http)
