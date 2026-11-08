@@ -16,5 +16,7 @@ public enum TipoEvento {
     PESSOA,
     DEMISSAO,
     SCORECARD,
+    FINANCEIRO,
+    DERROTA,
     FIM_DO_MES
 }

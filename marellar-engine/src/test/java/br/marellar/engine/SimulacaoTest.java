@@ -227,6 +227,6 @@ class SimulacaoTest {
         BarcoVisao bf = e.barcos().getFirst();
         assertThat(bf.gateAtual()).isEqualTo(CodigoGate.BF);
         assertThat(bf.gatesAprovados()).containsExactly(CodigoGate.RE, CodigoGate.DM, CodigoGate.BA);
-        assertThat(bf.nomeGate()).isEqualTo("Fechamento do barco");
+        assertThat(bf.nomeGate()).isEqualTo("Barco fechado");
     }
 }

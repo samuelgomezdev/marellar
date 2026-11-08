@@ -15,6 +15,9 @@ import br.marellar.engine.dominio.TipoEvento;
 import br.marellar.engine.estado.EstadoPartida;
 import br.marellar.engine.estado.EstadoPartida.BarcoVisao;
 import br.marellar.engine.relatorio.IndicadoresQualidade;
+import br.marellar.engine.relatorio.Dinheiro;
+import br.marellar.engine.relatorio.Dre;
+import br.marellar.engine.relatorio.RelatorioConselho;
 
 import java.io.PrintStream;
 import java.math.RoundingMode;
@@ -168,6 +171,8 @@ public final class Main {
                 .collect(Collectors.groupingBy(Evento::tipo, TreeMap::new, Collectors.counting()));
         out.println(" Eventos: " + porTipo);
 
+        sim.conselho().ifPresent(r -> imprimirConselho(out, r));
+
         if (a.listarEventos()) {
             out.println();
             out.println(" Linha do tempo");
@@ -176,6 +181,60 @@ public final class Main {
                 out.printf(" %s %02dh  %s%n", DATA.format(ev.data()), ev.hora(), ev.mensagem());
             }
         }
+    }
+
+    static void imprimirConselho(PrintStream out, RelatorioConselho r) {
+        out.println();
+        out.println("==============================================================");
+        out.printf(" REUNIÃO DO CONSELHO  |  mês %d (%s)%n", r.mes(), r.mesReferencia());
+        out.println("==============================================================");
+        out.println(" Metas");
+        for (RelatorioConselho.Meta m : r.metas()) {
+            out.printf("  [%s] %-38s %s%n", m.cumprida() ? "x" : " ", m.descricao(), m.resultado());
+        }
+        out.printf(" Paciência do conselho: %d -> %d (de 5)%n", r.pacienciaAntes(), r.pacienciaDepois());
+        out.println();
+        out.println(" DRE do mês (R$)");
+        Dre d = r.dre();
+        linha(out, "Receita reconhecida", d.receita());
+        linha(out, "(-) Material", d.custoMaterial().negate());
+        linha(out, "(-) Consumíveis", d.consumiveis().negate());
+        linha(out, "(-) Material de retrabalho", d.materialRetrabalho().negate());
+        linha(out, "(-) Pessoal (salários + encargos)", d.pessoal().negate());
+        linha(out, "(-) Despesas fixas", d.despesasFixas().negate());
+        linha(out, "(+) Chargeback recuperado", d.chargebackRecuperado());
+        linha(out, "= EBITDA", d.ebitda());
+        out.println();
+        linha(out, "Caixa", r.caixa());
+        linha(out, "Valor da empresa (EBITDA x 12 x 6)", r.valorEmpresa());
+        if (r.descontoValuation().signum() > 0) {
+            out.printf("   desconto de %s%% por acidentes e NCs escapadas%n",
+                    r.descontoValuation().movePointRight(2).stripTrailingZeros().toPlainString());
+        }
+        out.printf(" Entregas: %d | NCs: %d | RNCs: %d | concessões: %d | acidentes: %d | TF %s | TG %s%n",
+                r.barcosEntregues(), r.ncsDetectadas(), r.rncs(), r.concessoes(), r.acidentes(),
+                r.taxaFrequencia().toPlainString(), r.taxaGravidade().toPlainString());
+        if (r.alertaCaixaNegativo()) {
+            out.println(" !!! ALERTA: caixa negativo");
+        }
+        out.println();
+        for (RelatorioConselho.Fala f : r.falas()) {
+            out.printf(" %s (%s): \"%s\"%n", f.conselheiro(), f.papel(), f.texto());
+        }
+        if (r.derrota() != null) {
+            out.println();
+            out.println(" FIM DE JOGO: " + r.derrota());
+            return;
+        }
+        out.println();
+        out.println(" Decisões para o mês seguinte");
+        for (RelatorioConselho.Opcao o : r.opcoes()) {
+            out.printf("  - %-32s R$ %12s  %s%n", o.titulo(), Dinheiro.formatar(o.custo()), o.descricao());
+        }
+    }
+
+    private static void linha(PrintStream out, String rotulo, java.math.BigDecimal valor) {
+        out.printf("  %-36s %16s%n", rotulo, Dinheiro.formatar(valor));
     }
 
     record Argumentos(long semente, int meses, Path dados, boolean listarEventos, boolean decidirNcs) {

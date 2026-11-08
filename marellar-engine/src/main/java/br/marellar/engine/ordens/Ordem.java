@@ -10,8 +10,6 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
 /**
  * Ordem do jogador. Em JSON, o campo {@code tipo} diz qual e a ordem:
  * {@code { "tipo": "DecidirNc", "ncId": "NC-0003", "decisao": "RETRABALHO" }}.
- * <p>
- * EscolherDecisaoConselho entra no M5.
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.SIMPLE_NAME, property = "tipo")
 @JsonSubTypes({
@@ -22,6 +20,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(Ordem.Contratar.class),
         @JsonSubTypes.Type(Ordem.Treinar.class),
         @JsonSubTypes.Type(Ordem.FazerUmAUm.class),
+        @JsonSubTypes.Type(Ordem.EscolherDecisaoConselho.class),
         @JsonSubTypes.Type(Ordem.MudarVelocidade.class)
 })
 public sealed interface Ordem {
@@ -46,6 +45,9 @@ public sealed interface Ordem {
 
     /** Conversa 1:1: +moral; no maximo uma a cada diasEntreUmAUm dias por pessoa. */
     record FazerUmAUm(String pessoaId) implements Ordem {}
+
+    /** Escolhe uma das opcoes da ultima reuniao do conselho (uma por reuniao). */
+    record EscolherDecisaoConselho(String opcaoId) implements Ordem {}
 
     record MudarVelocidade(Velocidade velocidade) implements Ordem {}
 }

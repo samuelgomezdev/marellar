@@ -5,5 +5,7 @@ public enum MotivoPausa {
     FIM_DO_MES,
     ACIDENTE,
     NC_CRITICA,
-    EVENTO_COM_ESCOLHA
+    EVENTO_COM_ESCOLHA,
+    /** A partida acabou (caixa ou conselho). */
+    DERROTA
 }

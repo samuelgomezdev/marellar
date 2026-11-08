@@ -5,8 +5,10 @@ extends RefCounted
 
 const ETAPA_MOLDE := 0      # RE, DM: casco sendo laminado dentro do molde (zona suja)
 const ETAPA_BERCO := 1      # BA, BF: casco no berço, montagem
-const ETAPA_PRONTO := 2     # ST, CT, PI: barco montado
-const ETAPA_AGUA := 3       # TM, TR, ET e entregue: barco na água
+const ETAPA_PRONTO := 2     # ST, CT: barco montado, em seco
+const ETAPA_PISCINA := 3    # PI: collaudo na piscina interna
+const ETAPA_CARRETA := 4    # TR: carreta de Osasco até a marina
+const ETAPA_AGUA := 5       # TM, ET e entregue: barco no mar
 
 
 static func etapa_do_gate(gate: String, entregue: bool) -> int:
@@ -17,8 +19,12 @@ static func etapa_do_gate(gate: String, entregue: bool) -> int:
 			return ETAPA_MOLDE
 		"BA", "BF":
 			return ETAPA_BERCO
-		"ST", "CT", "PI":
+		"ST", "CT":
 			return ETAPA_PRONTO
+		"PI":
+			return ETAPA_PISCINA
+		"TR":
+			return ETAPA_CARRETA
 	return ETAPA_AGUA
 
 
@@ -29,6 +35,12 @@ static func barco(c: CanvasItem, origem: Vector2, etapa: int, progresso: float, 
 	if etapa == ETAPA_AGUA:
 		balanco = 1.0 if int(t * 1.5) % 2 == 0 else 0.0
 		_agua(c, o + Vector2(-8, 4), 100, t)
+	elif etapa == ETAPA_PISCINA:
+		balanco = 1.0 if int(t * 0.8) % 2 == 0 else 0.0
+		_piscina(c, o, t)
+	elif etapa == ETAPA_CARRETA:
+		_carreta(c, o, t)
+		o.y -= 7
 	o.y -= balanco
 
 	if etapa == ETAPA_MOLDE:
@@ -51,6 +63,11 @@ static func barco(c: CanvasItem, origem: Vector2, etapa: int, progresso: float, 
 		c.draw_rect(Rect2(o + Vector2(22, -20), Vector2(30, 7)), Paleta.CASCO)
 		c.draw_rect(Rect2(o + Vector2(24, -19), Vector2(26, 3)), Paleta.AGUA_ESCURA)
 		c.draw_rect(Rect2(o + Vector2(40, -24), Vector2(2, 4)), Paleta.METAL)
+	if etapa == ETAPA_PISCINA:
+		# parte de baixo do casco submersa: a água passa na frente
+		var nivel := origem.floor() + Vector2(-9, -4)
+		c.draw_rect(Rect2(nivel, Vector2(102, 5)), Color(Paleta.AGUA_ESCURA, 0.85))
+		c.draw_rect(Rect2(nivel, Vector2(102, 1)), Paleta.AGUA)
 
 
 static func _casco(c: CanvasItem, o: Vector2, comprimento: int, com_convés: bool) -> void:
@@ -65,6 +82,34 @@ static func _casco(c: CanvasItem, o: Vector2, comprimento: int, com_convés: boo
 	c.draw_line(o + Vector2(2, -4), o + Vector2(fim + 8, -4), Paleta.AGUA_ESCURA, 1.0)  # faixa do costado
 	if com_convés:
 		c.draw_rect(Rect2(o + Vector2(4, -13), Vector2(fim - 4, 2)), Paleta.CASCO_SOMBRA)
+
+
+## Piscina interna de concreto: borda clara, água parada com reflexo e escada.
+static func _piscina(c: CanvasItem, o: Vector2, t: float) -> void:
+	var p := o + Vector2(-12, -7)
+	c.draw_rect(Rect2(p, Vector2(108, 18)), Paleta.PISO_ESCURO)                 # borda
+	c.draw_rect(Rect2(p + Vector2(3, 3), Vector2(102, 13)), Paleta.AGUA_ESCURA)  # tanque
+	c.draw_rect(Rect2(p + Vector2(3, 3), Vector2(102, 2)), Paleta.AGUA)          # linha d'água
+	c.draw_rect(Rect2(p + Vector2(0, 0), Vector2(108, 1)), Paleta.PISO)
+	var fase := int(t * 2) % 6
+	for x in range(6 + fase, 100, 12):
+		c.draw_rect(Rect2(p + Vector2(x, 9 + (x / 12) % 2 * 3), Vector2(4, 1)), Paleta.AGUA)
+	for y in [2, 6, 10]:  # escada
+		c.draw_rect(Rect2(p + Vector2(98, y), Vector2(5, 1)), Paleta.METAL)
+	c.draw_rect(Rect2(p + Vector2(98, -4), Vector2(1, 16)), Paleta.METAL)
+	c.draw_rect(Rect2(p + Vector2(102, -4), Vector2(1, 16)), Paleta.METAL)
+
+
+## Carreta rodoviária com rodas que giram.
+static func _carreta(c: CanvasItem, o: Vector2, t: float) -> void:
+	c.draw_rect(Rect2(o + Vector2(-6, -1), Vector2(96, 3)), Paleta.FUNDO_ESCURO)    # chassi
+	for x in [6, 40, 66]:
+		c.draw_rect(Rect2(o + Vector2(x, -7), Vector2(3, 6)), Paleta.MADEIRA)       # berços
+	c.draw_rect(Rect2(o + Vector2(90, -4), Vector2(10, 2)), Paleta.METAL)          # engate
+	var giro := int(t * 4) % 2
+	for x in [52, 62, 72]:
+		c.draw_rect(Rect2(o + Vector2(x, 2), Vector2(7, 7)), Paleta.FUNDO_ESCURO)
+		c.draw_rect(Rect2(o + Vector2(x + 2 + giro, 4 + giro), Vector2(2, 2)), Paleta.METAL)
 
 
 static func _agua(c: CanvasItem, o: Vector2, largura: int, t: float) -> void:

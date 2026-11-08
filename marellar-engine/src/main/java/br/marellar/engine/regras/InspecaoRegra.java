@@ -48,6 +48,7 @@ public final class InspecaoRegra {
             throw new IllegalStateException("Gate " + barco.gateAtual() + " de " + barco.id() + " tem NC pendente");
         }
         barco.registrarAprovacao();
+        FinanceiroRegra.gateAprovado(partida, barco);
         partida.registrarEvento(TipoEvento.GATE_APROVADO, barco.id(), "eventos.gateAprovado",
                 Map.of("barco", barco.id(), "gate", barco.gateAtual().name()));
         if (barco.retido()) {

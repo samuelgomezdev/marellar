@@ -5,7 +5,10 @@ import br.marellar.engine.dominio.DecisaoNc;
 import br.marellar.engine.dominio.Funcao;
 import br.marellar.engine.dominio.Gravidade;
 import br.marellar.engine.dominio.Linha;
+import br.marellar.engine.dominio.MotivoDerrota;
 import br.marellar.engine.dominio.MotivoPausa;
+import br.marellar.engine.dominio.Lancamento;
+import br.marellar.engine.relatorio.RelatorioConselho;
 import br.marellar.engine.dominio.Origem;
 import br.marellar.engine.dominio.SituacaoPessoa;
 import br.marellar.engine.dominio.StatusBarco;
@@ -47,6 +50,9 @@ public record EstadoPartida(
         List<PedidoVisao> pedidosACaminho,
         List<RncVisao> rncs,
         SegurancaVisao seguranca,
+        FinanceiroVisao financeiro,
+        RelatorioConselho conselho,
+        MotivoDerrota derrota,
         BigDecimal horasOciosas,
         long ultimoEventoId) {
 
@@ -128,6 +134,11 @@ public record EstadoPartida(
     public record RncVisao(String id, String ncId, String barcoId, String fornecedorId, Gravidade gravidade,
                            BigDecimal custoDocumentado, BigDecimal chargeback, LocalDate prazo8d, StatusRnc status,
                            BigDecimal chargebackHorasParadas) {}
+
+    /** Caixa, cotas a receber, valor da empresa (do ultimo fechamento) e paciencia do conselho. */
+    public record FinanceiroVisao(BigDecimal caixa, BigDecimal cotasAReceber, BigDecimal valorEmpresa,
+                                  int pacienciaConselho, int pacienciaMaxima, int mesesCaixaNegativo,
+                                  BigDecimal receitaDoMes, List<Lancamento> ultimosLancamentos) {}
 
     /** Indicadores de seguranca (NBR 14280) e de rotatividade. */
     public record SegurancaVisao(int acidentes, int diasPerdidos, BigDecimal horasTrabalhadas,

@@ -70,15 +70,13 @@ class CarregadorDadosTest {
 
     @Test
     void campoDesconhecidoGeraErro() {
-        assertThatThrownBy(() -> CarregadorDados.ler("financeiro.json",
-                """
-                { "caixaInicial": 1, "despesasFixasMensais": 1, "multiploValuation": 6,
-                  "descontoPorAcidenteComAfastamento": 0.05, "descontoPorNcEscapada": 0.03,
-                  "mesesCaixaNegativoParaDerrota": 3, "caixaInicialErrado": 10 }
-                """, ParametrosFinanceiro.class))
+        assertThatThrownBy(() -> CarregadorDados.ler("eventos.json", """
+                { "probabilidadeDiariaBase": 0.1, "probabilidadeDiariaMoralBaixa": 0.2,
+                  "limiarMoralBaixa": 40, "limiarErrado": 10 }
+                """, ParametrosEventos.Demissao.class))
                 .isInstanceOf(DadosInvalidosException.class)
-                .hasMessageContaining("financeiro.json")
-                .hasMessageContaining("caixaInicialErrado");
+                .hasMessageContaining("eventos.json")
+                .hasMessageContaining("limiarErrado");
     }
 
     @Test

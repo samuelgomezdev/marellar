@@ -21,26 +21,71 @@
     ]
   },
   "conselheiros": [
-    { "id": "C1", "nome": "Heitor Valadares", "papel": "Conselheiro financeiro" },
-    { "id": "C2", "nome": "Lúcia Brandão",    "papel": "Conselheira de operações" }
+    {
+      "id": "C1",
+      "nome": "Heitor Valadares",
+      "papel": "Conselheiro financeiro"
+    },
+    {
+      "id": "C2",
+      "nome": "Lúcia Brandão",
+      "papel": "Conselheira de operações"
+    }
   ],
   "conselho": {
     "serio": {
       "acidente": "Teve gente machucada. Antes de falar de número, quero o plano para isso não se repetir.",
       "caixaRuim": "O caixa não aguenta outro mês assim. O que muda a partir de segunda?",
-      "metaPerdida": "Meta é compromisso. Quero saber o que travou."
+      "metaPerdida": "Meta é compromisso. Quero saber o que travou.",
+      "metaCumprida": "Metas batidas. Mantenham o ritmo, sem atalho.",
+      "caixaNegativo": "Caixa negativo. Sem crédito, a empresa não aguenta três meses assim.",
+      "ebitdaNegativo": "Faturamos e mesmo assim demos prejuízo. Margem não é detalhe."
     },
     "humor": {
       "materialDemais": "Compramos resina para laminar o Titanic. Alguém explica?",
       "tudoBem": "Mês tranquilo. Estou desconfiado.",
       "zeroNc": "Zero NC? Conferiram se o inspetor veio trabalhar?"
+    },
+    "opcoes": {
+      "TREINAR_NR": {
+        "titulo": "Treinar NR com toda a equipe",
+        "descricao": "Treinamento de segurança em grupo no sábado. Todos ficam com a NR em dia."
+      },
+      "CONTRATAR_2": {
+        "titulo": "Contratar 2 produtivos",
+        "descricao": "Duas pessoas no nível 1, chegam em 10 dias úteis. Mais salário na folha."
+      },
+      "ANTECIPAR_COMPRA": {
+        "titulo": "Antecipar compra de material",
+        "descricao": "Pede 2 kits extras de cada item agora. Menos risco de barco parado, mais caixa preso em estoque."
+      },
+      "ENCONTRO_EQUIPE": {
+        "titulo": "Encontro com a equipe",
+        "descricao": "Churrasco e conversa franca com a produção. Moral sobe para todo mundo."
+      }
+    },
+    "derrota": {
+      "CAIXA": "Três meses de caixa negativo. O conselho fechou a empresa.",
+      "CONSELHO": "O conselho perdeu a paciência. Você foi substituído no cargo de CEO."
     }
   },
   "metas": [
-    { "id": "M-DM2",   "descricao": "Concluir o gate DM em 2 cascos" },
-    { "id": "M-CAIXA", "descricao": "Caixa acima de R$ 2 milhões" },
-    { "id": "M-ACID",  "descricao": "Zero acidente com afastamento" },
-    { "id": "M-RNC",   "descricao": "Menos de 4 RNCs por barco" }
+    {
+      "id": "M-DM2",
+      "descricao": "Concluir o gate DM em {alvo} cascos"
+    },
+    {
+      "id": "M-CAIXA",
+      "descricao": "Caixa acima de R$ {alvo}"
+    },
+    {
+      "id": "M-ACID",
+      "descricao": "Zero acidente com afastamento"
+    },
+    {
+      "id": "M-RNC",
+      "descricao": "Menos de {alvo} NCs por barco"
+    }
   ],
   "eventos": {
     "gateConcluido": "{barco}: gate {gate} concluído, aguardando inspeção.",
@@ -67,6 +112,10 @@
     "umAUm": "1:1 com {pessoa}. Moral agora {moral}.",
     "oitoDRespondido": "{fornecedor} respondeu o 8D da RNC {rnc}{atraso}.",
     "oitoDVencido": "8D da RNC {rnc} vencido. {fornecedor} não respondeu no prazo.{extra}",
-    "scorecard": "Scorecard de {fornecedor}: nota {nota} ({pontos} pontos)."
+    "scorecard": "Scorecard de {fornecedor}: nota {nota} ({pontos} pontos).",
+    "cotaRecebida": "{barco}: cota de R$ {valor} recebida ({gate}).",
+    "salarios": "Folha paga: R$ {valor} (salários e encargos).",
+    "decisaoConselho": "Decisão do conselho: {titulo}.",
+    "derrota": "FIM DE JOGO: {motivo}"
   }
 }
