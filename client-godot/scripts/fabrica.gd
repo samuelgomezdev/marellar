@@ -60,6 +60,7 @@ var botao_segurar: Button
 var ficha: VBoxContainer
 var rolagem: ScrollContainer
 var botoes_painel := {}
+var tela_conselho: PanelContainer
 
 
 func _ready() -> void:
@@ -97,6 +98,8 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 	i = args.find("--painel")
 	if i >= 0 and i + 1 < args.size():
 		painel = args[i + 1]
+	if estado.get("motivoPausa") in ["FIM_DO_MES", "DERROTA"] and estado.get("conselho") != null:
+		_abrir_conselho()
 	_atualizar_interface()
 	if args.has("--rodar"):
 		_mudar_velocidade(4)
@@ -133,7 +136,10 @@ func _avancar(ticks: int) -> void:
 	await _buscar_eventos()
 	if resposta["resultado"]["pausado"]:
 		_mudar_velocidade(0)
-		_avisar("PAUSA: %s" % _motivo_pausa(str(resposta["resultado"]["motivoPausa"])))
+		var motivo := str(resposta["resultado"]["motivoPausa"])
+		_avisar("PAUSA: %s" % _motivo_pausa(motivo))
+		if motivo == "FIM_DO_MES" or motivo == "DERROTA":
+			_abrir_conselho()
 	_atualizar_interface()
 
 
@@ -200,6 +206,8 @@ func _on_erro_api(mensagem: String) -> void:
 # ---------------------------------------------------------------- entrada
 
 func _unhandled_input(event: InputEvent) -> void:
+	if tela_conselho != null:
+		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
 			KEY_SPACE:
@@ -445,10 +453,13 @@ func _desenhar_topo() -> void:
 	draw_rect(Rect2(0, 0, size.x, ALTURA_TOPO), Paleta.FUNDO)
 	var partes := str(estado["data"]).split("-")
 	var em_inspecao = estado["barcoEmInspecao"]
-	var texto := "%s/%s %02dh | %s dia %d/21 | Inspeção: %s (fila %d) | NCs: %d | Acidentes: %d | Marta %d" % [
+	var fin: Dictionary = estado["financeiro"]
+	var texto := "%s/%s %02dh | %s %d/21 | Caixa %s | Valor %s | Conselho %d/%d | Acid. %d" % [
 		partes[2], partes[1], int(estado["hora"]), estado["mesReferencia"], int(estado["diaUtilDoMes"]),
-		"livre" if em_inspecao == null else em_inspecao, estado["filaInspecao"].size(),
-		int(estado["qualidade"]["ncsAbertas"]), int(estado["seguranca"]["acidentes"]), int(estado["inspetor"]["moral"])]
+		_milhoes(fin["caixa"]), _milhoes(fin["valorEmpresa"]), int(fin["pacienciaConselho"]), int(fin["pacienciaMaxima"]),
+		int(estado["seguranca"]["acidentes"])]
+	if float(fin["caixa"]) < 0:
+		draw_rect(Rect2(0, 0, size.x, ALTURA_TOPO), Paleta.NAO_CONFORME_ESCURO)
 	draw_string(fonte, Vector2(5, 12), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.TEXTO)
 	var vel := "PAUSA" if velocidade == 0 else "x%d" % velocidade
 	draw_string(fonte_titulo, Vector2(size.x - 44, 12), vel, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO,
@@ -579,6 +590,117 @@ func _desenhar_painel() -> void:
 				LARGURA_PAINEL - 12, TAMANHO_TEXTO, 2, Paleta.CRITICO)
 
 
+# ---------------------------------------------------------------- tela do conselho
+
+func _abrir_conselho() -> void:
+	var r = estado.get("conselho")
+	if r == null:
+		return
+	if tela_conselho != null:
+		tela_conselho.queue_free()
+	tela_conselho = PanelContainer.new()
+	var fundo := StyleBoxFlat.new()
+	fundo.bg_color = Paleta.FUNDO_ESCURO
+	fundo.border_color = Paleta.ALERTA
+	fundo.set_border_width_all(1)
+	fundo.set_content_margin_all(6)
+	tela_conselho.add_theme_stylebox_override("panel", fundo)
+	tela_conselho.position = Vector2(40, ALTURA_TOPO + 6)
+	tela_conselho.size = Vector2(size.x - 80, size.y - ALTURA_TOPO - ALTURA_BASE - 12)
+	add_child(tela_conselho)
+
+	var rolagem_conselho := ScrollContainer.new()
+	rolagem_conselho.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	tela_conselho.add_child(rolagem_conselho)
+	var lista := VBoxContainer.new()
+	lista.custom_minimum_size.x = tela_conselho.size.x - 24
+	lista.add_theme_constant_override("separation", 0)
+	rolagem_conselho.add_child(lista)
+	var largura := lista.custom_minimum_size.x
+
+	var titulo := Label.new()
+	titulo.text = "REUNIÃO DO CONSELHO - %s" % r["mesReferencia"]
+	titulo.add_theme_color_override("font_color", Paleta.ALERTA)  # VT323: a Press Start 2P não tem "Ã"
+	lista.add_child(titulo)
+
+	for m in r["metas"]:
+		var cor := Paleta.MONTAGEM_LIMPA if m["cumprida"] else Paleta.CRITICO
+		lista.add_child(_linha_conselho("%s %s  (%s)" % ["[OK]" if m["cumprida"] else "[X] ", m["descricao"], m["resultado"]], cor, largura))
+	lista.add_child(_linha_conselho("Paciência do conselho: %d -> %d de %d" % [int(r["pacienciaAntes"]),
+			int(r["pacienciaDepois"]), int(estado["financeiro"]["pacienciaMaxima"])], Paleta.ALERTA, largura))
+
+	var dre: Dictionary = r["dre"]
+	lista.add_child(_linha_conselho("DRE: receita %s | material %s | pessoal %s | fixas %s" % [_reais(dre["receita"]),
+			_reais(float(dre["custoMaterial"]) + float(dre["consumiveis"]) + float(dre["materialRetrabalho"])),
+			_reais(dre["pessoal"]), _reais(dre["despesasFixas"])], Paleta.TEXTO, largura))
+	var cor_ebitda := Paleta.MONTAGEM_LIMPA if float(dre["ebitda"]) >= 0 else Paleta.CRITICO
+	lista.add_child(_linha_conselho("EBITDA %s | Caixa %s | Valor da empresa %s" % [_reais(dre["ebitda"]),
+			_reais(r["caixa"]), _reais(r["valorEmpresa"])], cor_ebitda, largura))
+	lista.add_child(_linha_conselho("Entregas %d | NCs %d | RNCs %d | concessões %d | acidentes %d" % [int(r["barcosEntregues"]),
+			int(r["ncsDetectadas"]), int(r["rncs"]), int(r["concessoes"]), int(r["acidentes"])], Paleta.PISO_ESCURO, largura))
+	if r["alertaCaixaNegativo"]:
+		lista.add_child(_linha_conselho("ALERTA: caixa negativo. 3 meses seguidos encerram a empresa.", Paleta.CRITICO, largura))
+
+	for f in r["falas"]:
+		lista.add_child(_linha_conselho("%s: \"%s\"" % [f["conselheiro"], f["texto"]],
+				Paleta.TEXTO_CLARO if f["seria"] else Paleta.AGUA, largura))
+
+	if r["derrota"] != null:
+		lista.add_child(_linha_conselho("FIM DE JOGO. %s" % ("Três meses de caixa negativo." if r["derrota"] == "CAIXA"
+				else "O conselho perdeu a paciência."), Paleta.CRITICO, largura))
+		lista.add_child(_botao("Nova partida", func(): get_tree().reload_current_scene()))
+		return
+
+	lista.add_child(_linha_conselho("Decisão para o próximo mês (uma):", Paleta.ALERTA, largura))
+	var escolhida = r["decisaoEscolhida"]
+	for o in r["opcoes"]:
+		var custo := "" if float(o["custo"]) == 0 else " (%s)" % _reais(o["custo"])
+		var b := _botao("%s%s" % [o["titulo"], custo], _escolher_decisao.bind(o["id"]))
+		b.tooltip_text = o["descricao"]
+		b.disabled = escolhida != null
+		if escolhida == o["id"]:
+			b.text = "> " + b.text
+		lista.add_child(b)
+	lista.add_child(_botao("Continuar", _fechar_conselho))
+
+
+func _linha_conselho(texto: String, cor: Color, largura: float) -> Label:
+	var r := Label.new()
+	r.text = texto
+	r.autowrap_mode = TextServer.AUTOWRAP_WORD
+	r.custom_minimum_size.x = largura
+	r.add_theme_color_override("font_color", cor)
+	return r
+
+
+func _escolher_decisao(opcao_id: String) -> void:
+	await _enviar_ordem({"tipo": "EscolherDecisaoConselho", "opcaoId": opcao_id}, "")
+	_abrir_conselho()
+
+
+func _fechar_conselho() -> void:
+	if tela_conselho != null:
+		tela_conselho.queue_free()
+		tela_conselho = null
+
+
+## Só para exibir (as contas ficam no motor, em BigDecimal): "R$ 1.234.567".
+func _reais(valor) -> String:
+	var v := float(valor)
+	var texto := str(int(round(absf(v))))
+	var saida := ""
+	while texto.length() > 3:
+		saida = "." + texto.substr(texto.length() - 3) + saida
+		texto = texto.substr(0, texto.length() - 3)
+	return ("-" if v < 0 else "") + "R$ " + texto + saida
+
+
+## "R$ 2,62 mi" para a barra de topo.
+func _milhoes(valor) -> String:
+	var v := float(valor) / 1000000.0
+	return ("R$ %.2f mi" % v).replace(".", ",")
+
+
 # ---------------------------------------------------------------- utilitários
 
 func _barco(id: String) -> Dictionary:
@@ -606,7 +728,9 @@ func _cor_status(status: String) -> Color:
 func _motivo_pausa(motivo: String) -> String:
 	match motivo:
 		"FIM_DO_MES":
-			return "fim do mês. A reunião do conselho entra no M5."
+			return "fim do mês. Reunião do conselho."
+		"DERROTA":
+			return "fim de jogo."
 		"NC_CRITICA":
 			return "NC crítica detectada. Clique no barco e decida."
 		"ACIDENTE":

@@ -19,6 +19,11 @@ import br.marellar.engine.regras.QualidadeRegra;
 import br.marellar.engine.regras.EventoRegra;
 import br.marellar.engine.regras.FornecedorRegra;
 import br.marellar.engine.regras.PessoasRegra;
+import br.marellar.engine.regras.ConselhoRegra;
+import br.marellar.engine.regras.FinanceiroRegra;
+import br.marellar.engine.estado.EstadoPartida.FinanceiroVisao;
+import br.marellar.engine.relatorio.RelatorioConselho;
+import br.marellar.engine.dominio.CotaAReceber;
 import br.marellar.engine.dominio.Fornecedor;
 import br.marellar.engine.dominio.Pedido;
 import br.marellar.engine.dominio.Rnc;
@@ -78,6 +83,9 @@ public final class Simulacao {
         if (ticks < 0) {
             throw new IllegalArgumentException("ticks nao pode ser negativo: " + ticks);
         }
+        if (partida.derrota().isPresent()) {
+            return new ResultadoAvanco(0, true, MotivoPausa.DERROTA);
+        }
         partida.limparPausa();
         int executados = 0;
         while (executados < ticks) {
@@ -97,20 +105,26 @@ public final class Simulacao {
             // rotinas diarias no fim do turno: o que acontece hoje vale a partir de amanha
             PessoasRegra.fimDoDia(partida);
             FornecedorRegra.fimDoDia(partida);
+            FinanceiroRegra.fimDoDia(partida);
         }
         boolean ultimoTickDoMes = (partida.relogio().tick() + 1) % Relogio.TICKS_POR_MES == 0;
         if (ultimoTickDoMes) {
             // registrado ainda na ultima hora do mes, antes de o relogio virar
             FornecedorRegra.scorecard(partida);
+            ConselhoRegra.reunir(partida, FinanceiroRegra.fecharMes(partida));
             partida.registrarEvento(TipoEvento.FIM_DO_MES, null, "eventos.fimDoMes", Map.of());
         }
         partida.relogio().avancar();
         if (ultimoTickDoMes) {
             partida.pausar(MotivoPausa.FIM_DO_MES);
+            ConselhoRegra.pausarSeDerrota(partida);
         }
     }
 
     public synchronized void aplicarOrdem(Ordem ordem) {
+        if (partida.derrota().isPresent() && !(ordem instanceof Ordem.MudarVelocidade)) {
+            throw new OrdemInvalidaException("A partida acabou: " + partida.derrota().get());
+        }
         switch (ordem) {
             case Ordem.DefinirPrioridade o -> definirPrioridade(o.barcoId(), o.posicao());
             case Ordem.SegurarGate o -> barcoAtivo(o.barcoId()).definirRetido(true);
@@ -119,6 +133,7 @@ public final class Simulacao {
             case Ordem.Contratar o -> PessoasRegra.contratar(partida, o.funcao());
             case Ordem.Treinar o -> PessoasRegra.treinar(partida, o.pessoaId(), o.treinamento());
             case Ordem.FazerUmAUm o -> PessoasRegra.fazerUmAUm(partida, o.pessoaId());
+            case Ordem.EscolherDecisaoConselho o -> ConselhoRegra.escolher(partida, o.opcaoId());
             case Ordem.MudarVelocidade o -> partida.definirVelocidade(o.velocidade());
         }
     }
@@ -181,6 +196,9 @@ public final class Simulacao {
                 partida.pedidos().stream().filter(p -> p.diaChegada() > partida.hoje()).map(this::visao).toList(),
                 partida.rncs().stream().map(this::visao).toList(),
                 segurancaVisao(),
+                financeiroVisao(),
+                partida.ultimoConselho().orElse(null),
+                partida.derrota().orElse(null),
                 partida.horasOciosas(),
                 partida.eventos().size());
     }
@@ -277,6 +295,29 @@ public final class Simulacao {
                 EventoRegra.taxaFrequencia(partida.acidentes(), partida.horasTrabalhadas()),
                 EventoRegra.taxaGravidade(partida.diasPerdidos(), partida.horasTrabalhadas()),
                 partida.demissoes(), partida.horasLiderUmAUm());
+    }
+
+    private FinanceiroVisao financeiroVisao() {
+        BigDecimal aReceber = partida.cotasAReceber().stream().map(CotaAReceber::valor).reduce(BigDecimal.ZERO, BigDecimal::add);
+        int n = partida.lancamentos().size();
+        return new FinanceiroVisao(partida.caixa(), aReceber, partida.valorEmpresa(), partida.pacienciaConselho(),
+                partida.parametros().financeiro().conselho().pacienciaMaxima(), partida.mesesCaixaNegativo(),
+                partida.mes().receita(), List.copyOf(partida.lancamentos().subList(Math.max(0, n - 10), n)));
+    }
+
+    /** Todos os relatorios do conselho da partida, do primeiro ao ultimo. */
+    public synchronized List<RelatorioConselho> conselhos() {
+        return List.copyOf(partida.conselhos());
+    }
+
+    /** Todos os movimentos de caixa da partida. */
+    public synchronized List<br.marellar.engine.dominio.Lancamento> lancamentos() {
+        return List.copyOf(partida.lancamentos());
+    }
+
+    /** Ultimo relatorio do conselho (vazio antes do primeiro fim de mes). */
+    public synchronized java.util.Optional<RelatorioConselho> conselho() {
+        return partida.ultimoConselho();
     }
 
     private LocalDate dataDoDia(long diaUtil) {

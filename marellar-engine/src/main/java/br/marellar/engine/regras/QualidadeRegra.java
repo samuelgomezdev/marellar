@@ -75,9 +75,11 @@ public final class QualidadeRegra {
             BigDecimal prob = Inspetor.probabilidadeDeteccao(nc.gravidade(), personalidade, fila, catalogo);
             if (sortear(partida, prob)) {
                 nc.detectar();
+                partida.mes().contarNcDetectada();
                 detectadas.add(nc);
             } else {
                 nc.escapar();
+                partida.mes().contarNcEscapada();
             }
         }
 

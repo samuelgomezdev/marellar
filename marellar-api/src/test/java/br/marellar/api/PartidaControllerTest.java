@@ -173,6 +173,31 @@ class PartidaControllerTest {
     }
 
     @Test
+    void conselhoDoFimDoMesEDecisao() throws Exception {
+        mvc.perform(get("/api/v1/partidas/{id}/conselho", id))
+                .andExpect(status().isUnprocessableEntity());
+
+        mvc.perform(post("/api/v1/partidas/{id}/avancar", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"ticks\": 168}"))
+                .andExpect(jsonPath("$.estado.conselho.mesReferencia").value("mar/2027"))
+                .andExpect(jsonPath("$.estado.financeiro.caixa").isNumber());
+
+        mvc.perform(get("/api/v1/partidas/{id}/conselho", id))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.metas.length()").value(4))
+                .andExpect(jsonPath("$.falas.length()").value(2))
+                .andExpect(jsonPath("$.opcoes.length()").value(4))
+                .andExpect(jsonPath("$.dre.ebitda").isNumber());
+
+        mvc.perform(post("/api/v1/partidas/{id}/ordens", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tipo\": \"EscolherDecisaoConselho\", \"opcaoId\": \"ENCONTRO_EQUIPE\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.conselho.decisaoEscolhida").value("ENCONTRO_EQUIPE"));
+    }
+
+    @Test
     void ticksForaDoLimiteDa400() throws Exception {
         mvc.perform(post("/api/v1/partidas/{id}/avancar", id)
                         .contentType(MediaType.APPLICATION_JSON)

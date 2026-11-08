@@ -5,7 +5,12 @@ import br.marellar.engine.dados.ParametrosLinha;
 import br.marellar.engine.dados.ParametrosPessoas;
 import br.marellar.engine.dominio.Barco;
 import br.marellar.engine.dominio.Evento;
+import br.marellar.engine.dominio.CotaAReceber;
 import br.marellar.engine.dominio.Fornecedor;
+import br.marellar.engine.dominio.Lancamento;
+import br.marellar.engine.dominio.MotivoDerrota;
+import br.marellar.engine.dominio.TipoLancamento;
+import br.marellar.engine.relatorio.RelatorioConselho;
 import br.marellar.engine.dominio.Funcao;
 import br.marellar.engine.dominio.Pedido;
 import br.marellar.engine.dominio.Rnc;
@@ -68,6 +73,16 @@ public final class Partida {
     private BigDecimal horasTrabalhadas = BigDecimal.ZERO;
     private BigDecimal horasLiderUmAUm = BigDecimal.ZERO;
 
+    private BigDecimal caixa;
+    private final List<Lancamento> lancamentos = new ArrayList<>();
+    private final List<CotaAReceber> cotasAReceber = new ArrayList<>();
+    private MesContabil mes = new MesContabil();
+    private final List<RelatorioConselho> conselhos = new ArrayList<>();
+    private BigDecimal valorEmpresa = BigDecimal.ZERO;
+    private int pacienciaConselho;
+    private int mesesCaixaNegativo;
+    private MotivoDerrota derrota;
+
     Partida(long semente, ParametrosJogo parametros, LocalDate inicio) {
         this.semente = semente;
         this.parametros = parametros;
@@ -85,6 +100,8 @@ public final class Partida {
                     p.segurancaEmDia(), false));
         }
         this.contadorPessoa = pessoas.size();
+        this.caixa = parametros.financeiro().caixaInicial();
+        this.pacienciaConselho = parametros.financeiro().conselho().pacienciaInicial();
         for (var f : parametros.fornecedores().fornecedores()) {
             fornecedores.add(new Fornecedor(f.id(), f.nome(), f.perfil(), f.itens()));
         }
@@ -157,10 +174,86 @@ public final class Partida {
 
     public void registrarConcessao() {
         concessoes++;
+        mes.contarConcessao();
     }
 
+    // ----- financeiro -----
+
+    /** Movimenta o caixa. Valor positivo entra, negativo sai. */
+    public void lancar(TipoLancamento tipo, BigDecimal valor, String descricao) {
+        caixa = caixa.add(valor);
+        lancamentos.add(new Lancamento(relogio.data(), tipo, valor, descricao));
+    }
+
+    public BigDecimal caixa() {
+        return caixa;
+    }
+
+    public List<Lancamento> lancamentos() {
+        return lancamentos;
+    }
+
+    public List<CotaAReceber> cotasAReceber() {
+        return cotasAReceber;
+    }
+
+    public MesContabil mes() {
+        return mes;
+    }
+
+    public void novoMesContabil() {
+        mes = new MesContabil();
+    }
+
+    public List<RelatorioConselho> conselhos() {
+        return conselhos;
+    }
+
+    public Optional<RelatorioConselho> ultimoConselho() {
+        return conselhos.isEmpty() ? Optional.empty() : Optional.of(conselhos.get(conselhos.size() - 1));
+    }
+
+    public void substituirUltimoConselho(RelatorioConselho r) {
+        conselhos.set(conselhos.size() - 1, r);
+    }
+
+    public BigDecimal valorEmpresa() {
+        return valorEmpresa;
+    }
+
+    public void definirValorEmpresa(BigDecimal v) {
+        valorEmpresa = v;
+    }
+
+    public int pacienciaConselho() {
+        return pacienciaConselho;
+    }
+
+    public void definirPacienciaConselho(int p) {
+        pacienciaConselho = p;
+    }
+
+    public int mesesCaixaNegativo() {
+        return mesesCaixaNegativo;
+    }
+
+    public void definirMesesCaixaNegativo(int m) {
+        mesesCaixaNegativo = m;
+    }
+
+    public Optional<MotivoDerrota> derrota() {
+        return Optional.ofNullable(derrota);
+    }
+
+    public void perder(MotivoDerrota motivo) {
+        derrota = motivo;
+    }
+
+    /** Material de retrabalho e de quebra: compra avulsa, sai do caixa na hora e entra na DRE do mes. */
     public void somarCustoMaterialRetrabalho(BigDecimal valor) {
         custoMaterialRetrabalho = custoMaterialRetrabalho.add(valor);
+        mes.somarMaterialRetrabalho(valor);
+        lancar(TipoLancamento.MATERIAL_RETRABALHO, valor.negate(), "Material de retrabalho");
     }
 
     public int concessoes() {
@@ -232,6 +325,7 @@ public final class Partida {
     public void registrarAcidente(int dias) {
         acidentes++;
         diasPerdidos += dias;
+        mes.contarAcidente();
     }
 
     public void registrarDemissao() {

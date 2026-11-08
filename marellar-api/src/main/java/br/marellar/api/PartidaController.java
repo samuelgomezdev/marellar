@@ -6,6 +6,8 @@ import br.marellar.engine.dominio.Evento;
 import br.marellar.engine.estado.EstadoPartida;
 import br.marellar.engine.estado.EstadoPartida.BarcoVisao;
 import br.marellar.engine.ordens.Ordem;
+import br.marellar.engine.ordens.OrdemInvalidaException;
+import br.marellar.engine.relatorio.RelatorioConselho;
 import jakarta.validation.Valid;
 import jakarta.validation.constraints.Max;
 import jakarta.validation.constraints.Min;
@@ -24,7 +26,7 @@ import java.util.List;
 
 /**
  * Rotas do README, secao 7. A API nao calcula regra nenhuma: so repassa ao motor.
- * Conselho, salvar e carregar entram nos proximos milestones.
+ * Salvar e carregar entram no M7.
  */
 @RestController
 @RequestMapping("/api/v1/partidas")
@@ -75,6 +77,12 @@ public class PartidaController {
     @GetMapping("/{id}/barcos/{barcoId}")
     public BarcoVisao barco(@PathVariable String id, @PathVariable String barcoId) {
         return service.buscar(id).barco(barcoId);
+    }
+
+    @GetMapping("/{id}/conselho")
+    public RelatorioConselho conselho(@PathVariable String id) {
+        return service.buscar(id).conselho()
+                .orElseThrow(() -> new OrdemInvalidaException("Ainda nao houve reuniao do conselho nesta partida"));
     }
 
     @GetMapping("/{id}/eventos")

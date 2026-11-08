@@ -1,8 +1,25 @@
 {
   "caixaInicial": 3000000.00,
   "despesasFixasMensais": 180000.00,
+  "encargosSobreSalarios": 0.70,
   "multiploValuation": 6,
   "descontoPorAcidenteComAfastamento": 0.05,
   "descontoPorNcEscapada": 0.03,
-  "mesesCaixaNegativoParaDerrota": 3
+  "mesesCaixaNegativoParaDerrota": 3,
+  "conselho": {
+    "pacienciaInicial": 5,
+    "pacienciaMaxima": 5,
+    "metaCascosDm": 2,
+    "metaCaixaMinimo": 2000000.00,
+    "metaNcPorBarcoMaxima": 4,
+    "fatorMaterialDemais": 1.5
+  },
+  "decisoes": {
+    "TREINAR_NR": 15000.00,
+    "CONTRATAR_2": 0.00,
+    "ANTECIPAR_COMPRA": 0.00,
+    "ENCONTRO_EQUIPE": 8000.00
+  },
+  "kitsAntecipados": 2,
+  "ganhoMoralEncontro": 8
 }

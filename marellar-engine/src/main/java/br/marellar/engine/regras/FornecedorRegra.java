@@ -56,6 +56,7 @@ public final class FornecedorRegra {
         }
         if (partida.kitsEmEstoque(item) > 0) {
             partida.somarEstoque(item, -1);
+            FinanceiroRegra.materialConsumido(partida, item);
             if (barco.status() == StatusBarco.PARADO_MATERIAL) {
                 barco.mudarStatus(StatusBarco.EM_PRODUCAO);
             }
@@ -87,6 +88,7 @@ public final class FornecedorRegra {
             }
             f.registrarRecebimento(pecas, rejeitadas, !pedido.atrasado());
             partida.somarEstoque(pedido.item(), pedido.kits());
+            FinanceiroRegra.pagarCompra(partida, pedido, f.nome());
             long diasAtraso = pedido.diaChegada() - pedido.diaPrevisto();
             partida.registrarEvento(TipoEvento.MATERIAL, null, "eventos.materialChegou", Map.of(
                     "kits", String.valueOf(pedido.kits()), "item", pedido.item(), "fornecedor", f.nome(),
@@ -105,23 +107,31 @@ public final class FornecedorRegra {
             if (disponivel >= linha.estoqueMinimoKits()) {
                 continue;
             }
-            int kits = linha.estoqueMinimoKits() + 1 - disponivel;
-            Fornecedor f = partida.fornecedores().stream().filter(x -> x.itens().contains(item)).findFirst().orElseThrow();
-            ParametrosPerfil perfil = regras.perfil(f.perfil());
-            long previsto = partida.hoje() + perfil.diasEntrega();
-            long chegada = previsto;
-            if (QualidadeRegra.sortear(partida, perfil.probabilidadeAtraso())) {
-                chegada += partida.aleatorio().nextInt(regras.diasAtrasoMin(), regras.diasAtrasoMax() + 1);
-            }
-            BigDecimal bruto = linha.valorDoKit(item).multiply(perfil.fatorPreco()).multiply(BigDecimal.valueOf(kits))
-                    .setScale(2, RoundingMode.HALF_EVEN);
-            BigDecimal desconto = f.usarCredito(bruto);
-            partida.pedidos().add(new Pedido(partida.proximoIdPedido(), f.id(), item, kits, bruto, desconto,
-                    partida.hoje(), previsto, chegada));
-            String data = DATA.format(Relogio.somarDiasUteis(partida.relogio().inicio(), previsto));
-            partida.registrarEvento(TipoEvento.MATERIAL, null, "eventos.pedidoFeito", Map.of(
-                    "kits", String.valueOf(kits), "item", item, "fornecedor", f.nome(), "data", data));
+            fazerPedido(partida, item, linha.estoqueMinimoKits() + 1 - disponivel);
         }
+    }
+
+    /** Pede kits ao fornecedor do item; o atraso e sorteado pelo perfil e o credito de chargeback abate o valor. */
+    public static Pedido fazerPedido(Partida partida, String item, int kits) {
+        ParametrosLinha linha = partida.parametros().linha33();
+        ParametrosFornecedores regras = partida.parametros().fornecedores();
+        Fornecedor f = partida.fornecedores().stream().filter(x -> x.itens().contains(item)).findFirst().orElseThrow();
+        ParametrosPerfil perfil = regras.perfil(f.perfil());
+        long previsto = partida.hoje() + perfil.diasEntrega();
+        long chegada = previsto;
+        if (QualidadeRegra.sortear(partida, perfil.probabilidadeAtraso())) {
+            chegada += partida.aleatorio().nextInt(regras.diasAtrasoMin(), regras.diasAtrasoMax() + 1);
+        }
+        BigDecimal bruto = linha.valorDoKit(item).multiply(perfil.fatorPreco()).multiply(BigDecimal.valueOf(kits))
+                .setScale(2, RoundingMode.HALF_EVEN);
+        BigDecimal desconto = f.usarCredito(bruto);
+        Pedido pedido = new Pedido(partida.proximoIdPedido(), f.id(), item, kits, bruto, desconto,
+                partida.hoje(), previsto, chegada);
+        partida.pedidos().add(pedido);
+        String data = DATA.format(Relogio.somarDiasUteis(partida.relogio().inicio(), previsto));
+        partida.registrarEvento(TipoEvento.MATERIAL, null, "eventos.pedidoFeito", Map.of(
+                "kits", String.valueOf(kits), "item", item, "fornecedor", f.nome(), "data", data));
+        return pedido;
     }
 
     // ----- RNC, 8D e chargeback -----
@@ -136,6 +146,8 @@ public final class FornecedorRegra {
                 hoje, hoje + regras.prazo8dDiasUteis(), hoje + regras.perfil(f.perfil()).diasResposta8d());
         partida.rncs().add(rnc);
         f.lancarChargeback(chargeback);
+        partida.mes().somarChargeback(chargeback);
+        partida.mes().contarRnc();
         partida.registrarEvento(TipoEvento.RNC_ABERTA, barco.id(), "eventos.rncAberta", Map.of(
                 "barco", barco.id(), "nc", nc.id(), "fornecedor", f.nome(), "valor", chargeback.toPlainString()));
         return rnc;
@@ -166,6 +178,7 @@ public final class FornecedorRegra {
                     extra = chargeback(hhParadas.multiply(partida.parametros().linha33().custoHh()),
                             regras.taxaAdministrativaChargeback());
                     f.lancarChargeback(extra);
+                    partida.mes().somarChargeback(extra);
                 }
                 rnc.vencer(extra);
                 partida.registrarEvento(TipoEvento.RNC_ABERTA, rnc.barcoId(), "eventos.oitoDVencido", Map.of(

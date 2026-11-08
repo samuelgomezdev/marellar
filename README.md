@@ -14,10 +14,10 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | M2 | Motor: relógio, barcos, gates e produção | ✅ |
 | M3 | Qualidade e inspetor | ✅ |
 | M4 | Pessoas, fornecedores e eventos | ✅ |
-| M5 | Finanças, DRE, valor da empresa, conselho | ⏳ |
-| M6 | `marellar-cli` | 🚧 roda a partida e imprime a produção; falta o relatório do conselho |
-| M7 | `marellar-api` | 🚧 criar, estado, avançar, ordens, barco e eventos; falta salvar/carregar e conselho |
-| M8 | `client-godot`: telas Fábrica, Barco, Conselho | 🚧 Fábrica, ficha do barco, painéis de Equipe e Fornecedores (arte provisória) |
+| M5 | Finanças, DRE, valor da empresa, conselho | ✅ |
+| M6 | `marellar-cli` | ✅ roda N meses com jogador automático e imprime o relatório do conselho |
+| M7 | `marellar-api` | 🚧 criar, estado, avançar, ordens, barco, eventos e conselho; falta salvar/carregar |
+| M8 | `client-godot`: telas Fábrica, Barco, Conselho | 🚧 Fábrica, ficha do barco, Equipe, Fornecedores e Conselho (arte provisória) |
 
 ---
 

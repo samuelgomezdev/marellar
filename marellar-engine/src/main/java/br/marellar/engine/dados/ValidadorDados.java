@@ -243,6 +243,18 @@ public final class ValidadorDados {
         probabilidade(arq, "descontoPorAcidenteComAfastamento", f.descontoPorAcidenteComAfastamento());
         probabilidade(arq, "descontoPorNcEscapada", f.descontoPorNcEscapada());
         regra(f.mesesCaixaNegativoParaDerrota() >= 1, arq, "mesesCaixaNegativoParaDerrota deve ser pelo menos 1");
+        probabilidade(arq, "encargosSobreSalarios", f.encargosSobreSalarios());
+        regra(f.conselho() != null, arq, "conselho e obrigatorio");
+        if (f.conselho() != null) {
+            regra(f.conselho().pacienciaInicial() >= 1 && f.conselho().pacienciaInicial() <= f.conselho().pacienciaMaxima(),
+                    arq, "conselho.pacienciaInicial deve estar entre 1 e pacienciaMaxima");
+            naoNegativo(arq, "conselho.metaCaixaMinimo", f.conselho().metaCaixaMinimo());
+            positivo(arq, "conselho.fatorMaterialDemais", f.conselho().fatorMaterialDemais());
+        }
+        regra(f.decisoes().keySet().containsAll(br.marellar.engine.regras.ConselhoRegra.OPCOES), arq,
+                "decisoes precisa do custo de " + br.marellar.engine.regras.ConselhoRegra.OPCOES);
+        f.decisoes().forEach((id, custo) -> naoNegativo(arq, "decisoes." + id, custo));
+        regra(f.kitsAntecipados() >= 1, arq, "kitsAntecipados deve ser pelo menos 1");
     }
 
     private void textos(Textos t) {
@@ -257,7 +269,11 @@ public final class ValidadorDados {
                 "eventos.pedidoFeito", "eventos.quebraPeca", "eventos.acidente", "eventos.demissao",
                 "eventos.contratacao", "eventos.chegadaContratado", "eventos.treinamentoInicio",
                 "eventos.treinamentoFim", "eventos.subiuNivel", "eventos.retornoAfastamento", "eventos.umAUm",
-                "eventos.oitoDRespondido", "eventos.oitoDVencido", "eventos.scorecard")) {
+                "eventos.oitoDRespondido", "eventos.oitoDVencido", "eventos.scorecard", "eventos.cotaRecebida",
+                "eventos.salarios", "eventos.decisaoConselho", "eventos.derrota",
+                "conselho.serio.acidente", "conselho.serio.caixaRuim", "conselho.serio.metaPerdida",
+                "conselho.serio.metaCumprida", "conselho.serio.ebitdaNegativo", "conselho.serio.caixaNegativo", "conselho.humor.materialDemais",
+                "conselho.humor.tudoBem", "conselho.humor.zeroNc", "conselho.derrota.CAIXA", "conselho.derrota.CONSELHO")) {
             regra(t.no(caminho).isTextual(), arq, caminho + " ausente");
         }
     }
