@@ -7,6 +7,8 @@ import br.marellar.engine.dados.DadosInvalidosException;
 import br.marellar.engine.dados.ParametrosJogo;
 import br.marellar.engine.dominio.DecisaoNc;
 import br.marellar.engine.dominio.Evento;
+import br.marellar.engine.dominio.Origem;
+import br.marellar.engine.dominio.SituacaoPessoa;
 import br.marellar.engine.dominio.StatusNc;
 import br.marellar.engine.ordens.Ordem;
 import br.marellar.engine.dominio.TipoEvento;
@@ -70,19 +72,35 @@ public final class Main {
             rodados += sim.avancar(1).ticksExecutados();
             if (a.decidirNcs()) {
                 decidirTudoComoRetrabalho(sim);
+                umAUmComQuemEstaDesanimado(sim);
             }
         }
 
         imprimir(out, sim, a);
     }
 
-    /** Jogador automatico da CLI: toda NC detectada vai para retrabalho. */
+    /** Jogador automatico da CLI: NC de material vira RNC contra o fornecedor; as outras, retrabalho. */
     static void decidirTudoComoRetrabalho(Simulacao sim) {
         for (BarcoVisao b : sim.estado().barcos()) {
             for (EstadoPartida.NcVisao nc : b.ncs()) {
                 if (nc.status() == StatusNc.ABERTA) {
-                    sim.aplicarOrdem(new Ordem.DecidirNc(nc.id(), DecisaoNc.RETRABALHO));
+                    DecisaoNc decisao = nc.origem() == Origem.FORNECEDOR ? DecisaoNc.RNC_FORNECEDOR : DecisaoNc.RETRABALHO;
+                    sim.aplicarOrdem(new Ordem.DecidirNc(nc.id(), decisao));
                 }
+            }
+        }
+    }
+
+    /** Jogador automatico: no inicio do dia, 1:1 com quem esta com moral abaixo de 70 e pode ter 1:1. */
+    static void umAUmComQuemEstaDesanimado(Simulacao sim) {
+        EstadoPartida e = sim.estado();
+        if (e.hora() != 7) {
+            return;
+        }
+        for (EstadoPartida.PessoaVisao p : e.pessoas()) {
+            boolean naEmpresa = p.situacao() != SituacaoPessoa.DESLIGADA && p.situacao() != SituacaoPessoa.A_CAMINHO;
+            if (naEmpresa && p.podeFazerUmAUm() && p.moral() < 70) {
+                sim.aplicarOrdem(new Ordem.FazerUmAUm(p.id()));
             }
         }
     }
@@ -93,7 +111,7 @@ public final class Main {
 
         out.println("==============================================================");
         out.printf(" MARELLAR  |  semente %d  |  %d mes(es)  |  NCs: %s%n", a.semente(), a.meses(),
-                a.decidirNcs() ? "retrabalho automático" : "sem decisões");
+                a.decidirNcs() ? "decisão automática" : "sem decisões");
         out.printf(" %d tick(s) jogados; o relógio está em %s, início de %s%n",
                 e.tick(), DATA.format(e.data()), e.mesReferencia());
         out.println("==============================================================");
@@ -121,6 +139,30 @@ public final class Main {
                 q.concessoes(), q.rncs(), q.hhRetrabalho().setScale(0, RoundingMode.HALF_EVEN).toPlainString(),
                 q.custoMaterialRetrabalho().toPlainString());
         out.printf(" Inspetora %s: moral %d%n", e.inspetor().nome(), e.inspetor().moral());
+
+        out.println();
+        out.println(" Pessoas e segurança");
+        out.println(" ------------------------------------------------------------");
+        Map<SituacaoPessoa, Long> situacoes = e.pessoas().stream()
+                .collect(Collectors.groupingBy(EstadoPartida.PessoaVisao::situacao, TreeMap::new, Collectors.counting()));
+        out.println(" Situação: " + situacoes);
+        out.printf(" Moral média da produção: %d%n", (int) e.pessoas().stream()
+                .filter(p -> p.situacao() != SituacaoPessoa.DESLIGADA && p.funcao() == br.marellar.engine.dominio.Funcao.PRODUCAO)
+                .mapToInt(EstadoPartida.PessoaVisao::moral).average().orElse(0));
+        var s = e.seguranca();
+        out.printf(" Acidentes: %d | dias perdidos: %d | HHT: %s | TF: %s | TG: %s | demissões: %d%n",
+                s.acidentes(), s.diasPerdidos(), s.horasTrabalhadas().toPlainString(),
+                s.taxaFrequencia().toPlainString(), s.taxaGravidade().toPlainString(), s.demissoes());
+
+        out.println();
+        out.println(" Fornecedores (scorecard do último fechamento)");
+        out.println(" ------------------------------------------------------------");
+        for (EstadoPartida.FornecedorVisao f : e.fornecedores()) {
+            out.printf(" %-26s nota %s (%3d) | PPM %6d | entregas no prazo %d/%d | 8D no prazo %d/%d | chargeback R$ %s%n",
+                    f.nome(), f.nota(), f.pontos(), f.ppm(), f.pedidosNoPrazo(), f.pedidosEntregues(),
+                    f.oitoDsNoPrazo(), f.oitoDsRespondidos(), f.totalChargeback().toPlainString());
+        }
+        out.println(" Estoque (kits): " + new TreeMap<>(e.estoque()) + " | pedidos a caminho: " + e.pedidosACaminho().size());
 
         Map<TipoEvento, Long> porTipo = eventos.stream()
                 .collect(Collectors.groupingBy(Evento::tipo, TreeMap::new, Collectors.counting()));

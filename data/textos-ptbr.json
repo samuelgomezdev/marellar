@@ -51,6 +51,22 @@
     "ncCritica": "{barco}: NC CRÍTICA no gate {gate} ({descricao}). Produção pausada.",
     "retrabalhoConcluido": "{barco}: retrabalho concluído no gate {gate}.",
     "concessao": "{barco}: concessão na NC {nc}. {inspetor}: “{fala}”",
-    "rncAberta": "{barco}: RNC aberta contra {fornecedor} pela NC {nc}."
+    "rncAberta": "{barco}: RNC aberta contra {fornecedor} pela NC {nc}. Chargeback de R$ {valor}.",
+    "paradoMaterial": "{barco}: parado no gate {gate}, sem {item} no estoque.",
+    "materialChegou": "Chegaram {kits} kit(s) de {item} de {fornecedor}{atraso}.",
+    "pedidoFeito": "Pedido de {kits} kit(s) de {item} para {fornecedor}, previsto para {data}.",
+    "quebraPeca": "{barco}: peça quebrada no gate {gate}. +{hh} HH de retrabalho.",
+    "acidente": "ACIDENTE: {pessoa} se machucou no barco {barco}. Afastamento de {dias} dia(s).",
+    "demissao": "{pessoa} pediu demissão.",
+    "contratacao": "{pessoa} contratado(a). Chega em {dias} dias úteis.",
+    "chegadaContratado": "{pessoa} começou hoje na linha (nível {nivel}).",
+    "treinamentoInicio": "{pessoa} saiu da linha para o treinamento de {treinamento} ({dias} dias).",
+    "treinamentoFim": "{pessoa} terminou o treinamento de {treinamento}.",
+    "subiuNivel": "{pessoa} subiu para o nível {nivel}.",
+    "retornoAfastamento": "{pessoa} voltou do afastamento.",
+    "umAUm": "1:1 com {pessoa}. Moral agora {moral}.",
+    "oitoDRespondido": "{fornecedor} respondeu o 8D da RNC {rnc}{atraso}.",
+    "oitoDVencido": "8D da RNC {rnc} vencido. {fornecedor} não respondeu no prazo.{extra}",
+    "scorecard": "Scorecard de {fornecedor}: nota {nota} ({pontos} pontos)."
   }
 }

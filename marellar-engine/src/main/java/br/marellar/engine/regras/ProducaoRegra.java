@@ -37,14 +37,20 @@ public final class ProducaoRegra {
         ParametrosPessoas regrasPessoas = partida.parametros().pessoas();
         int maxPorBarco = partida.parametros().linha33().maxPessoasPorBarco();
 
+        // barcos parados tentam pegar o kit que chegou; quem continua parado registra hora improdutiva
+        for (Barco barco : partida.barcosPorPrioridade()) {
+            if (barco.status() == StatusBarco.PARADO_MATERIAL && !FornecedorRegra.consumirMaterial(partida, barco)) {
+                barco.somarHoraParadoMaterial();
+            }
+        }
+
         Deque<Pessoa> livres = new ArrayDeque<>();
         partida.pessoas().stream()
                 .filter(p -> p.funcao() == Funcao.PRODUCAO)
+                .peek(Pessoa::liberar)
+                .filter(Pessoa::disponivel)
                 .sorted(Comparator.comparing(Pessoa::id))
-                .forEach(p -> {
-                    p.liberar();
-                    livres.add(p);
-                });
+                .forEach(livres::add);
 
         for (Barco barco : partida.barcosPorPrioridade()) {
             if (!barco.trabalhando() || livres.isEmpty()) {
@@ -53,15 +59,22 @@ public final class ProducaoRegra {
             BigDecimal producao = BigDecimal.ZERO;
             int horasPagas = 0;
             int somaNiveis = 0;
+            java.util.List<Pessoa> naBaia = new java.util.ArrayList<>();
             while (horasPagas < maxPorBarco && !livres.isEmpty()) {
                 Pessoa p = livres.pollFirst();
                 p.alocar(barco.id());
+                naBaia.add(p);
                 producao = producao.add(produtividade(p, regrasPessoas));
                 somaNiveis += p.nivel();
                 horasPagas++;
             }
             boolean retrabalho = barco.status() == StatusBarco.EM_RETRABALHO;
             barco.produzir(producao, horasPagas, somaNiveis);
+            partida.somarHorasTrabalhadas(horasPagas);
+            boolean lotada = naBaia.size() >= maxPorBarco;
+            for (Pessoa p : naBaia) {
+                EventoRegra.talvezAcidente(partida, p, barco, lotada);
+            }
             if (!barco.trabalhoTerminado()) {
                 continue;
             }

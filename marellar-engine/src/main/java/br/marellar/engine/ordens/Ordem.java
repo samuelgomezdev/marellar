@@ -1,6 +1,8 @@
 package br.marellar.engine.ordens;
 
 import br.marellar.engine.dominio.DecisaoNc;
+import br.marellar.engine.dominio.Funcao;
+import br.marellar.engine.dominio.Treinamento;
 import br.marellar.engine.dominio.Velocidade;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
 import com.fasterxml.jackson.annotation.JsonTypeInfo;
@@ -9,7 +11,7 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
  * Ordem do jogador. Em JSON, o campo {@code tipo} diz qual e a ordem:
  * {@code { "tipo": "DecidirNc", "ncId": "NC-0003", "decisao": "RETRABALHO" }}.
  * <p>
- * Contratar, Treinar, FazerUmAUm e EscolherDecisaoConselho entram nos proximos milestones.
+ * EscolherDecisaoConselho entra no M5.
  */
 @JsonTypeInfo(use = JsonTypeInfo.Id.SIMPLE_NAME, property = "tipo")
 @JsonSubTypes({
@@ -17,6 +19,9 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(Ordem.LiberarGate.class),
         @JsonSubTypes.Type(Ordem.SegurarGate.class),
         @JsonSubTypes.Type(Ordem.DecidirNc.class),
+        @JsonSubTypes.Type(Ordem.Contratar.class),
+        @JsonSubTypes.Type(Ordem.Treinar.class),
+        @JsonSubTypes.Type(Ordem.FazerUmAUm.class),
         @JsonSubTypes.Type(Ordem.MudarVelocidade.class)
 })
 public sealed interface Ordem {
@@ -32,6 +37,15 @@ public sealed interface Ordem {
 
     /** Decide uma NC detectada: retrabalho, concessao ou RNC contra o fornecedor. */
     record DecidirNc(String ncId, DecisaoNc decisao) implements Ordem {}
+
+    /** Contrata uma pessoa: chega em diasChegadaContratacao dias uteis, no nivel 1. */
+    record Contratar(Funcao funcao) implements Ordem {}
+
+    /** Tira a pessoa da linha por diasTreinamento dias: TECNICO sobe 1 nivel; SEGURANCA poe o treino em dia. */
+    record Treinar(String pessoaId, Treinamento treinamento) implements Ordem {}
+
+    /** Conversa 1:1: +moral; no maximo uma a cada diasEntreUmAUm dias por pessoa. */
+    record FazerUmAUm(String pessoaId) implements Ordem {}
 
     record MudarVelocidade(Velocidade velocidade) implements Ordem {}
 }

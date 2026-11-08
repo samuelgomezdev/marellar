@@ -13,11 +13,11 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | M1 | Maven multi-módulo, `data/*.json`, carregamento e validação | ✅ |
 | M2 | Motor: relógio, barcos, gates e produção | ✅ |
 | M3 | Qualidade e inspetor | ✅ |
-| M4 | Pessoas, fornecedores e eventos | ⏳ |
+| M4 | Pessoas, fornecedores e eventos | ✅ |
 | M5 | Finanças, DRE, valor da empresa, conselho | ⏳ |
 | M6 | `marellar-cli` | 🚧 roda a partida e imprime a produção; falta o relatório do conselho |
 | M7 | `marellar-api` | 🚧 criar, estado, avançar, ordens, barco e eventos; falta salvar/carregar e conselho |
-| M8 | `client-godot`: telas Fábrica, Barco, Conselho | 🚧 Fábrica e ficha do barco (decisões de NC) com arte provisória |
+| M8 | `client-godot`: telas Fábrica, Barco, Conselho | 🚧 Fábrica, ficha do barco, painéis de Equipe e Fornecedores (arte provisória) |
 
 ---
 
@@ -407,11 +407,12 @@ java -jar marellar-cli/target/marellar-cli.jar --semente 42 --meses 1
 # abrir client-godot/project.godot no Godot 4 e rodar (com a API ligada)
 godot --path client-godot -- --rodar          # opcional: abre o jogo já em x4
 godot --path client-godot -- --dias 12 --selecionar 33-002   # opcional: pula dias e abre a ficha de um barco
+godot --path client-godot -- --dias 40 --painel equipe       # opcional: abre direto no painel equipe ou fornecedores
 ```
 
-A CLI decide sozinha: toda NC detectada vai para retrabalho. Use `--sem-decisoes` para ver os barcos travarem esperando decisão.
+A CLI tem um jogador automático: NC de material vira RNC, as outras vão para retrabalho, e ele faz 1:1 com quem está com moral abaixo de 70. Use `--sem-decisoes` para desligar.
 
-Controles da tela da Fábrica: **Espaço** pausa, **1/2/3** mudam a velocidade (x1, x2, x4), **Esc** fecha a ficha. Clique num barco para dar **Prioridade 1**, **Segurar/Liberar gate** e decidir as NCs (**Retrabalho**, **Concessão** ou **RNC**) na ficha à direita.
+Controles da tela da Fábrica: **Espaço** pausa, **1/2/3** mudam a velocidade (x1, x2, x4), **F1** abre a Equipe (contratar, 1:1, treinar), **F2** os Fornecedores (scorecard, estoque, pedidos), **Esc** volta. Clique num barco para dar **Prioridade 1**, **Segurar/Liberar gate** e decidir as NCs (**Retrabalho**, **Concessão** ou **RNC**) na ficha à direita.
 
 ---
 

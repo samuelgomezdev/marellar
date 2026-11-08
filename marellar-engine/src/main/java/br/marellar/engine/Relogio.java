@@ -89,7 +89,7 @@ public final class Relogio {
         return tick > 0 && tick % TICKS_POR_DIA == 0;
     }
 
-    static LocalDate somarDiasUteis(LocalDate diaUtil, long dias) {
+    public static LocalDate somarDiasUteis(LocalDate diaUtil, long dias) {
         LocalDate data = diaUtil.plusWeeks(dias / 5);
         long resto = dias % 5;
         while (resto > 0) {

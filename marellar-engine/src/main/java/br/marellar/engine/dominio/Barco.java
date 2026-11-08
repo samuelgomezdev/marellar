@@ -18,6 +18,8 @@ public final class Barco {
     private BigDecimal hhTotalDoGate;
     private BigDecimal hhRestantesNoGate;
     private BigDecimal hhRetrabalhoPendente = BigDecimal.ZERO;
+    private BigDecimal hhQuebraPendente = BigDecimal.ZERO;
+    private long horasParadoMaterial;
     private int prioridade;
     private boolean retido;
     private BigDecimal hhProduzidas = BigDecimal.ZERO;
@@ -73,6 +75,11 @@ public final class Barco {
             hhRetrabalho = hhRetrabalho.add(usado);
             return usado;
         }
+        // peca quebrada: o conserto vem antes do resto do gate e conta como retrabalho
+        BigDecimal paraQuebra = hhProducao.min(hhQuebraPendente);
+        hhQuebraPendente = hhQuebraPendente.subtract(paraQuebra);
+        hhRetrabalho = hhRetrabalho.add(paraQuebra);
+        hhProducao = hhProducao.subtract(paraQuebra);
         somaNiveisNoGate += somaNiveis;
         horasNoGate += horasPagas;
         BigDecimal usado = hhProducao.min(hhRestantesNoGate);
@@ -81,10 +88,26 @@ public final class Barco {
         return usado;
     }
 
+    public void acrescentarQuebra(BigDecimal hh) {
+        hhQuebraPendente = hhQuebraPendente.add(hh);
+    }
+
+    public void somarHoraParadoMaterial() {
+        horasParadoMaterial++;
+    }
+
+    public BigDecimal hhQuebraPendente() {
+        return hhQuebraPendente;
+    }
+
+    public long horasParadoMaterial() {
+        return horasParadoMaterial;
+    }
+
     public boolean trabalhoTerminado() {
         return status == StatusBarco.EM_RETRABALHO
                 ? hhRetrabalhoPendente.signum() == 0
-                : hhRestantesNoGate.signum() == 0;
+                : hhRestantesNoGate.signum() == 0 && hhQuebraPendente.signum() == 0;
     }
 
     /** Nivel medio de quem trabalhou no gate atual, arredondado (3 se ninguem trabalhou). */

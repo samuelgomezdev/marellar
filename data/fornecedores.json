@@ -2,6 +2,12 @@
   "pesosScorecard": { "entrega": 40, "qualidade": 30, "custo": 20, "resposta": 10 },
   "taxaAdministrativaChargeback": 0.10,
   "prazo8dDiasUteis": 10,
+  "diasAtrasoMin": 2,
+  "diasAtrasoMax": 8,
+  "ppmReferencia": 5000,
+  "fatorFornecedorMin": 0.5,
+  "fatorFornecedorMax": 3.0,
+  "notas": { "A": 90, "B": 80, "C": 70, "D": 60, "E": 50 },
   "perfis": {
     "PREMIUM_CONFIAVEL":  { "ppmBase": 800,   "probabilidadeAtraso": 0.03, "diasEntrega": 5,  "fatorPreco": 1.15, "diasResposta8d": 6 },
     "BARATO_INSTAVEL":    { "ppmBase": 12000, "probabilidadeAtraso": 0.20, "diasEntrega": 7,  "fatorPreco": 0.88, "diasResposta8d": 14 },
