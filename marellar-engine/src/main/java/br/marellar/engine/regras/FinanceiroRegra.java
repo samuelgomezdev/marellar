@@ -108,7 +108,7 @@ public final class FinanceiroRegra {
                 .setScale(2, RoundingMode.HALF_EVEN);
     }
 
-    static BigDecimal percentual(BigDecimal valor, BigDecimal percentual) {
+    public static BigDecimal percentual(BigDecimal valor, BigDecimal percentual) {
         return valor.multiply(percentual).divide(CEM, 2, RoundingMode.HALF_EVEN);
     }
 }

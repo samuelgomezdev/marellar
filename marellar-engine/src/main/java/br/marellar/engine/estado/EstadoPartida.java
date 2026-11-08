@@ -76,7 +76,23 @@ public record EstadoPartida(
             long horasParadoMaterial,
             List<CodigoGate> gatesAprovados,
             List<String> pessoasAlocadas,
-            List<NcVisao> ncs) {}
+            List<NcVisao> ncs,
+            BigDecimal hhPrevistas,
+            BigDecimal hhConcluidas,
+            BigDecimal materialPrevisto,
+            BigDecimal materialAplicado,
+            BigDecimal precoVenda,
+            BigDecimal valorRecebido,
+            List<CotaVisao> cotas) {}
+
+    /**
+     * Cota do cliente para a ficha do barco. {@code gate} nulo = cota do contrato.
+     * {@code diaRecebimento} so vale para A_RECEBER (dia util da partida).
+     */
+    public record CotaVisao(CodigoGate gate, String descricao, BigDecimal percentual, BigDecimal valor,
+                            SituacaoCota situacao, Long diaRecebimento) {}
+
+    public enum SituacaoCota { PAGA, A_RECEBER, PENDENTE }
 
     public record NcVisao(
             String id,
