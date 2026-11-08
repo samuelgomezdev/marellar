@@ -151,8 +151,6 @@ static func _desenhar_mezanino(c: CanvasItem, r: Rect2, estado: Dictionary, t: f
 	for i in mini(livres.size(), int(r.size.x / passo) - 2):
 		var px := r.position.x + 40 + i * passo + (sin(t * 0.7 + i) * 3.0 if animar else 0.0)
 		_desenhar_pessoa(c, Vector2(px, r.end.y - 3), Paleta.MONTAGEM_LIMPA_ESCURA, int(t * 2 + i) % 2 if animar else 0)
-	if estado["barcoEmInspecao"] == null:
-		_desenhar_pessoa(c, Vector2(r.end.x - 22, r.end.y - 3), Paleta.AGUA, 0)
 
 
 static func _desenhar_rua(c: CanvasItem, r: Rect2, t: float, animar: bool) -> void:
@@ -210,6 +208,10 @@ static func _barco_na_baia(c: CanvasItem, baia: Rect2, b: Dictionary, estado: Di
 	var gate: String = b["gateAtual"]
 	var etapa := _etapa(gate)
 	var progresso := 0.0 if gate == "RE" else float(b["progressoGate"])
+	if b["status"] == "PARADO_MATERIAL":
+		# barco parado: a baia pulsa em vermelho (GDD, Luz)
+		var pulso := 0.12 + 0.10 * sin(t * 4.0)
+		c.draw_rect(baia.grow(-2), Color(Paleta.NAO_CONFORME, pulso))
 	var tex := PixelArt.casco(etapa, progresso)
 	var pos := Vector2(baia.position.x + (baia.size.x - tex.get_width()) / 2,
 			baia.position.y + 30 + (baia.size.y - 46 - tex.get_height()) / 2).floor()
@@ -235,8 +237,8 @@ static func _barco_na_baia(c: CanvasItem, baia: Rect2, b: Dictionary, estado: Di
 		var quadro := int(t * 4 + k) % 2 if animar else 0
 		var balanca := (1.0 if quadro == 1 else 0.0) if animar else 0.0
 		_desenhar_pessoa(c, Vector2(px + balanca, py), uniforme, quadro, etapa == PixelArt.Etapa.MOLDE)
-	if estado["barcoEmInspecao"] == b["id"]:
-		_desenhar_pessoa(c, Vector2(casco.end.x + 2, casco.position.y + 8), Paleta.AGUA, int(t * 2) % 2)
+	if animar and b["status"] in ["EM_PRODUCAO", "EM_RETRABALHO"]:
+		_efeito_de_trabalho(c, casco, alocadas.size(), etapa == PixelArt.Etapa.MOLDE, t)
 
 	# identificação na baia
 	c.draw_string(fonte, Vector2(baia.position.x + 4, baia.position.y + 12), "%s P%d" % [b["id"], int(b["prioridade"])],
@@ -332,6 +334,22 @@ static func _desenhar_marina(c: CanvasItem, r: Rect2, barcos: Array, entregues: 
 		y += 13
 		if y > r.end.y:
 			break
+
+
+## Pó subindo na laminação; faíscas de ferramenta na montagem.
+static func _efeito_de_trabalho(c: CanvasItem, casco: Rect2, pessoas: int, laminacao: bool, t: float) -> void:
+	for k in pessoas:
+		var esquerda := k % 2 == 0
+		var base := Vector2(casco.position.x - 3 if esquerda else casco.end.x + 3, casco.position.y + 16 + (k / 2) * 24)
+		if laminacao:
+			for p in 3:
+				var fase := fposmod(t * 0.8 + p * 0.33 + k * 0.17, 1.0)
+				var pos := base + Vector2((p - 1) * 3 + sin(t * 3 + p) * 1.5, -fase * 12)
+				c.draw_rect(Rect2(pos.floor(), Vector2(1, 1)), Color(Paleta.TECA, 1.0 - fase))
+		elif int(t * 8 + k * 3) % 9 == 0:
+			for p in 4:
+				var d := Vector2(cos(p * 1.7 + k), sin(p * 1.7 + k)) * (2 + p)
+				c.draw_rect(Rect2((base + d).floor(), Vector2(1, 1)), Paleta.FAIXA if p % 2 == 0 else Paleta.CASCO)
 
 
 # ---------------------------------------------------------------- utilitários

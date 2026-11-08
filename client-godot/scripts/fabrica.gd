@@ -46,6 +46,11 @@ var ocupado := false
 var ultimo_evento := 0
 var avisos: Array[Dictionary] = []  # {texto, quando}
 var area_cartao := Rect2()
+var efeitos: Array[Dictionary] = []  # {tipo, texto, cor, barco, inicio}
+var posicao_barcos := {}  # última posição conhecida de cada barco, para os efeitos
+var gate_anterior := {}
+var pos_inspetora := Vector2(-1, -1)
+var inspetora_andando := false
 var area_alerta_nc := Rect2()
 var barco_alerta_nc := ""
 var erro_api := ""
@@ -148,6 +153,7 @@ func _avancar(ticks: int) -> void:
 		_mudar_velocidade(0)
 		return
 	estado = resposta["estado"]
+	_detectar_mudancas_de_gate()
 	await _buscar_eventos()
 	if resposta["resultado"]["pausado"]:
 		_mudar_velocidade(0)
@@ -172,6 +178,7 @@ func _buscar_eventos() -> void:
 	for evento in lista:
 		ultimo_evento = maxi(ultimo_evento, int(evento["id"]))
 		_avisar(str(evento["mensagem"]))
+		_efeito_do_evento(evento)
 
 
 func _enviar_ordem(dados: Dictionary, aviso: String) -> void:
@@ -539,6 +546,11 @@ func _draw() -> void:
 	if not tela_ficha.visible:
 		var area := Rect2(0, ALTURA_TOPO, size.x, size.y - ALTURA_TOPO - ALTURA_BASE)
 		areas_barcos = Planta.desenhar(self, area, estado, selecionado, t, velocidade > 0, fonte)
+		for id in areas_barcos:
+			posicao_barcos[id] = areas_barcos[id]
+		_desenhar_inspetora(area)
+		_desenhar_efeitos()
+		_desenhar_luz_do_turno(area)
 		_desenhar_cartao()
 		_desenhar_alertas(t)
 		_desenhar_painel()
@@ -548,6 +560,140 @@ func _draw() -> void:
 		area_alerta_nc = Rect2()
 	_desenhar_topo()
 	draw_rect(Rect2(0, size.y - ALTURA_BASE, size.x, ALTURA_BASE), Paleta.FUNDO)
+
+
+# ---------------------------------------------------------------- game feel (GDD, Áudio e sensação)
+
+## Números e sinais subindo do barco, confete na entrega.
+func _efeito_do_evento(evento: Dictionary) -> void:
+	var barco = evento.get("barcoId")
+	if barco == null:
+		return
+	var texto := ""
+	var cor := Paleta.TEXTO_CLARO
+	var tipo := "texto"
+	match str(evento["tipo"]):
+		"GATE_APROVADO":
+			texto = "gate OK!"
+			cor = Paleta.MONTAGEM_LIMPA
+		"NC_DETECTADA", "NC_CRITICA":
+			texto = "NC!"
+			cor = Paleta.CRITICO
+		"RETRABALHO_CONCLUIDO":
+			texto = "retrabalho OK"
+			cor = Paleta.MONTAGEM_LIMPA
+		"QUEBRA_PECA":
+			texto = "quebrou! -HH"
+			cor = Paleta.ALERTA
+		"ACIDENTE":
+			texto = "ACIDENTE"
+			cor = Paleta.CRITICO
+		"PARADO_MATERIAL":
+			texto = "sem material"
+			cor = Paleta.ALERTA
+		"BARCO_ENTREGUE":
+			texto = "ENTREGUE!"
+			cor = Paleta.FAIXA
+			tipo = "confete"
+		"FINANCEIRO":
+			var achado := RegEx.create_from_string("R\\$ ?([0-9.]+)").search(str(evento["mensagem"]))
+			if achado == null:
+				return
+			texto = "+R$ %s mil" % str(int(achado.get_string(1).replace(".", "")) / 1000)
+			cor = Paleta.MONTAGEM_LIMPA
+		_:
+			return
+	efeitos.append({"tipo": tipo, "texto": texto, "cor": cor, "barco": str(barco), "inicio": Time.get_ticks_msec() / 1000.0})
+
+
+## Respingo quando o barco desce na piscina (o gate muda para PI).
+func _detectar_mudancas_de_gate() -> void:
+	for b in estado["barcos"]:
+		var id: String = b["id"]
+		if gate_anterior.has(id) and gate_anterior[id] != "PI" and b["gateAtual"] == "PI":
+			efeitos.append({"tipo": "respingo", "texto": "", "cor": Paleta.AGUA, "barco": id,
+					"inicio": Time.get_ticks_msec() / 1000.0})
+		gate_anterior[id] = b["gateAtual"]
+
+
+func _desenhar_efeitos() -> void:
+	var agora := Time.get_ticks_msec() / 1000.0
+	var vivos: Array[Dictionary] = []
+	var por_barco := {}
+	for e in efeitos:
+		var idade: float = agora - float(e["inicio"])
+		var duracao := 3.0 if e["tipo"] == "confete" else 2.4
+		if idade > duracao or not posicao_barcos.has(e["barco"]):
+			continue
+		vivos.append(e)
+		var r: Rect2 = posicao_barcos[e["barco"]]
+		var fila: int = por_barco.get(e["barco"], 0)
+		por_barco[e["barco"]] = fila + 1
+		var alfa := clampf((duracao - idade) / 0.6, 0.0, 1.0)
+		match str(e["tipo"]):
+			"respingo":
+				var centro := r.get_center()
+				for anel in 3:
+					var raio := (idade * 26.0) - anel * 8.0
+					if raio > 0:
+						draw_arc(centro, raio, 0, TAU, 24, Color(Paleta.AGUA, alfa * 0.8), 1.0)
+				for gota in 10:
+					var ang := gota * TAU / 10.0
+					var d := Vector2(cos(ang), sin(ang)) * (8 + idade * 30) + Vector2(0, idade * idade * 30)
+					draw_rect(Rect2((centro + d).floor(), Vector2(2, 2)), Color(Paleta.CASCO, alfa))
+			"confete":
+				for k in 36:
+					var semente := float(k * 73 % 97) / 97.0
+					var x0 := r.get_center().x + (semente - 0.5) * 80
+					var vel := Vector2((semente - 0.5) * 40, -60 - semente * 40)
+					var p := Vector2(x0, r.position.y) + vel * idade + Vector2(0, 70 * idade * idade)
+					var cores := [Paleta.CRITICO, Paleta.FAIXA, Paleta.MONTAGEM_LIMPA, Paleta.AGUA, Paleta.ALERTA]
+					draw_rect(Rect2(p.floor(), Vector2(2, 1 + k % 2)), Color(cores[k % cores.size()], alfa))
+				_texto_flutuante(e, r, idade, alfa, fila)
+			_:
+				_texto_flutuante(e, r, idade, alfa, fila)
+	efeitos = vivos
+
+
+func _texto_flutuante(e: Dictionary, r: Rect2, idade: float, alfa: float, fila: int) -> void:
+	var texto: String = e["texto"]
+	var largura := fonte.get_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO).x
+	var pos := Vector2(r.get_center().x - largura / 2, r.position.y + 6 - idade * 14 - fila * 12).floor()
+	draw_string(fonte, pos + Vector2(1, 1), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Color(Paleta.FUNDO_ESCURO, alfa))
+	draw_string(fonte, pos, texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Color(e["cor"], alfa))
+
+
+## A inspetora anda até o barco que está inspecionando e volta ao mezanino quando está livre.
+func _desenhar_inspetora(area: Rect2) -> void:
+	var alvo := Vector2(area.end.x - Planta.LARGURA_PISCINA - 30, area.position.y + Planta.ALTURA_MEZANINO - 3)
+	var em_inspecao = estado["barcoEmInspecao"]
+	if em_inspecao != null and areas_barcos.has(em_inspecao):
+		var r: Rect2 = areas_barcos[em_inspecao]
+		alvo = Vector2(r.end.x - 4, r.position.y + 26)
+	if pos_inspetora.x < 0:
+		pos_inspetora = alvo
+	var passo := 70.0 * get_process_delta_time()
+	inspetora_andando = pos_inspetora.distance_to(alvo) > 1.0
+	pos_inspetora = pos_inspetora.move_toward(alvo, passo)
+	var quadro := int(Time.get_ticks_msec() / 150) % 2 if inspetora_andando else 0
+	var tex := PixelArt.pessoa(Paleta.AGUA, quadro)
+	var canto := (pos_inspetora - Vector2(tex.get_width() / 2.0, tex.get_height())).floor()
+	draw_texture(tex, canto)
+	draw_rect(Rect2(canto + Vector2(tex.get_width() - 3, 6), Vector2(3, 4)), Paleta.TEXTO)  # prancheta
+
+
+## Luz do turno: manhã levemente fria, fim da tarde alaranjado (GDD, Luz).
+func _desenhar_luz_do_turno(area: Rect2) -> void:
+	var hora := int(estado["hora"])
+	var cor := Color(0, 0, 0, 0)
+	if hora <= 7:
+		cor = Color(Paleta.AGUA_ESCURA, 0.10)
+	elif hora >= 14:
+		cor = Color(Paleta.ALERTA_ESCURO, 0.14)
+	elif hora >= 13:
+		cor = Color(Paleta.ALERTA, 0.07)
+	if cor.a > 0:
+		draw_rect(area, cor)
 
 
 ## Barra de cima em blocos, como no mockup: data, caixa, valor, moral, NCs abertas e conselho.
@@ -646,11 +792,11 @@ func _desenhar_alertas(t: float) -> void:
 	var mostrados := 0
 	for aviso in avisos:
 		var idade: float = agora - float(aviso["quando"])
-		if idade > 12.0 or mostrados >= 3:
+		if idade > 8.0 or mostrados >= 2:
 			break
 		var texto: String = aviso["texto"]
 		var altura := fonte.get_multiline_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10, TAMANHO_TEXTO).y + 6
-		var opaco := clampf((12.0 - idade) / 2.0, 0.0, 1.0)
+		var opaco := clampf((8.0 - idade) / 1.5, 0.0, 1.0)
 		draw_rect(Rect2(x, y, largura, altura), Color(Paleta.FUNDO, 0.92 * opaco))
 		draw_rect(Rect2(x, y, 2, altura), Color(Paleta.ALERTA, opaco))
 		draw_multiline_string(fonte, Vector2(x + 6, y + 13), texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10,
