@@ -57,6 +57,33 @@ class FinanceiroEConselhoTest {
     }
 
     @Test
+    void fichaDoBarcoMostraCotasHhEMaterial() {
+        Simulacao sim = Simulacao.novaPartida(1, Cenarios.semNcs(TRANQUILO));
+        var b = sim.barco("33-001"); // comeca no BF: RE, DM e BA aprovados antes do inicio
+
+        assertThat(b.cotas()).extracting(c -> c.gate() == null ? "contrato" : c.gate().name())
+                .containsExactly("contrato", "DM", "BF", "ST", "PI", "ET");
+        assertThat(b.cotas()).extracting(c -> c.situacao().name())
+                .containsExactly("PAGA", "PAGA", "PENDENTE", "PENDENTE", "PENDENTE", "PENDENTE");
+        assertThat(b.valorRecebido()).isEqualByComparingTo("320000.00"); // 30% + 10% de 800 mil
+        assertThat(b.hhPrevistas()).isEqualByComparingTo("1900");
+        assertThat(b.hhConcluidas()).isEqualByComparingTo("950"); // RE 2% + DM 28% + BA 20%
+        // kits de resina (35%), gelcoat (15%) e eletrica do BF, ja comecado (15%)
+        assertThat(b.materialAplicado()).isEqualByComparingTo("260000.00");
+
+        for (int i = 0; i < 100 && !sim.barco("33-001").gatesAprovados().contains(br.marellar.engine.dominio.CodigoGate.BF); i++) {
+            sim.avancar(1);
+        }
+        var aprovado = sim.barco("33-001").cotas().get(2);
+        assertThat(aprovado.situacao().name()).isEqualTo("A_RECEBER");
+        assertThat(aprovado.diaRecebimento()).isNotNull();
+
+        avancarDias(sim, 6);
+        assertThat(sim.barco("33-001").cotas().get(2).situacao().name()).isEqualTo("PAGA");
+        assertThat(sim.barco("33-001").valorRecebido()).isEqualByComparingTo("400000.00");
+    }
+
+    @Test
     void dreEValorDaEmpresaBatemComOsLancamentosDoMes() {
         Simulacao sim = Simulacao.novaPartida(1, TRANQUILO);
 

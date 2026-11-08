@@ -87,6 +87,9 @@
       "descricao": "Menos de {alvo} NCs por barco"
     }
   ],
+  "cotas": {
+    "contrato": "Contrato assinado"
+  },
   "eventos": {
     "gateConcluido": "{barco}: gate {gate} concluído, aguardando inspeção.",
     "gateAprovado": "{barco}: gate {gate} aprovado.",

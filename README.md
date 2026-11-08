@@ -17,7 +17,7 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | M5 | Finanças, DRE, valor da empresa, conselho | ✅ |
 | M6 | `marellar-cli` | ✅ roda N meses com jogador automático e imprime o relatório do conselho |
 | M7 | `marellar-api` | ✅ criar, estado, avançar, ordens, barco, eventos, conselho, salvar/carregar |
-| M8 | `client-godot`: telas Fábrica, Barco, Conselho | 🚧 Fábrica, ficha do barco, Equipe, Fornecedores e Conselho (arte provisória) |
+| M8 | `client-godot`: telas Fábrica, Barco, Conselho | ✅ Fábrica, ficha completa do barco, Equipe, Fornecedores, Conselho e saves, tudo pelo mouse (arte provisória) |
 
 ---
 
@@ -410,11 +410,14 @@ godot --path client-godot -- --rodar          # opcional: abre o jogo já em x4
 godot --path client-godot -- --dias 12 --selecionar 33-002   # opcional: pula dias e abre a ficha de um barco
 godot --path client-godot -- --dias 40 --painel equipe       # opcional: abre direto no painel equipe ou fornecedores
 godot --path client-godot -- --dias 12 --salvar              # opcional: salva depois de avançar; --carregar abre o último save
+godot --path client-godot -- --dias 15 --selecionar 33-001 --ficha   # opcional: abre a ficha completa; --saves abre a lista de saves
 ```
 
 A CLI tem um jogador automático: NC de material vira RNC, as outras vão para retrabalho, e ele faz 1:1 com quem está com moral abaixo de 70. Use `--sem-decisoes` para desligar.
 
-Controles da tela da Fábrica: **Espaço** pausa, **1/2/3** mudam a velocidade (x1, x2, x4), **F1** abre a Equipe (contratar, 1:1, treinar), **F2** os Fornecedores (scorecard, estoque, pedidos), **F5** salva, **F9** carrega o último save, **Esc** volta. Clique num barco para dar **Prioridade 1**, **Segurar/Liberar gate** e decidir as NCs (**Retrabalho**, **Concessão** ou **RNC**) na ficha à direita.
+Tudo se joga com o mouse pela barra de baixo: velocidade (**Pausa**, **x1**, **x2**, **x4**), **Ficha**, **Prior. 1**, **Segurar**, **Equipe** (contratar, 1:1, treinar), **Fornec.** (scorecard, estoque, pedidos), **Conselho** (última reunião), **Salvar** e **Carregar** (lista de saves). Clique num barco para selecioná-lo; **duplo clique** abre a ficha completa (caminho pelos gates, horas-homem, material, NCs com **Retrabalho**, **Concessão** ou **RNC**, e cotas do cliente).
+
+Atalhos de teclado: **Espaço** pausa, **1/2/3** velocidade, **Enter** ficha, **F1** Equipe, **F2** Fornecedores, **F5** salva, **F9** carrega o último save, **Esc** volta.
 
 ---
 

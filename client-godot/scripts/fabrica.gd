@@ -54,13 +54,16 @@ var painel := PAINEL_BARCO
 var fonte: Font
 var fonte_titulo: Font
 var botoes_velocidade := {}
-var rotulo_selecao: Label
 var botao_prioridade: Button
 var botao_segurar: Button
 var ficha: VBoxContainer
 var rolagem: ScrollContainer
 var botoes_painel := {}
 var tela_conselho: PanelContainer
+var tela_saves: PanelContainer
+var tela_ficha: FichaBarco
+var botao_ficha: Button
+var botao_conselho: Button
 
 
 func _ready() -> void:
@@ -72,6 +75,7 @@ func _ready() -> void:
 	Api.erro.connect(_on_erro_api)
 	_montar_barra_inferior()
 	_montar_ficha()
+	_montar_ficha_completa()
 	_atualizar_interface()
 	if await Api.criar_partida(SEMENTE):
 		await _atualizar_estado()
@@ -99,6 +103,10 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 	i = args.find("--selecionar")
 	if i >= 0 and i + 1 < args.size():
 		selecionado = args[i + 1]
+	if args.has("--ficha"):
+		_abrir_ficha_completa()
+	if args.has("--saves"):
+		await _abrir_saves()
 	i = args.find("--painel")
 	if i >= 0 and i + 1 < args.size():
 		painel = args[i + 1]
@@ -217,11 +225,16 @@ func _carregar_ultimo_save() -> void:
 	if lista.is_empty():
 		_avisar("Nenhum save ainda. F5 salva a partida.")
 		return
-	var save: Dictionary = lista[0]
-	_avisar("Carregando o save de %s..." % _data_curta(str(save["data"])))
-	if not await Api.carregar(str(save["id"])):
+	await _carregar(str(lista[0]["id"]))
+
+
+func _carregar(id: String) -> void:
+	_mudar_velocidade(0)
+	_avisar("Carregando o save...")
+	if not await Api.carregar(id):
 		return
 	_fechar_conselho()
+	tela_ficha.visible = false
 	selecionado = ""
 	painel = PAINEL_BARCO
 	await _atualizar_estado()
@@ -246,7 +259,9 @@ func _on_erro_api(mensagem: String) -> void:
 # ---------------------------------------------------------------- entrada
 
 func _unhandled_input(event: InputEvent) -> void:
-	if tela_conselho != null:
+	if tela_conselho != null or tela_saves != null:
+		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
+			_fechar_saves()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
@@ -266,7 +281,12 @@ func _unhandled_input(event: InputEvent) -> void:
 				_salvar()
 			KEY_F9:
 				_carregar_ultimo_save()
+			KEY_ENTER, KEY_KP_ENTER:
+				_abrir_ficha_completa()
 			KEY_ESCAPE:
+				if tela_ficha.visible:
+					_fechar_ficha_completa()
+					return
 				selecionado = ""
 				painel = PAINEL_BARCO
 				_atualizar_interface()
@@ -279,6 +299,8 @@ func _gui_input(event: InputEvent) -> void:
 				selecionado = id
 				painel = PAINEL_BARCO
 				_atualizar_interface()
+				if event.double_click:
+					_abrir_ficha_completa()
 				return
 
 
@@ -302,19 +324,32 @@ func _montar_barra_inferior() -> void:
 	botoes_velocidade[0].set_pressed_no_signal(true)
 
 	barra.add_child(VSeparator.new())
-	rotulo_selecao = Label.new()
-	rotulo_selecao.add_theme_color_override("font_color", Paleta.TEXTO)
-	barra.add_child(rotulo_selecao)
-	botao_prioridade = _botao("Prioridade 1", _priorizar)
+	botao_ficha = _botao("Ficha", _abrir_ficha_completa)
+	botao_ficha.tooltip_text = "Ficha completa do barco selecionado (ou duplo clique no barco)."
+	barra.add_child(botao_ficha)
+	botao_prioridade = _botao("Prior. 1", _priorizar)
+	botao_prioridade.tooltip_text = "Coloca o barco selecionado na prioridade 1."
 	barra.add_child(botao_prioridade)
-	botao_segurar = _botao("Segurar gate", _alternar_segurar)
+	botao_segurar = _botao("Segurar", _alternar_segurar)
+	botao_segurar.tooltip_text = "Segura o barco no gate atual depois de aprovado."
 	barra.add_child(botao_segurar)
 	barra.add_child(VSeparator.new())
-	for opcao in [[PAINEL_EQUIPE, "Equipe F1"], [PAINEL_FORNECEDORES, "Fornec. F2"]]:
+	for opcao in [[PAINEL_EQUIPE, "Equipe", "F1"], [PAINEL_FORNECEDORES, "Fornec.", "F2"]]:
 		var b := _botao(opcao[1], _abrir_painel.bind(opcao[0]))
 		b.toggle_mode = true
+		b.tooltip_text = "Atalho: %s" % opcao[2]
 		barra.add_child(b)
 		botoes_painel[opcao[0]] = b
+	botao_conselho = _botao("Conselho", _abrir_conselho)
+	botao_conselho.tooltip_text = "Última reunião do conselho."
+	barra.add_child(botao_conselho)
+	barra.add_child(VSeparator.new())
+	var salvar := _botao("Salvar", _salvar)
+	salvar.tooltip_text = "Atalho: F5"
+	barra.add_child(salvar)
+	var carregar := _botao("Carregar", _abrir_saves)
+	carregar.tooltip_text = "Atalho: F9 (último save)"
+	barra.add_child(carregar)
 
 
 func _montar_ficha() -> void:
@@ -327,7 +362,37 @@ func _montar_ficha() -> void:
 	rolagem.add_child(ficha)
 
 
+func _montar_ficha_completa() -> void:
+	tela_ficha = FichaBarco.new()
+	tela_ficha.fonte = fonte
+	tela_ficha.fonte_titulo = fonte_titulo
+	tela_ficha.tamanho_texto = TAMANHO_TEXTO
+	tela_ficha.tamanho_titulo = TAMANHO_TITULO
+	tela_ficha.visible = false
+	tela_ficha.position = Vector2(0, ALTURA_TOPO)
+	tela_ficha.size = Vector2(size.x, size.y - ALTURA_TOPO - ALTURA_BASE)
+	add_child(tela_ficha)
+	tela_ficha.fechar.connect(_fechar_ficha_completa)
+	tela_ficha.priorizar.connect(_priorizar)
+	tela_ficha.alternar_segurar.connect(_alternar_segurar)
+	tela_ficha.decidir_nc.connect(_decidir_nc)
+
+
+func _abrir_ficha_completa() -> void:
+	if _barco(selecionado).is_empty():
+		_avisar("Selecione um barco para abrir a ficha.")
+		return
+	tela_ficha.visible = true
+	_atualizar_interface()
+
+
+func _fechar_ficha_completa() -> void:
+	tela_ficha.visible = false
+	_atualizar_interface()
+
+
 func _abrir_painel(qual: String) -> void:
+	tela_ficha.visible = false
 	painel = PAINEL_BARCO if painel == qual else qual
 	_atualizar_interface()
 
@@ -343,10 +408,17 @@ func _botao(texto: String, acao: Callable) -> Button:
 func _atualizar_interface() -> void:
 	var barco := _barco(selecionado)
 	var ativo: bool = not barco.is_empty() and barco["status"] != "ENTREGUE"
-	rotulo_selecao.text = "Clique num barco" if barco.is_empty() else "Barco %s" % selecionado
+	botao_ficha.disabled = barco.is_empty()
 	botao_prioridade.disabled = not ativo
 	botao_segurar.disabled = not ativo
-	botao_segurar.text = "Liberar gate" if ativo and barco["retido"] else "Segurar gate"
+	botao_segurar.text = "Liberar" if ativo and barco["retido"] else "Segurar"
+	botao_conselho.disabled = estado.get("conselho") == null
+	if tela_ficha.visible:
+		if barco.is_empty():
+			tela_ficha.visible = false
+		else:
+			tela_ficha.animado = velocidade > 0
+			tela_ficha.atualizar(barco, int(estado["tick"]))
 	for chave in botoes_painel:
 		botoes_painel[chave].set_pressed_no_signal(painel == chave)
 	_posicionar_rolagem()
@@ -614,9 +686,10 @@ func _desenhar_painel() -> void:
 		draw_string(fonte, Vector2(x, painel.position.y + 28), "Clique num barco.", HORIZONTAL_ALIGNMENT_LEFT, -1,
 				TAMANHO_TEXTO, Paleta.PISO_ESCURO)
 	elif (barco["ncs"] as Array).is_empty():
-		draw_string(fonte, Vector2(x, painel.position.y + 28), "%s | %d gates aprovados | sem NC" % [
-			barco["cliente"], (barco["gatesAprovados"] as Array).size()], HORIZONTAL_ALIGNMENT_LEFT,
-			LARGURA_PAINEL - 10, TAMANHO_TEXTO, Paleta.TEXTO)
+		draw_string(fonte, Vector2(x, painel.position.y + 28), "%s · sem NC" % barco["cliente"],
+			HORIZONTAL_ALIGNMENT_LEFT, LARGURA_PAINEL - 10, TAMANHO_TEXTO, Paleta.TEXTO)
+		draw_string(fonte, Vector2(x, painel.position.y + 44), "Duplo clique: ficha completa",
+			HORIZONTAL_ALIGNMENT_LEFT, LARGURA_PAINEL - 10, TAMANHO_TEXTO, Paleta.PISO_ESCURO)
 
 	# avisos na metade de baixo
 	var topo_avisos := rolagem.position.y + rolagem.size.y + 8
@@ -634,6 +707,59 @@ func _desenhar_painel() -> void:
 	if not erro_api.is_empty():
 		draw_multiline_string(fonte, Vector2(x, painel.end.y - 24), erro_api, HORIZONTAL_ALIGNMENT_LEFT,
 				LARGURA_PAINEL - 12, TAMANHO_TEXTO, 2, Paleta.CRITICO)
+
+
+# ---------------------------------------------------------------- lista de saves
+
+func _abrir_saves() -> void:
+	_mudar_velocidade(0)
+	var lista = await Api.saves()
+	if lista == null:
+		return
+	_fechar_saves()
+	tela_saves = _nova_sobreposicao(Paleta.AGUA)
+	var itens := VBoxContainer.new()
+	itens.add_theme_constant_override("separation", 2)
+	tela_saves.add_child(itens)
+	var titulo := Label.new()
+	titulo.text = "CARREGAR PARTIDA"
+	titulo.add_theme_font_override("font", fonte_titulo)
+	titulo.add_theme_font_size_override("font_size", TAMANHO_TITULO)
+	titulo.add_theme_color_override("font_color", Paleta.AGUA)
+	itens.add_child(titulo)
+	if lista.is_empty():
+		itens.add_child(_linha_conselho("Nenhum save ainda. Use Salvar (F5).", Paleta.PISO_ESCURO, 320))
+	for save in lista.slice(0, 8):
+		var atual: bool = save["id"] == Api.partida_id
+		var texto := "%s %02dh · semente %d%s" % [_data_curta(str(save["data"])), int(save["hora"]), int(save["semente"]),
+				" · esta partida" if atual else ""]
+		itens.add_child(_botao(texto, _carregar_save.bind(str(save["id"]))))
+	itens.add_child(_botao("Voltar", _fechar_saves))
+
+
+func _nova_sobreposicao(borda: Color) -> PanelContainer:
+	var painel_novo := PanelContainer.new()
+	var fundo := StyleBoxFlat.new()
+	fundo.bg_color = Paleta.FUNDO_ESCURO
+	fundo.border_color = borda
+	fundo.set_border_width_all(1)
+	fundo.set_content_margin_all(8)
+	painel_novo.add_theme_stylebox_override("panel", fundo)
+	painel_novo.position = Vector2(size.x / 2 - 170, ALTURA_TOPO + 30)
+	painel_novo.custom_minimum_size = Vector2(340, 0)
+	add_child(painel_novo)
+	return painel_novo
+
+
+func _carregar_save(id: String) -> void:
+	_fechar_saves()
+	await _carregar(id)
+
+
+func _fechar_saves() -> void:
+	if tela_saves != null:
+		tela_saves.queue_free()
+		tela_saves = null
 
 
 # ---------------------------------------------------------------- tela do conselho

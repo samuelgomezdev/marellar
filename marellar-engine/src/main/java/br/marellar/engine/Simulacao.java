@@ -10,6 +10,9 @@ import br.marellar.engine.dominio.StatusBarco;
 import br.marellar.engine.dominio.TipoEvento;
 import br.marellar.engine.estado.EstadoPartida;
 import br.marellar.engine.estado.EstadoPartida.BarcoVisao;
+import br.marellar.engine.estado.EstadoPartida.CotaVisao;
+import br.marellar.engine.estado.EstadoPartida.SituacaoCota;
+import br.marellar.engine.dominio.CodigoGate;
 import br.marellar.engine.estado.EstadoPartida.PessoaVisao;
 import br.marellar.engine.ordens.Ordem;
 import br.marellar.engine.ordens.OrdemInvalidaException;
@@ -293,6 +296,8 @@ public final class Simulacao {
                 .filter(p -> p.alocadoEm().map(b.id()::equals).orElse(false))
                 .map(Pessoa::id)
                 .toList();
+        var linha = partida.parametros().linha33();
+        List<CotaVisao> cotas = cotasDoBarco(b);
         return new BarcoVisao(
                 b.id(), b.linha(), b.cliente(), b.gateAtual(),
                 partida.parametros().linha33().gate(b.gateAtual()).nome(),
@@ -300,7 +305,55 @@ public final class Simulacao {
                 b.hhTotalDoGate(), b.hhRestantesNoGate(), progresso, b.hhRetrabalhoPendente(), b.hhQuebraPendente(),
                 b.hhProduzidas(), b.hhRetrabalho(), b.hhApontadas(), b.horasParadoMaterial(),
                 List.copyOf(b.gatesAprovados()), alocadas,
-                partida.ncsDoBarco(b.id()).stream().filter(NaoConformidade::visivel).map(Simulacao::visao).toList());
+                partida.ncsDoBarco(b.id()).stream().filter(NaoConformidade::visivel).map(Simulacao::visao).toList(),
+                linha.hhPorBarco(), hhConcluidas(b), linha.materialPorBarco(), materialAplicado(b),
+                linha.precoVenda(), cotas.stream().filter(c -> c.situacao() == SituacaoCota.PAGA)
+                        .map(CotaVisao::valor).reduce(BigDecimal.ZERO, BigDecimal::add),
+                cotas);
+    }
+
+    /** HH padrao dos gates aprovados + o que ja foi feito no gate atual. */
+    private BigDecimal hhConcluidas(Barco b) {
+        var linha = partida.parametros().linha33();
+        BigDecimal soma = b.gatesAprovados().stream().map(linha::hhDoGate).reduce(BigDecimal.ZERO, BigDecimal::add);
+        if (!b.gatesAprovados().contains(b.gateAtual())) {
+            soma = soma.add(linha.hhDoGate(b.gateAtual()).subtract(b.hhRestantesNoGate()).max(BigDecimal.ZERO)
+                    .min(linha.hhDoGate(b.gateAtual())));
+        }
+        return soma.setScale(0, RoundingMode.HALF_EVEN);
+    }
+
+    /** Kits (a preco de tabela) dos gates aprovados e do gate atual, se ele ja comecou com material. */
+    private BigDecimal materialAplicado(Barco b) {
+        var linha = partida.parametros().linha33();
+        java.util.Set<CodigoGate> gates = new java.util.LinkedHashSet<>(b.gatesAprovados());
+        if (b.status() != StatusBarco.PARADO_MATERIAL) {
+            gates.add(b.gateAtual());
+        }
+        return gates.stream().map(linha::itemDoGate).flatMap(java.util.Optional::stream)
+                .map(linha::valorDoKit).reduce(BigDecimal.ZERO, BigDecimal::add);
+    }
+
+    /** Contrato (sempre pago) e uma cota por gate com cotaPercentual > 0. */
+    private List<CotaVisao> cotasDoBarco(Barco b) {
+        var linha = partida.parametros().linha33();
+        var textos = partida.parametros().textos();
+        List<CotaVisao> lista = new ArrayList<>();
+        lista.add(new CotaVisao(null, textos.formatar("cotas.contrato", Map.of()), linha.cotaContratoPercentual(),
+                FinanceiroRegra.percentual(linha.precoVenda(), linha.cotaContratoPercentual()), SituacaoCota.PAGA, null));
+        for (var g : linha.gates()) {
+            if (g.cotaPercentual().signum() <= 0) {
+                continue;
+            }
+            BigDecimal valor = FinanceiroRegra.percentual(linha.precoVenda(), g.cotaPercentual());
+            var aReceber = partida.cotasAReceber().stream()
+                    .filter(c -> c.barcoId().equals(b.id()) && c.gate() == g.codigo()).findFirst();
+            SituacaoCota situacao = aReceber.isPresent() ? SituacaoCota.A_RECEBER
+                    : b.gatesAprovados().contains(g.codigo()) ? SituacaoCota.PAGA : SituacaoCota.PENDENTE;
+            lista.add(new CotaVisao(g.codigo(), g.nome(), g.cotaPercentual(), valor, situacao,
+                    aReceber.map(CotaAReceber::diaRecebimento).orElse(null)));
+        }
+        return lista;
     }
 
     private static NcVisao visao(NaoConformidade nc) {
