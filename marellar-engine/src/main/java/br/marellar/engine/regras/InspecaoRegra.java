@@ -67,5 +67,8 @@ public final class InspecaoRegra {
         }
         CodigoGate proximo = barco.gateAtual().proximo();
         barco.iniciarGate(proximo, partida.parametros().linha33().hhDoGate(proximo));
+        if (FornecedorRegra.consumirMaterial(partida, barco)) {
+            EventoRegra.talvezQuebrePeca(partida, barco);
+        }
     }
 }

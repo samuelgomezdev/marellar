@@ -86,7 +86,8 @@ class CarregadorDadosTest {
         ParametrosJogo p = CarregadorDados.carregarDoClasspath();
         List<ParametrosLinha.Gate> gates = new ArrayList<>(p.linha33().gates());
         ParametrosLinha.Gate re = gates.getFirst();
-        gates.set(0, new ParametrosLinha.Gate(re.codigo(), re.nome(), new BigDecimal("5"), re.cotaPercentual()));
+        gates.set(0, new ParametrosLinha.Gate(re.codigo(), re.nome(), new BigDecimal("5"), re.cotaPercentual(),
+                re.item(), re.materialPercentual()));
 
         ParametrosJogo invalido = p.comLinha33(p.linha33().comGates(gates));
 

@@ -43,13 +43,15 @@ public final class QualidadeRegra {
         BigDecimal fatorEquipe = catalogo.fatorDoNivelDaEquipe(barco.nivelMedioNoGate());
         List<NaoConformidade> novas = new ArrayList<>();
         for (CatalogoNc.TipoNc tipo : catalogo.tiposDoGate(barco.gateAtual())) {
-            // fatorFornecedor = 1 ate o M4, quando o perfil do fornecedor entra no sorteio
-            BigDecimal prob = tipo.probabilidade().multiply(fatorEquipe).min(BigDecimal.ONE);
+            String fornecedorId = partida.fornecedorDoItem(tipo.item()).orElse(null);
+            BigDecimal fatorFornecedor = tipo.origem() == Origem.FORNECEDOR
+                    ? FornecedorRegra.fatorFornecedor(partida, fornecedorId) : BigDecimal.ONE;
+            BigDecimal prob = tipo.probabilidade().multiply(fatorEquipe).multiply(fatorFornecedor).min(BigDecimal.ONE);
             boolean ocorreu = sortear(partida, prob);
             if (ocorreu && novas.size() < catalogo.maxNcsPorGate()) {
                 novas.add(new NaoConformidade(partida.proximoIdNc(), barco.id(), barco.gateAtual(),
                         tipo.codigo(), tipo.descricao(), tipo.gravidade(), tipo.origem(),
-                        partida.fornecedorDoItem(tipo.item()).orElse(null),
+                        fornecedorId,
                         tipo.hhRetrabalho(), tipo.custoMaterial()));
             }
         }
@@ -126,11 +128,8 @@ public final class QualidadeRegra {
                         "fala", fala(partida, "inspetor.concessaoDemais")));
             }
             case RNC_FORNECEDOR -> {
-                partida.registrarRnc();
                 partida.somarCustoMaterialRetrabalho(nc.custoMaterial());
-                String fornecedor = nc.fornecedorId().flatMap(partida::nomeDoFornecedor).orElse("fornecedor");
-                partida.registrarEvento(TipoEvento.RNC_ABERTA, barco.id(), "eventos.rncAberta",
-                        Map.of("barco", barco.id(), "nc", nc.id(), "fornecedor", fornecedor));
+                FornecedorRegra.abrirRnc(partida, nc, barco);
             }
             case RETRABALHO -> partida.somarCustoMaterialRetrabalho(nc.custoMaterial());
         }
@@ -166,7 +165,7 @@ public final class QualidadeRegra {
     // ----- utilitarios -----
 
     /** Sorteio de Bernoulli com o gerador da partida. Probabilidade 0 nunca acontece; 1 sempre. */
-    static boolean sortear(Partida partida, BigDecimal probabilidade) {
+    public static boolean sortear(Partida partida, BigDecimal probabilidade) {
         double sorteio = partida.aleatorio().nextDouble();
         return BigDecimal.valueOf(sorteio).compareTo(probabilidade) < 0;
     }

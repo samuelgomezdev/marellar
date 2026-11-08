@@ -9,5 +9,12 @@ public enum TipoEvento {
     CONCESSAO,
     RNC_ABERTA,
     BARCO_ENTREGUE,
+    PARADO_MATERIAL,
+    MATERIAL,
+    QUEBRA_PECA,
+    ACIDENTE,
+    PESSOA,
+    DEMISSAO,
+    SCORECARD,
     FIM_DO_MES
 }

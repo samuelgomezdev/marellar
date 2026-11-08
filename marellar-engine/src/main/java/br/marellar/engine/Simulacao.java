@@ -16,6 +16,16 @@ import br.marellar.engine.ordens.OrdemInvalidaException;
 import br.marellar.engine.regras.InspecaoRegra;
 import br.marellar.engine.regras.ProducaoRegra;
 import br.marellar.engine.regras.QualidadeRegra;
+import br.marellar.engine.regras.EventoRegra;
+import br.marellar.engine.regras.FornecedorRegra;
+import br.marellar.engine.regras.PessoasRegra;
+import br.marellar.engine.dominio.Fornecedor;
+import br.marellar.engine.dominio.Pedido;
+import br.marellar.engine.dominio.Rnc;
+import br.marellar.engine.estado.EstadoPartida.FornecedorVisao;
+import br.marellar.engine.estado.EstadoPartida.PedidoVisao;
+import br.marellar.engine.estado.EstadoPartida.RncVisao;
+import br.marellar.engine.estado.EstadoPartida.SegurancaVisao;
 import br.marellar.engine.dominio.NaoConformidade;
 import br.marellar.engine.dominio.StatusNc;
 import br.marellar.engine.estado.EstadoPartida.InspetorVisao;
@@ -40,7 +50,7 @@ import java.util.Map;
  */
 public final class Simulacao {
 
-    private static final Locale PT_BR = Locale.of("pt", "BR");
+    private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
 
     private final Partida partida;
 
@@ -83,9 +93,15 @@ public final class Simulacao {
     private void tick() {
         ProducaoRegra.executar(partida);
         InspecaoRegra.executar(partida);
+        if (partida.relogio().horaDoTurno() == Relogio.TICKS_POR_DIA - 1) {
+            // rotinas diarias no fim do turno: o que acontece hoje vale a partir de amanha
+            PessoasRegra.fimDoDia(partida);
+            FornecedorRegra.fimDoDia(partida);
+        }
         boolean ultimoTickDoMes = (partida.relogio().tick() + 1) % Relogio.TICKS_POR_MES == 0;
         if (ultimoTickDoMes) {
             // registrado ainda na ultima hora do mes, antes de o relogio virar
+            FornecedorRegra.scorecard(partida);
             partida.registrarEvento(TipoEvento.FIM_DO_MES, null, "eventos.fimDoMes", Map.of());
         }
         partida.relogio().avancar();
@@ -100,6 +116,9 @@ public final class Simulacao {
             case Ordem.SegurarGate o -> barcoAtivo(o.barcoId()).definirRetido(true);
             case Ordem.LiberarGate o -> liberarGate(o.barcoId());
             case Ordem.DecidirNc o -> QualidadeRegra.decidir(partida, o.ncId(), o.decisao());
+            case Ordem.Contratar o -> PessoasRegra.contratar(partida, o.funcao());
+            case Ordem.Treinar o -> PessoasRegra.treinar(partida, o.pessoaId(), o.treinamento());
+            case Ordem.FazerUmAUm o -> PessoasRegra.fazerUmAUm(partida, o.pessoaId());
             case Ordem.MudarVelocidade o -> partida.definirVelocidade(o.velocidade());
         }
     }
@@ -152,11 +171,16 @@ public final class Simulacao {
                 partida.pausado(),
                 partida.motivoPausa().orElse(null),
                 partida.barcos().stream().map(this::visao).toList(),
-                partida.pessoas().stream().map(Simulacao::visao).toList(),
+                partida.pessoas().stream().map(this::visao).toList(),
                 inspetorVisao(),
                 partida.barcoEmInspecao().orElse(null),
                 partida.filaInspecao(),
                 qualidadeVisao(),
+                partida.fornecedores().stream().map(this::visao).toList(),
+                Map.copyOf(partida.estoque()),
+                partida.pedidos().stream().filter(p -> p.diaChegada() > partida.hoje()).map(this::visao).toList(),
+                partida.rncs().stream().map(this::visao).toList(),
+                segurancaVisao(),
                 partida.horasOciosas(),
                 partida.eventos().size());
     }
@@ -182,8 +206,8 @@ public final class Simulacao {
                 b.id(), b.linha(), b.cliente(), b.gateAtual(),
                 partida.parametros().linha33().gate(b.gateAtual()).nome(),
                 b.status(), b.retido(), b.prioridade(),
-                b.hhTotalDoGate(), b.hhRestantesNoGate(), progresso, b.hhRetrabalhoPendente(),
-                b.hhProduzidas(), b.hhRetrabalho(), b.hhApontadas(),
+                b.hhTotalDoGate(), b.hhRestantesNoGate(), progresso, b.hhRetrabalhoPendente(), b.hhQuebraPendente(),
+                b.hhProduzidas(), b.hhRetrabalho(), b.hhApontadas(), b.horasParadoMaterial(),
                 List.copyOf(b.gatesAprovados()), alocadas,
                 partida.ncsDoBarco(b.id()).stream().filter(NaoConformidade::visivel).map(Simulacao::visao).toList());
     }
@@ -219,10 +243,43 @@ public final class Simulacao {
         BigDecimal hhRetrabalho = partida.barcos().stream().map(Barco::hhRetrabalho)
                 .reduce(BigDecimal.ZERO, BigDecimal::add);
         return new IndicadoresQualidade(ncs.size(), ncs.size() - escapadas - pendentesInspecao, escapadas, abertas,
-                partida.concessoes(), partida.rncs(), hhRetrabalho, partida.custoMaterialRetrabalho());
+                partida.concessoes(), partida.quantidadeRncs(), hhRetrabalho, partida.custoMaterialRetrabalho());
     }
 
-    private static PessoaVisao visao(Pessoa p) {
-        return new PessoaVisao(p.id(), p.nome(), p.funcao(), p.nivel(), p.moral(), p.alocadoEm().orElse(null));
+    private PessoaVisao visao(Pessoa p) {
+        return new PessoaVisao(p.id(), p.nome(), p.funcao(), p.nivel(), p.moral(), p.situacao(),
+                p.diasRestantesSituacao(), p.treinamentoEmCurso().orElse(null), p.treinoSegurancaEmDia(),
+                p.contratadaNaPartida(),
+                p.podeFazerUmAUm(partida.hoje(), partida.parametros().pessoas().diasEntreUmAUm()),
+                p.alocadoEm().orElse(null));
+    }
+
+    private FornecedorVisao visao(Fornecedor f) {
+        int abertas = (int) partida.rncs().stream()
+                .filter(r -> r.fornecedorId().equals(f.id()) && r.aguardandoResposta()).count();
+        return new FornecedorVisao(f.id(), f.nome(), f.itens(), f.nota(), f.pontos(), f.ppm(),
+                f.pedidosEntregues(), f.pedidosNoPrazo(), f.oitoDsRespondidos(), f.oitoDsNoPrazo(),
+                f.credito(), f.totalChargeback(), abertas);
+    }
+
+    private PedidoVisao visao(Pedido p) {
+        String fornecedor = partida.fornecedor(p.fornecedorId()).map(Fornecedor::nome).orElse(p.fornecedorId());
+        return new PedidoVisao(p.id(), fornecedor, p.item(), p.kits(), dataDoDia(p.diaPrevisto()), p.valorPago());
+    }
+
+    private RncVisao visao(Rnc r) {
+        return new RncVisao(r.id(), r.ncId(), r.barcoId(), r.fornecedorId(), r.gravidade(), r.custoDocumentado(),
+                r.chargeback(), dataDoDia(r.prazo8d()), r.status(), r.chargebackHorasParadas());
+    }
+
+    private SegurancaVisao segurancaVisao() {
+        return new SegurancaVisao(partida.acidentes(), partida.diasPerdidos(), partida.horasTrabalhadas(),
+                EventoRegra.taxaFrequencia(partida.acidentes(), partida.horasTrabalhadas()),
+                EventoRegra.taxaGravidade(partida.diasPerdidos(), partida.horasTrabalhadas()),
+                partida.demissoes(), partida.horasLiderUmAUm());
+    }
+
+    private LocalDate dataDoDia(long diaUtil) {
+        return Relogio.somarDiasUteis(partida.relogio().inicio(), diaUtil);
     }
 }

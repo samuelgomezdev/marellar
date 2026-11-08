@@ -1,6 +1,6 @@
 extends Control
 ## Tela da Fábrica (MVP): baias com os barcos de 33 pés, bonequinhos trabalhando,
-## barra de topo, ficha do barco selecionado (com as decisões de NC), avisos e barra de ordens.
+## barra de topo, painel à direita (ficha do barco, equipe ou fornecedores), avisos e barra de ordens.
 ## Arte provisória desenhada em código (scripts/sprites.gd) na paleta Endesga 32.
 ## Nenhuma regra de jogo aqui: tudo vem do motor Java pela API.
 
@@ -27,6 +27,13 @@ const NOMES_STATUS := {
 	"ENTREGUE": "Entregue",
 }
 const NOMES_GRAVIDADE := {"LEVE": "leve", "MEDIA": "média", "CRITICA": "CRÍTICA"}
+const NOMES_SITUACAO := {
+	"ATIVA": "", "A_CAMINHO": "chega em %d d", "EM_TREINAMENTO": "treino %d d",
+	"AFASTADA": "afastado %d d", "DESLIGADA": "saiu",
+}
+const PAINEL_BARCO := "barco"
+const PAINEL_EQUIPE := "equipe"
+const PAINEL_FORNECEDORES := "fornecedores"
 const NOMES_STATUS_NC := {
 	"ABERTA": "aberta", "EM_RETRABALHO": "em retrabalho", "RESOLVIDA": "resolvida",
 	"CONCEDIDA": "concessão",
@@ -42,6 +49,7 @@ var erro_api := ""
 var selecionado := ""
 var areas_barcos := {}  # id do barco -> Rect2 clicável
 var assinatura_ficha := ""
+var painel := PAINEL_BARCO
 
 var fonte: Font
 var fonte_titulo: Font
@@ -50,6 +58,8 @@ var rotulo_selecao: Label
 var botao_prioridade: Button
 var botao_segurar: Button
 var ficha: VBoxContainer
+var rolagem: ScrollContainer
+var botoes_painel := {}
 
 
 func _ready() -> void:
@@ -84,6 +94,9 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 	i = args.find("--selecionar")
 	if i >= 0 and i + 1 < args.size():
 		selecionado = args[i + 1]
+	i = args.find("--painel")
+	if i >= 0 and i + 1 < args.size():
+		painel = args[i + 1]
 	_atualizar_interface()
 	if args.has("--rodar"):
 		_mudar_velocidade(4)
@@ -197,8 +210,13 @@ func _unhandled_input(event: InputEvent) -> void:
 				_mudar_velocidade(2)
 			KEY_3:
 				_mudar_velocidade(4)
+			KEY_F1:
+				_abrir_painel(PAINEL_EQUIPE)
+			KEY_F2:
+				_abrir_painel(PAINEL_FORNECEDORES)
 			KEY_ESCAPE:
 				selecionado = ""
+				painel = PAINEL_BARCO
 				_atualizar_interface()
 
 
@@ -207,6 +225,7 @@ func _gui_input(event: InputEvent) -> void:
 		for id in areas_barcos:
 			if areas_barcos[id].has_point(event.position):
 				selecionado = id
+				painel = PAINEL_BARCO
 				_atualizar_interface()
 				return
 
@@ -238,14 +257,27 @@ func _montar_barra_inferior() -> void:
 	barra.add_child(botao_prioridade)
 	botao_segurar = _botao("Segurar gate", _alternar_segurar)
 	barra.add_child(botao_segurar)
+	barra.add_child(VSeparator.new())
+	for opcao in [[PAINEL_EQUIPE, "Equipe F1"], [PAINEL_FORNECEDORES, "Fornec. F2"]]:
+		var b := _botao(opcao[1], _abrir_painel.bind(opcao[0]))
+		b.toggle_mode = true
+		barra.add_child(b)
+		botoes_painel[opcao[0]] = b
 
 
 func _montar_ficha() -> void:
+	rolagem = ScrollContainer.new()
+	rolagem.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	add_child(rolagem)
 	ficha = VBoxContainer.new()
 	ficha.add_theme_constant_override("separation", 1)
-	ficha.position = Vector2(size.x - LARGURA_PAINEL, ALTURA_TOPO + 22)
-	ficha.size = Vector2(LARGURA_PAINEL - 8, 10)
-	add_child(ficha)
+	ficha.custom_minimum_size.x = LARGURA_PAINEL - 14
+	rolagem.add_child(ficha)
+
+
+func _abrir_painel(qual: String) -> void:
+	painel = PAINEL_BARCO if painel == qual else qual
+	_atualizar_interface()
 
 
 func _botao(texto: String, acao: Callable) -> Button:
@@ -263,19 +295,102 @@ func _atualizar_interface() -> void:
 	botao_prioridade.disabled = not ativo
 	botao_segurar.disabled = not ativo
 	botao_segurar.text = "Liberar gate" if ativo and barco["retido"] else "Segurar gate"
-	_reconstruir_ficha(barco)
+	for chave in botoes_painel:
+		botoes_painel[chave].set_pressed_no_signal(painel == chave)
+	_posicionar_rolagem()
+	match painel:
+		PAINEL_EQUIPE:
+			_reconstruir_equipe()
+		PAINEL_FORNECEDORES:
+			_reconstruir_fornecedores()
+		_:
+			_reconstruir_ficha(barco)
+
+
+## Na ficha do barco o painel divide espaço com os avisos; equipe e fornecedores usam a altura toda.
+func _posicionar_rolagem() -> void:
+	var topo := ALTURA_TOPO + 22
+	var altura := size.y - ALTURA_BASE - 6 - topo
+	if painel == PAINEL_BARCO:
+		altura = altura * 0.5 - 14
+	rolagem.position = Vector2(size.x - LARGURA_PAINEL, topo)
+	rolagem.size = Vector2(LARGURA_PAINEL - 4, altura)
+
+
+func _limpar_ficha(assinatura: String) -> bool:
+	if assinatura == assinatura_ficha:
+		return false
+	assinatura_ficha = assinatura
+	for filho in ficha.get_children():
+		filho.queue_free()
+	return true
+
+
+func _rotulo(texto: String, cor: Color) -> Label:
+	var r := Label.new()
+	r.text = texto
+	r.autowrap_mode = TextServer.AUTOWRAP_WORD
+	r.custom_minimum_size.x = LARGURA_PAINEL - 16
+	r.add_theme_color_override("font_color", cor)
+	return r
+
+
+func _reconstruir_equipe() -> void:
+	if estado.is_empty() or not _limpar_ficha(JSON.stringify(["equipe", estado["pessoas"]])):
+		return
+	ficha.add_child(_botao("Contratar (chega em 10 dias)", _enviar_ordem.bind({"tipo": "Contratar", "funcao": "PRODUCAO"}, "")))
+	for p in estado["pessoas"]:
+		if p["funcao"] != "PRODUCAO" or p["situacao"] == "DESLIGADA":
+			continue
+		var situacao := ""
+		if p["situacao"] != "ATIVA":
+			situacao = " " + NOMES_SITUACAO[p["situacao"]] % int(p["diasRestantesSituacao"]) if "%d" in NOMES_SITUACAO[p["situacao"]] else NOMES_SITUACAO[p["situacao"]]
+		var seguranca := "" if p["treinoSegurancaEmDia"] else " NR!"
+		var cor := Paleta.CRITICO if int(p["moral"]) < 40 else (Paleta.TEXTO if p["situacao"] == "ATIVA" else Paleta.PISO_ESCURO)
+		ficha.add_child(_rotulo("%s N%d moral %d%s%s" % [p["nome"], int(p["nivel"]), int(p["moral"]), seguranca, situacao], cor))
+		if p["situacao"] == "A_CAMINHO":
+			continue
+		var acoes := HBoxContainer.new()
+		acoes.add_theme_constant_override("separation", 2)
+		var um := _botao("1:1", _enviar_ordem.bind({"tipo": "FazerUmAUm", "pessoaId": p["id"]}, ""))
+		um.disabled = not p["podeFazerUmAUm"]
+		acoes.add_child(um)
+		var disponivel: bool = p["situacao"] == "ATIVA"
+		var tecnico := _botao("Treino téc.", _enviar_ordem.bind({"tipo": "Treinar", "pessoaId": p["id"], "treinamento": "TECNICO"}, ""))
+		tecnico.disabled = not disponivel or int(p["nivel"]) >= 5
+		acoes.add_child(tecnico)
+		var nr := _botao("NR", _enviar_ordem.bind({"tipo": "Treinar", "pessoaId": p["id"], "treinamento": "SEGURANCA"}, ""))
+		nr.disabled = not disponivel
+		nr.tooltip_text = "Treinamento de segurança: põe o treino em dia e reduz a chance de acidente."
+		acoes.add_child(nr)
+		ficha.add_child(acoes)
+
+
+func _reconstruir_fornecedores() -> void:
+	if estado.is_empty() or not _limpar_ficha(JSON.stringify(["fornec", estado["fornecedores"], estado["estoque"], estado["pedidosACaminho"]])):
+		return
+	for f in estado["fornecedores"]:
+		var cor := Paleta.MONTAGEM_LIMPA if f["nota"] in ["A", "B"] else (Paleta.ALERTA if f["nota"] in ["C", "D", "-"] else Paleta.CRITICO)
+		ficha.add_child(_rotulo("%s  nota %s" % [f["nome"], f["nota"]], cor))
+		ficha.add_child(_rotulo("  PPM %d | prazo %d/%d | 8D %d/%d" % [int(f["ppm"]), int(f["pedidosNoPrazo"]),
+				int(f["pedidosEntregues"]), int(f["oitoDsNoPrazo"]), int(f["oitoDsRespondidos"])], Paleta.TEXTO))
+		if float(f["totalChargeback"]) > 0:
+			ficha.add_child(_rotulo("  chargeback R$ %s | RNC abertas %d" % [str(f["totalChargeback"]), int(f["rncsAbertas"])], Paleta.ALERTA))
+	var itens: Array = estado["estoque"].keys()
+	itens.sort()
+	var linha_estoque := "Estoque (kits):"
+	for item in itens:
+		linha_estoque += " %s %d" % [item, int(estado["estoque"][item])]
+	ficha.add_child(_rotulo(linha_estoque, Paleta.TEXTO_CLARO))
+	for pedido in estado["pedidosACaminho"]:
+		var partes := str(pedido["dataPrevista"]).split("-")
+		ficha.add_child(_rotulo("  a caminho: %d %s, prev. %s/%s" % [int(pedido["kits"]), pedido["item"], partes[2], partes[1]], Paleta.PISO_ESCURO))
 
 
 ## Refaz os Controls da ficha só quando algo nela mudou (evita piscar a cada tick).
 func _reconstruir_ficha(barco: Dictionary) -> void:
-	ficha.position = Vector2(size.x - LARGURA_PAINEL, ALTURA_TOPO + 22)
-	var assinatura := "" if barco.is_empty() else JSON.stringify([barco["id"], barco["status"], barco["ncs"]])
-	if assinatura == assinatura_ficha:
-		return
-	assinatura_ficha = assinatura
-	for filho in ficha.get_children():
-		filho.queue_free()
-	if barco.is_empty():
+	var assinatura := "barco" if barco.is_empty() else JSON.stringify([barco["id"], barco["status"], barco["ncs"]])
+	if not _limpar_ficha(assinatura) or barco.is_empty():
 		return
 
 	for nc in barco["ncs"]:
@@ -330,10 +445,10 @@ func _desenhar_topo() -> void:
 	draw_rect(Rect2(0, 0, size.x, ALTURA_TOPO), Paleta.FUNDO)
 	var partes := str(estado["data"]).split("-")
 	var em_inspecao = estado["barcoEmInspecao"]
-	var texto := "%s/%s %02dh | %s dia %d/21 | Inspeção: %s (fila %d) | NCs abertas: %d | Marta: moral %d" % [
+	var texto := "%s/%s %02dh | %s dia %d/21 | Inspeção: %s (fila %d) | NCs: %d | Acidentes: %d | Marta %d" % [
 		partes[2], partes[1], int(estado["hora"]), estado["mesReferencia"], int(estado["diaUtilDoMes"]),
 		"livre" if em_inspecao == null else em_inspecao, estado["filaInspecao"].size(),
-		int(estado["qualidade"]["ncsAbertas"]), int(estado["inspetor"]["moral"])]
+		int(estado["qualidade"]["ncsAbertas"]), int(estado["seguranca"]["acidentes"]), int(estado["inspetor"]["moral"])]
 	draw_string(fonte, Vector2(5, 12), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.TEXTO)
 	var vel := "PAUSA" if velocidade == 0 else "x%d" % velocidade
 	draw_string(fonte_titulo, Vector2(size.x - 44, 12), vel, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO,
@@ -423,15 +538,21 @@ func _desenhar_baia(barco: Dictionary, baia: Rect2) -> void:
 
 
 func _desenhar_painel() -> void:
-	var painel := Rect2(size.x - LARGURA_PAINEL - 2, ALTURA_TOPO + 4, LARGURA_PAINEL, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
+	var painel: Rect2 = Rect2(size.x - LARGURA_PAINEL - 2, ALTURA_TOPO + 4, LARGURA_PAINEL, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
 	draw_rect(painel, Paleta.FUNDO)
 	var x := painel.position.x + 6
 	var barco := _barco(selecionado)
 
-	# ficha do barco (os botões de NC são Controls posicionados aqui)
+	# título do painel (o conteúdo são Controls dentro da rolagem)
 	var titulo := "FICHA DO BARCO" if barco.is_empty() else "BARCO %s" % selecionado
+	if self.painel == PAINEL_EQUIPE:
+		titulo = "EQUIPE"
+	elif self.painel == PAINEL_FORNECEDORES:
+		titulo = "FORNECEDORES"
 	draw_string(fonte_titulo, Vector2(x, painel.position.y + 12), titulo, HORIZONTAL_ALIGNMENT_LEFT, -1,
 			TAMANHO_TITULO, Paleta.ALERTA)
+	if self.painel != PAINEL_BARCO:
+		return
 	if barco.is_empty():
 		draw_string(fonte, Vector2(x, painel.position.y + 28), "Clique num barco.", HORIZONTAL_ALIGNMENT_LEFT, -1,
 				TAMANHO_TEXTO, Paleta.PISO_ESCURO)
@@ -441,7 +562,7 @@ func _desenhar_painel() -> void:
 			LARGURA_PAINEL - 10, TAMANHO_TEXTO, Paleta.TEXTO)
 
 	# avisos na metade de baixo
-	var topo_avisos := maxf(painel.position.y + painel.size.y * 0.5, ficha.position.y + ficha.size.y + 6)
+	var topo_avisos := rolagem.position.y + rolagem.size.y + 8
 	draw_line(Vector2(painel.position.x, topo_avisos - 4), Vector2(painel.end.x, topo_avisos - 4), Paleta.ARMAZEM_ESCURO)
 	draw_string(fonte_titulo, Vector2(x, topo_avisos + 8), "AVISOS", HORIZONTAL_ALIGNMENT_LEFT, -1,
 			TAMANHO_TITULO, Paleta.ALERTA)
@@ -486,8 +607,8 @@ func _motivo_pausa(motivo: String) -> String:
 	match motivo:
 		"FIM_DO_MES":
 			return "fim do mês. A reunião do conselho entra no M5."
-		"ACIDENTE":
-			return "acidente de trabalho."
 		"NC_CRITICA":
 			return "NC crítica detectada. Clique no barco e decida."
+		"ACIDENTE":
+			return "acidente de trabalho. Veja a equipe (F1)."
 	return motivo

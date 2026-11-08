@@ -36,6 +36,7 @@ public final class ValidadorDados {
         v.financeiro(p.financeiro());
         v.textos(p.textos());
         v.itensDeFornecedor(p.catalogoNc(), p.fornecedores());
+        v.itensDaLinha(p.linha33(), p.fornecedores());
         if (!v.erros.isEmpty()) {
             throw new DadosInvalidosException(v.erros);
         }
@@ -53,6 +54,11 @@ public final class ValidadorDados {
         regra(l.prazoRecebimentoDias() >= 0, arq, "prazoRecebimentoDias nao pode ser negativo");
         regra(l.maxPessoasPorBarco() >= 1, arq, "maxPessoasPorBarco deve ser pelo menos 1");
         regra(l.ticksInspecao() >= 1, arq, "ticksInspecao deve ser pelo menos 1");
+        regra(l.estoqueInicialKits() >= 0 && l.estoqueMinimoKits() >= 0, arq, "estoque nao pode ser negativo");
+        regra(l.pecasPorKit() >= 1, arq, "pecasPorKit deve ser pelo menos 1");
+        BigDecimal somaMaterial = soma(l.gates(), ParametrosLinha.Gate::materialPercentual);
+        regra(somaMaterial.compareTo(CEM) == 0, arq,
+                "a soma de materialPercentual dos gates deve ser 100; e " + somaMaterial.toPlainString());
 
         List<CodigoGate> codigos = l.gates().stream().map(ParametrosLinha.Gate::codigo).toList();
         regra(codigos.equals(Arrays.asList(CodigoGate.values())), arq,
@@ -130,6 +136,19 @@ public final class ValidadorDados {
         }
     }
 
+    /** Todo item consumido por um gate precisa de fornecedor; gate com item precisa de % de material. */
+    private void itensDaLinha(ParametrosLinha l, ParametrosFornecedores f) {
+        for (ParametrosLinha.Gate g : l.gates()) {
+            if (g.item() == null) {
+                continue;
+            }
+            regra(f.fornecedores().stream().anyMatch(forn -> forn.itens().contains(g.item())),
+                    CarregadorDados.LINHA_33, "gates[" + g.codigo() + "].item sem fornecedor: " + g.item());
+            regra(g.materialPercentual() != null && g.materialPercentual().signum() > 0, CarregadorDados.LINHA_33,
+                    "gates[" + g.codigo() + "] tem item mas materialPercentual zero");
+        }
+    }
+
     private void pessoas(ParametrosPessoas p) {
         String arq = CarregadorDados.PESSOAS;
         IntStream.rangeClosed(1, 5).forEach(n -> {
@@ -141,6 +160,10 @@ public final class ValidadorDados {
         positivo(arq, "salarioInspetor", p.salarioInspetor());
         regra(p.nivelMaximoPorTempo() >= 1 && p.nivelMaximoPorTempo() <= 5, arq, "nivelMaximoPorTempo deve estar entre 1 e 5");
         regra(p.diasParaSubirNivel() >= 1, arq, "diasParaSubirNivel deve ser pelo menos 1");
+        regra(!p.nomesParaContratar().isEmpty(), arq, "nomesParaContratar nao pode ser vazio");
+        regra(p.moralInicialContratado() >= 0 && p.moralInicialContratado() <= 100, arq,
+                "moralInicialContratado deve estar entre 0 e 100");
+        regra(p.diasEntreUmAUm() >= 0, arq, "diasEntreUmAUm nao pode ser negativo");
 
         Set<String> ids = new HashSet<>();
         int produtivos = 0;
@@ -174,6 +197,12 @@ public final class ValidadorDados {
         regra(f.pesosScorecard() != null && f.pesosScorecard().soma() == 100, arq, "pesosScorecard deve somar 100");
         probabilidade(arq, "taxaAdministrativaChargeback", f.taxaAdministrativaChargeback());
         regra(f.prazo8dDiasUteis() >= 1, arq, "prazo8dDiasUteis deve ser pelo menos 1");
+        regra(f.diasAtrasoMin() >= 0 && f.diasAtrasoMin() <= f.diasAtrasoMax(), arq, "diasAtrasoMin deve ser <= diasAtrasoMax");
+        regra(f.ppmReferencia() > 0, arq, "ppmReferencia deve ser maior que zero");
+        positivo(arq, "fatorFornecedorMin", f.fatorFornecedorMin());
+        regra(f.fatorFornecedorMax() != null && f.fatorFornecedorMin() != null
+                && f.fatorFornecedorMax().compareTo(f.fatorFornecedorMin()) >= 0, arq, "fatorFornecedorMax deve ser >= fatorFornecedorMin");
+        regra(f.notas().keySet().containsAll(List.of("A", "B", "C", "D", "E")), arq, "notas deve ter os cortes de A a E");
         f.perfis().forEach((perfil, pp) -> {
             probabilidade(arq, "perfis." + perfil + ".probabilidadeAtraso", pp.probabilidadeAtraso());
             positivo(arq, "perfis." + perfil + ".fatorPreco", pp.fatorPreco());
@@ -224,7 +253,11 @@ public final class ValidadorDados {
         }
         for (String caminho : List.of("eventos.gateConcluido", "eventos.gateAprovado", "eventos.barcoEntregue",
                 "eventos.fimDoMes", "eventos.ncDetectada", "eventos.ncCritica", "eventos.retrabalhoConcluido",
-                "eventos.concessao", "eventos.rncAberta")) {
+                "eventos.concessao", "eventos.rncAberta", "eventos.paradoMaterial", "eventos.materialChegou",
+                "eventos.pedidoFeito", "eventos.quebraPeca", "eventos.acidente", "eventos.demissao",
+                "eventos.contratacao", "eventos.chegadaContratado", "eventos.treinamentoInicio",
+                "eventos.treinamentoFim", "eventos.subiuNivel", "eventos.retornoAfastamento", "eventos.umAUm",
+                "eventos.oitoDRespondido", "eventos.oitoDVencido", "eventos.scorecard")) {
             regra(t.no(caminho).isTextual(), arq, caminho + " ausente");
         }
     }

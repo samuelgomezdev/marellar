@@ -141,6 +141,38 @@ class PartidaControllerTest {
     }
 
     @Test
+    void ordensDePessoas() throws Exception {
+        mvc.perform(post("/api/v1/partidas/{id}/ordens", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tipo\": \"Contratar\", \"funcao\": \"PRODUCAO\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pessoas.length()").value(14))
+                .andExpect(jsonPath("$.pessoas[13].situacao").value("A_CAMINHO"));
+
+        mvc.perform(post("/api/v1/partidas/{id}/ordens", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tipo\": \"Treinar\", \"pessoaId\": \"P06\", \"treinamento\": \"SEGURANCA\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pessoas[5].situacao").value("EM_TREINAMENTO"));
+
+        mvc.perform(post("/api/v1/partidas/{id}/ordens", id)
+                        .contentType(MediaType.APPLICATION_JSON)
+                        .content("{\"tipo\": \"FazerUmAUm\", \"pessoaId\": \"P10\"}"))
+                .andExpect(status().isOk())
+                .andExpect(jsonPath("$.pessoas[9].moral").value(55));
+    }
+
+    @Test
+    void estadoNaoMostraOPerfilEscondidoDoFornecedor() throws Exception {
+        String corpo = mvc.perform(get("/api/v1/partidas/{id}", id))
+                .andExpect(jsonPath("$.fornecedores.length()").value(3))
+                .andExpect(jsonPath("$.estoque.resina").value(2))
+                .andExpect(jsonPath("$.seguranca.acidentes").value(0))
+                .andReturn().getResponse().getContentAsString();
+        assertThat(corpo).doesNotContain("BARATO_INSTAVEL", "PREMIUM_CONFIAVEL", "perfil");
+    }
+
+    @Test
     void ticksForaDoLimiteDa400() throws Exception {
         mvc.perform(post("/api/v1/partidas/{id}/avancar", id)
                         .contentType(MediaType.APPLICATION_JSON)
