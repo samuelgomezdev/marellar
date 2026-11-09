@@ -261,7 +261,7 @@ public final class ValidadorDados {
         String arq = CarregadorDados.TEXTOS;
         for (String caminho : List.of("inspetor.ncDetectada", "inspetor.gateAprovado", "inspetor.concessaoDemais",
                 "conselheiros", "metas")) {
-            regra(t.no(caminho).isArray() && !t.no(caminho).isEmpty(), arq, caminho + " deve ser uma lista nao vazia");
+            regra(t.ehListaNaoVazia(caminho), arq, caminho + " deve ser uma lista nao vazia");
         }
         for (String caminho : List.of("eventos.gateConcluido", "eventos.gateAprovado", "eventos.barcoEntregue",
                 "eventos.fimDoMes", "eventos.ncDetectada", "eventos.ncCritica", "eventos.retrabalhoConcluido",
@@ -274,7 +274,7 @@ public final class ValidadorDados {
                 "conselho.serio.acidente", "conselho.serio.caixaRuim", "conselho.serio.metaPerdida",
                 "conselho.serio.metaCumprida", "conselho.serio.ebitdaNegativo", "conselho.serio.caixaNegativo", "conselho.humor.materialDemais",
                 "conselho.humor.tudoBem", "conselho.humor.zeroNc", "conselho.derrota.CAIXA", "conselho.derrota.CONSELHO")) {
-            regra(t.no(caminho).isTextual(), arq, caminho + " ausente");
+            regra(t.ehTexto(caminho), arq, caminho + " ausente");
         }
     }
 

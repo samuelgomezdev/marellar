@@ -55,7 +55,7 @@ public final class EventoRegra {
         if (!QualidadeRegra.sortear(partida, probabilidadeAcidente(p.treinoSegurancaEmDia(), baiaLotada, regras))) {
             return;
         }
-        int dias = partida.aleatorio().nextInt(regras.diasPerdidosMin(), regras.diasPerdidosMax() + 1);
+        int dias = partida.aleatorio().proximoInt(regras.diasPerdidosMin(), regras.diasPerdidosMax() + 1);
         p.mudarSituacao(SituacaoPessoa.AFASTADA, dias);
         partida.registrarAcidente(dias);
         for (Pessoa colega : partida.pessoas()) {

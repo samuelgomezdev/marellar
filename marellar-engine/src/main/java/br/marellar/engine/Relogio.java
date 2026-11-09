@@ -72,6 +72,14 @@ public final class Relogio {
         return YearMonth.from(inicio).plusMonths(mes());
     }
 
+    private static final String[] MESES = {"jan", "fev", "mar", "abr", "mai", "jun", "jul", "ago", "set", "out", "nov", "dez"};
+
+    /** Rotulo do mes de referencia, ex.: "mar/2027" (sem Locale: igual em qualquer plataforma). */
+    public String rotuloMesReferencia() {
+        YearMonth m = mesReferencia();
+        return MESES[m.getMonthValue() - 1] + "/" + m.getYear();
+    }
+
     public LocalDate data() {
         return somarDiasUteis(inicio, diaUtilAbsoluto());
     }

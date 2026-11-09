@@ -30,7 +30,6 @@ import java.util.List;
 import java.util.Map;
 import java.util.Optional;
 import java.util.LinkedHashMap;
-import java.util.SplittableRandom;
 
 /**
  * Estado mutavel de uma partida. So o motor (Simulacao e regras) mexe aqui;
@@ -43,8 +42,8 @@ public final class Partida {
 
     private final long semente;
     private final ParametrosJogo parametros;
-    /** SplittableRandom existe no Android desde a API 24 (ao contrario de java.util.random). */
-    private final SplittableRandom aleatorio;
+    /** Mesmo algoritmo do SplittableRandom, igual na JVM, no Android e no navegador. */
+    private final Aleatorio aleatorio;
     private final Relogio relogio;
     private final List<Barco> barcos = new ArrayList<>();
     private final List<Pessoa> pessoas = new ArrayList<>();
@@ -86,7 +85,7 @@ public final class Partida {
     Partida(long semente, ParametrosJogo parametros, LocalDate inicio) {
         this.semente = semente;
         this.parametros = parametros;
-        this.aleatorio = new SplittableRandom(semente);
+        this.aleatorio = new Aleatorio(semente);
         this.relogio = new Relogio(inicio);
 
         ParametrosLinha linha = parametros.linha33();
@@ -435,7 +434,7 @@ public final class Partida {
         return parametros;
     }
 
-    public SplittableRandom aleatorio() {
+    public Aleatorio aleatorio() {
         return aleatorio;
     }
 

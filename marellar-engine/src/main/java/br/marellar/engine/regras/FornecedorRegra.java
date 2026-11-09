@@ -120,7 +120,7 @@ public final class FornecedorRegra {
         long previsto = partida.hoje() + perfil.diasEntrega();
         long chegada = previsto;
         if (QualidadeRegra.sortear(partida, perfil.probabilidadeAtraso())) {
-            chegada += partida.aleatorio().nextInt(regras.diasAtrasoMin(), regras.diasAtrasoMax() + 1);
+            chegada += partida.aleatorio().proximoInt(regras.diasAtrasoMin(), regras.diasAtrasoMax() + 1);
         }
         BigDecimal bruto = linha.valorDoKit(item).multiply(perfil.fatorPreco()).multiply(BigDecimal.valueOf(kits))
                 .setScale(2, RoundingMode.HALF_EVEN);
