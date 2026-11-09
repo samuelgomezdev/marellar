@@ -1,11 +1,13 @@
 class_name Planta
 extends RefCounted
-## Planta da fábrica vista de cima (mockup telas/1_fabrica.png): mezanino, baias de laminação (G1)
-## e de montagem (G2), rua interna com os kits, piscina do collaudo e a saída para a marina.
+## Planta vista de cima (mockup telas/1_fabrica.png), um galpão por vez:
+##   G2 · montagem: mezanino, baias com o barco a 90° e a popa para o mezanino, piscina interna e marina;
+##   G1 · laminação: os moldes, pintura e móveis (galpão separado, produção suja).
+## Os dois têm a rua interna e o almoxarifado com os paletes de kits.
 ## Só desenha o estado que veio do motor; devolve as áreas clicáveis de cada barco.
 
-const BAIAS_G1 := 2
-const BAIAS_G2 := 4
+const BAIAS_G2 := 6
+const ESTACOES_MOLDE := 2
 const LARGURA_PISCINA := 116
 const ALTURA_MEZANINO := 30
 const ALTURA_RUA := 26
@@ -13,32 +15,39 @@ const ALTURA_PATIO := 50
 
 const CORES_ITEM := {
 	"resina": Paleta.PRODUCAO_SUJA,
-	"gelcoat": Paleta.CASCO_SOMBRA,
+	"gelcoat": Paleta.CASCO,
 	"eletrica": Paleta.ALERTA,
 	"vidro": Paleta.AGUA,
 	"motor": Paleta.ARMAZEM,
 }
+const NOMES_ITEM := {
+	"resina": "Resina",
+	"gelcoat": "Gel",
+	"eletrica": "Elétrica",
+	"vidro": "Vidros",
+	"motor": "Motores",
+}
 
 
-## Desenha a fábrica em `area` e devolve {id do barco: Rect2 clicável}.
+## Em que galpão o barco está agora: "G1" (laminação) ou "G2" (montagem, piscina, carreta, marina).
+static func galpao_do_barco(b: Dictionary) -> String:
+	return "G1" if str(b["gateAtual"]) in ["RE", "DM"] and b["status"] != "ENTREGUE" else "G2"
+
+
+## Desenha o galpão pedido em `area` e devolve {id do barco: Rect2 clicável}.
 static func desenhar(c: CanvasItem, area: Rect2, estado: Dictionary, selecionado: String, t: float,
-		animar: bool, fonte: Font) -> Dictionary:
+		animar: bool, fonte: Font, galpao: String = "G2") -> Dictionary:
 	var clicaveis := {}
-	var piscina := Rect2(area.end.x - LARGURA_PISCINA - 4, area.position.y + 4, LARGURA_PISCINA,
+	var lateral := Rect2(area.end.x - LARGURA_PISCINA - 4, area.position.y + 4, LARGURA_PISCINA,
 			area.size.y - ALTURA_PATIO - 8)
-	var chao := Rect2(area.position, Vector2(piscina.position.x - area.position.x - 4, area.size.y))
-	var mezanino := Rect2(chao.position, Vector2(chao.size.x, ALTURA_MEZANINO))
+	var chao := Rect2(area.position, Vector2(lateral.position.x - area.position.x - 4, area.size.y))
+	var parede := Rect2(chao.position, Vector2(chao.size.x, ALTURA_MEZANINO))
 	var patio := Rect2(chao.position.x, area.end.y - ALTURA_PATIO, chao.size.x, ALTURA_PATIO)
 	var rua := Rect2(chao.position.x, patio.position.y - ALTURA_RUA, chao.size.x, ALTURA_RUA)
-	var baias := Rect2(chao.position.x + 4, mezanino.end.y + 2, chao.size.x - 8, rua.position.y - mezanino.end.y - 4)
+	var baias := Rect2(chao.position.x + 4, parede.end.y + 2, chao.size.x - 8, rua.position.y - parede.end.y - 4)
 
-	c.draw_rect(area, Paleta.PISO_ESCURO)
-	_piso(c, chao)
-	_desenhar_mezanino(c, mezanino, estado, t, animar, fonte)
-
-	# divide os barcos: molde (G1), berço (G2), piscina, carreta e marina
-	var em_g1: Array = []
-	var em_g2: Array = []
+	var no_molde: Array = []
+	var em_baia: Array = []
 	var na_piscina: Array = []
 	var na_carreta: Array = []
 	var na_marina: Array = []
@@ -49,7 +58,7 @@ static func desenhar(c: CanvasItem, area: Rect2, estado: Dictionary, selecionado
 			continue
 		match str(b["gateAtual"]):
 			"RE", "DM":
-				em_g1.append(b)
+				no_molde.append(b)
 			"PI":
 				na_piscina.append(b)
 			"TR":
@@ -57,39 +66,109 @@ static func desenhar(c: CanvasItem, area: Rect2, estado: Dictionary, selecionado
 			"TM", "ET":
 				na_marina.append(b)
 			_:
-				em_g2.append(b)
+				em_baia.append(b)
 
-	var largura_baia := floorf(baias.size.x / (BAIAS_G1 + BAIAS_G2))
-	for i in BAIAS_G1 + BAIAS_G2:
-		var baia := Rect2(baias.position.x + i * largura_baia, baias.position.y, largura_baia, baias.size.y)
-		var g1 := i < BAIAS_G1
-		if g1:
-			c.draw_rect(baia, Color(Paleta.PRODUCAO_SUJA, 0.22))
-			for k in 14:  # pó de laminação no piso
-				var p := baia.position + Vector2(fposmod(k * 37.0, baia.size.x), fposmod(k * 53.0, baia.size.y))
-				c.draw_rect(Rect2(p.floor(), Vector2(2, 1)), Color(Paleta.PRODUCAO_SUJA_ESCURA, 0.35))
-		_faixa_seguranca(c, Vector2(baia.position.x, baia.position.y), baia.size.y)
-		var lista: Array = em_g1 if g1 else em_g2
-		var indice := i if g1 else i - BAIAS_G1
-		if indice < lista.size():
-			var b: Dictionary = lista[indice]
-			clicaveis[b["id"]] = _barco_na_baia(c, baia, b, estado, selecionado, t, animar, fonte)
-	_faixa_seguranca(c, Vector2(baias.position.x + (BAIAS_G1 + BAIAS_G2) * largura_baia, baias.position.y), baias.size.y)
-	var meio_g1 := baias.position.x + BAIAS_G1 * largura_baia / 2
-	var meio_g2 := baias.position.x + (BAIAS_G1 + BAIAS_G2 / 2.0) * largura_baia
-	c.draw_string(fonte, Vector2(meio_g1 - 70, baias.end.y - 3), "G1 · LAMINAÇÃO", HORIZONTAL_ALIGNMENT_CENTER, 140, 16,
-			Color(Paleta.PRODUCAO_SUJA_ESCURA, 0.8))
-	c.draw_string(fonte, Vector2(meio_g2 - 70, baias.end.y - 3), "G2 · MONTAGEM", HORIZONTAL_ALIGNMENT_CENTER, 140, 16,
-			Color(Paleta.MONTAGEM_LIMPA_ESCURA, 0.8))
+	c.draw_rect(area, Paleta.PISO_ESCURO)
+	_piso(c, chao)
+	if galpao == "G1":
+		_desenhar_g1(c, chao, parede, baias, lateral, no_molde, estado, selecionado, t, animar, fonte, clicaveis)
+	else:
+		_desenhar_mezanino(c, parede, estado, t, animar, fonte)
+		var largura_baia := floorf(baias.size.x / BAIAS_G2)
+		for i in BAIAS_G2:
+			var baia := Rect2(baias.position.x + i * largura_baia, baias.position.y, largura_baia, baias.size.y)
+			_faixa_seguranca(c, baia.position, baia.size.y)
+			c.draw_string(fonte, Vector2(baia.position.x + 4, baia.end.y - 3), "B%d" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
+					Color(Paleta.PISO_ESCURO, 0.9))
+			if i < em_baia.size():
+				var b: Dictionary = em_baia[i]
+				clicaveis[b["id"]] = _barco_na_baia(c, baia, b, estado, selecionado, t, animar, fonte)
+		_faixa_seguranca(c, Vector2(baias.position.x + BAIAS_G2 * largura_baia, baias.position.y), baias.size.y)
+		_desenhar_piscina(c, lateral, na_piscina, selecionado, t, fonte, clicaveis)
+		_desenhar_marina(c, Rect2(lateral.position.x, lateral.end.y + 4, lateral.size.x, area.end.y - lateral.end.y - 6),
+				na_marina, entregues, selecionado, t, fonte, clicaveis)
 
 	_desenhar_rua(c, rua, t, animar)
 	for b in na_carreta:
-		clicaveis[b["id"]] = _carreta(c, rua, b, selecionado, t)
+		if galpao == "G2":
+			clicaveis[b["id"]] = _carreta(c, rua, b, selecionado, t)
 	_desenhar_patio(c, patio, estado, fonte)
-	_desenhar_piscina(c, piscina, na_piscina, selecionado, t, fonte, clicaveis)
-	_desenhar_marina(c, Rect2(piscina.position.x, piscina.end.y + 4, piscina.size.x, area.end.y - piscina.end.y - 6),
-			na_marina, entregues, selecionado, t, fonte, clicaveis)
 	return clicaveis
+
+
+# ---------------------------------------------------------------- G1 · laminação
+
+static func _desenhar_g1(c: CanvasItem, chao: Rect2, parede: Rect2, baias: Rect2, lateral: Rect2, moldes: Array,
+		estado: Dictionary, selecionado: String, t: float, animar: bool, fonte: Font, clicaveis: Dictionary) -> void:
+	# piso de produção suja, com manchas de resina
+	c.draw_rect(chao, Color(Paleta.PRODUCAO_SUJA, 0.25))
+	for k in 60:
+		var pos := chao.position + Vector2(fposmod(k * 37.0, chao.size.x), parede.size.y + fposmod(k * 53.0, chao.size.y - parede.size.y))
+		c.draw_rect(Rect2(pos.floor(), Vector2(2 + k % 3, 1 + k % 2)), Color(Paleta.PRODUCAO_SUJA_ESCURA, 0.3))
+	# parede de concreto com exaustores girando
+	c.draw_rect(parede, Paleta.ARMAZEM)
+	for y in range(int(parede.position.y) + 6, int(parede.end.y), 7):
+		c.draw_line(Vector2(parede.position.x, y), Vector2(parede.end.x, y), Paleta.ARMAZEM_ESCURO)
+	var x := parede.position.x + 20
+	var giro := t * 6.0 if animar else 0.0
+	while x < parede.end.x - 110:
+		var centro := Vector2(x, parede.position.y + 14)
+		c.draw_circle(centro, 10, Paleta.FUNDO_ESCURO)
+		c.draw_circle(centro, 9, Paleta.METAL)
+		for pa in 3:
+			var ang := giro + pa * TAU / 3
+			c.draw_line(centro, centro + Vector2(cos(ang), sin(ang)) * 8, Paleta.FUNDO, 3.0)
+		c.draw_circle(centro, 2, Paleta.FUNDO_ESCURO)
+		x += 64
+	var placa := Rect2(parede.end.x - 100, parede.position.y + 5, 94, 14)
+	c.draw_rect(placa, Paleta.FUNDO_ESCURO)
+	c.draw_string(fonte, placa.position + Vector2(4, 11), "G1 · LAMINAÇÃO", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.TECA)
+
+	# estações de molde (1 molde por linha; a segunda é para a próxima linha)
+	var largura := floorf(baias.size.x * 0.62 / ESTACOES_MOLDE)
+	for i in ESTACOES_MOLDE:
+		var estacao := Rect2(baias.position.x + i * largura, baias.position.y, largura, baias.size.y)
+		_faixa_seguranca(c, estacao.position, estacao.size.y)
+		c.draw_string(fonte, Vector2(estacao.position.x + 4, estacao.end.y - 3), "Molde %d" % (i + 1), HORIZONTAL_ALIGNMENT_LEFT,
+				-1, 16, Paleta.PRODUCAO_SUJA_ESCURA)
+		if i < moldes.size():
+			var b: Dictionary = moldes[i]
+			clicaveis[b["id"]] = _barco_na_baia(c, estacao, b, estado, selecionado, t, animar, fonte)
+		else:
+			var vazio := PixelArt.casco(PixelArt.Etapa.MOLDE, 0.0)
+			c.draw_texture(vazio, Vector2(estacao.position.x + (estacao.size.x - vazio.get_width()) / 2, estacao.position.y + 40).floor(),
+					Color(1, 1, 1, 0.5))
+	_faixa_seguranca(c, Vector2(baias.position.x + ESTACOES_MOLDE * largura, baias.position.y), baias.size.y)
+
+	# pintura e móveis: o resto do G1 (cenário)
+	var resto := Rect2(baias.position.x + ESTACOES_MOLDE * largura + 6, baias.position.y, baias.end.x - baias.position.x - ESTACOES_MOLDE * largura - 6, baias.size.y)
+	var cabine := Rect2(resto.position, Vector2(resto.size.x, resto.size.y * 0.5 - 3))
+	c.draw_rect(cabine, Paleta.FUNDO)
+	c.draw_rect(cabine.grow(-2), Paleta.CASCO_SOMBRA)
+	for y in range(int(cabine.position.y) + 6, int(cabine.end.y) - 2, 6):
+		c.draw_line(Vector2(cabine.position.x + 4, y), Vector2(cabine.end.x - 4, y), Paleta.PISO_ESCURO)
+	c.draw_string(fonte, cabine.position + Vector2(5, 14), "CABINE DE PINTURA", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.FUNDO)
+	var moveis := Rect2(resto.position.x, cabine.end.y + 6, resto.size.x, resto.size.y - cabine.size.y - 6)
+	c.draw_rect(moveis, Color(Paleta.TECA, 0.35))
+	for k in 5:
+		var tabua := Rect2(moveis.position.x + 6, moveis.position.y + 20 + k * 7, moveis.size.x * (0.5 + 0.08 * k), 4)
+		c.draw_rect(tabua, Paleta.TECA if k % 2 == 0 else Paleta.TECA_ESCURA)
+	c.draw_string(fonte, moveis.position + Vector2(5, 14), "MÓVEIS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.MADEIRA_ESCURA)
+
+	# lateral: saída de resíduos e chuveiros do vestiário
+	c.draw_rect(lateral, Paleta.FUNDO)
+	c.draw_rect(lateral.grow(-0.5), Paleta.ARMAZEM_ESCURO, false, 1.0)
+	c.draw_string(fonte, lateral.position + Vector2(6, 14), "VESTIÁRIO G1", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.TEXTO)
+	for k in 4:
+		var box := Rect2(lateral.position.x + 8 + k * 26, lateral.position.y + 24, 20, 20)
+		c.draw_rect(box, Paleta.CASCO_SOMBRA)
+		c.draw_circle(box.get_center(), 3, Paleta.AGUA)
+	c.draw_string(fonte, lateral.position + Vector2(6, 70), "RESÍDUOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.TEXTO)
+	for k in 3:
+		var tambor := Vector2(lateral.position.x + 18 + k * 30, lateral.position.y + 88)
+		c.draw_circle(tambor, 9, Paleta.FUNDO_ESCURO)
+		c.draw_circle(tambor, 8, [Paleta.NAO_CONFORME, Paleta.ALERTA, Paleta.MONTAGEM_LIMPA_ESCURA][k])
+		c.draw_circle(tambor, 3, Color(Paleta.FUNDO_ESCURO, 0.4))
 
 
 # ---------------------------------------------------------------- piso, mezanino, rua e pátio
@@ -161,32 +240,43 @@ static func _desenhar_rua(c: CanvasItem, r: Rect2, t: float, animar: bool) -> vo
 	for x in range(int(r.position.x) + 6, int(r.end.x) - 8, 20):
 		c.draw_rect(Rect2(x, meio - 1, 10, 2), Paleta.FAIXA)
 	# empilhadeira indo e voltando com kits
-	var vai := fposmod(t * 18.0, r.size.x * 2 - 60) if animar else r.size.x * 0.3
-	var px := vai if vai < r.size.x - 30 else (r.size.x * 2 - 60 - vai)
-	var tex := PixelArt.empilhadeira()
-	var origem := Vector2(r.position.x + 10 + px, r.position.y + 3).floor()
-	if vai >= r.size.x - 30:
-		c.draw_texture_rect(tex, Rect2(origem + Vector2(tex.get_width(), 0), Vector2(-tex.get_width(), tex.get_height())), false)
-	else:
+	var percurso := r.size.x - 40
+	var vai := fposmod(t * 18.0, percurso * 2) if animar else percurso * 0.3
+	var indo := vai < percurso
+	var px := vai if indo else percurso * 2 - vai
+	var tex := PixelArt.empilhadeira(indo)
+	var origem := Vector2(r.position.x + 6 + px, r.position.y + (r.size.y - tex.get_height()) / 2).floor()
+	if indo:
 		c.draw_texture(tex, origem)
+	else:
+		c.draw_texture_rect(tex, Rect2(origem + Vector2(tex.get_width(), 0), Vector2(-tex.get_width(), tex.get_height())), false)
 
 
 static func _desenhar_patio(c: CanvasItem, r: Rect2, estado: Dictionary, fonte: Font) -> void:
-	# estoque de kits empilhado no pátio, por item
+	# almoxarifado: um palete por item, com uma caixa por kit (até 4) e o nome inteiro
 	var itens: Array = estado["estoque"].keys()
 	itens.sort()
-	var x := r.position.x + 196  # o canto esquerdo fica para o cartão do barco selecionado
+	var x := r.position.x + 192  # o canto esquerdo fica para o cartão do barco selecionado
+	c.draw_string(fonte, Vector2(x, r.position.y + 11), "ALMOXARIFADO", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.ARMAZEM_ESCURO)
 	for item in itens:
 		var kits := int(estado["estoque"][item])
 		var cor: Color = CORES_ITEM.get(item, Paleta.MADEIRA)
-		for k in mini(kits, 6):
-			var col := k % 3
-			var lin := k / 3
-			c.draw_texture(PixelArt.caixa(cor), Vector2(x + col * 9, r.position.y + 22 - lin * 7))
-		c.draw_string(fonte, Vector2(x - 2, r.position.y + 44), "%s %d" % [item.substr(0, 5), kits], HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
+		var palete := Rect2(x + 4, r.position.y + 16, 22, 16)
+		# palete de madeira
+		c.draw_rect(palete, Paleta.MADEIRA_ESCURA)
+		for k in 4:
+			c.draw_rect(Rect2(palete.position.x + 1, palete.position.y + 1 + k * 4, palete.size.x - 2, 3), Paleta.TECA_ESCURA)
+		for k in mini(kits, 4):
+			var caixa := Rect2(palete.position.x + 2 + (k % 2) * 10, palete.position.y + 2 + (k / 2) * 7, 9, 6)
+			c.draw_rect(caixa, Paleta.FUNDO_ESCURO)
+			c.draw_rect(caixa.grow(-1), cor)
+			c.draw_rect(Rect2(caixa.position.x + 1, caixa.position.y + 1, caixa.size.x - 2, 1), cor.lightened(0.3))
+		var nome: String = NOMES_ITEM.get(item, item)
+		c.draw_string(fonte, Vector2(palete.end.x + 3, palete.end.y - 2), "x%d" % kits, HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
 				Paleta.CRITICO if kits == 0 else Paleta.FUNDO)
-		x += 62
-		if x > r.end.x - 40:
+		c.draw_string(fonte, Vector2(x, r.end.y - 3), nome, HORIZONTAL_ALIGNMENT_LEFT, 60, 16, Paleta.ARMAZEM_ESCURO)
+		x += 64
+		if x > r.end.x - 50:
 			break
 
 
@@ -212,7 +302,7 @@ static func _barco_na_baia(c: CanvasItem, baia: Rect2, b: Dictionary, estado: Di
 		# barco parado: a baia pulsa em vermelho (GDD, Luz)
 		var pulso := 0.12 + 0.10 * sin(t * 4.0)
 		c.draw_rect(baia.grow(-2), Color(Paleta.NAO_CONFORME, pulso))
-	var tex := PixelArt.casco(etapa, progresso)
+	var tex := PixelArt.casco(etapa, progresso, etapa != PixelArt.Etapa.MOLDE)
 	var pos := Vector2(baia.position.x + (baia.size.x - tex.get_width()) / 2,
 			baia.position.y + 30 + (baia.size.y - 46 - tex.get_height()) / 2).floor()
 	var casco := Rect2(pos, tex.get_size())
@@ -223,8 +313,8 @@ static func _barco_na_baia(c: CanvasItem, baia: Rect2, b: Dictionary, estado: Di
 			c.draw_rect(Rect2(lado, casco.position.y + 6, 4, casco.size.y - 4), Paleta.ARMAZEM_ESCURO)
 			for y in range(int(casco.position.y) + 8, int(casco.end.y), 5):
 				c.draw_rect(Rect2(lado, y, 4, 1), Paleta.ALERTA_ESCURO)
-	# sombra no piso e o casco
-	c.draw_rect(Rect2(casco.position + Vector2(3, 3), casco.size - Vector2(2, 0)), Color(Paleta.FUNDO_ESCURO, 0.18))
+	# sombra no formato do casco e o casco; na montagem a popa fica para o mezanino (README da Visão)
+	c.draw_texture(tex, pos + Vector2(3, 3), Color(0.05, 0.05, 0.1, 0.28))
 	c.draw_texture(tex, pos)
 
 	# equipe em volta do casco
@@ -300,7 +390,7 @@ static func _desenhar_piscina(c: CanvasItem, r: Rect2, barcos: Array, selecionad
 		for x in range(int(agua.position.x) + ((y / 7) % 2) * 6 + fase / 2, int(agua.end.x) - 6, 12):
 			c.draw_rect(Rect2(x, y, 5, 1), Color(Paleta.AGUA, 0.8))
 	c.draw_string(fonte, Vector2(agua.position.x + 3, agua.position.y + 12), "PISCINA · PI", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.CASCO)
-	var tex := PixelArt.casco(PixelArt.Etapa.PRONTO)
+	var tex := PixelArt.casco(PixelArt.Etapa.PRONTO, 1.0, true)
 	for i in mini(barcos.size(), 2):
 		var b: Dictionary = barcos[i]
 		var balanco := 1.0 if int(t * 1.2 + i) % 2 == 0 else 0.0

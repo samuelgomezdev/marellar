@@ -46,6 +46,8 @@ var ocupado := false
 var ultimo_evento := 0
 var avisos: Array[Dictionary] = []  # {texto, quando}
 var area_cartao := Rect2()
+var galpao := "G2"  # galpão na tela: G1 laminação ou G2 montagem
+var areas_abas := {}  # "G1"/"G2" -> Rect2 na barra de cima
 var efeitos: Array[Dictionary] = []  # {tipo, texto, cor, barco, inicio}
 var posicao_barcos := {}  # última posição conhecida de cada barco, para os efeitos
 var gate_anterior := {}
@@ -111,6 +113,9 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 	i = args.find("--selecionar")
 	if i >= 0 and i + 1 < args.size():
 		selecionado = args[i + 1]
+	i = args.find("--galpao")
+	if i >= 0 and i + 1 < args.size():
+		galpao = args[i + 1]
 	if args.has("--ficha"):
 		_abrir_ficha_completa()
 	if args.has("--saves"):
@@ -287,6 +292,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_abrir_painel(PAINEL_EQUIPE)
 			KEY_F2:
 				_abrir_painel(PAINEL_FORNECEDORES)
+			KEY_G:
+				_mudar_galpao("G1" if galpao == "G2" else "G2")
 			KEY_F5:
 				_salvar()
 			KEY_F9:
@@ -304,8 +311,13 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		for aba in areas_abas:
+			if areas_abas[aba].has_point(event.position):
+				_mudar_galpao(aba)
+				return
 		if area_alerta_nc.has_point(event.position) and not barco_alerta_nc.is_empty():
 			selecionado = barco_alerta_nc
+			galpao = Planta.galpao_do_barco(_barco(selecionado))
 			_abrir_ficha_completa()
 			return
 		if area_cartao.has_point(event.position):
@@ -393,6 +405,11 @@ func _montar_ficha_completa() -> void:
 	tela_ficha.priorizar.connect(_priorizar)
 	tela_ficha.alternar_segurar.connect(_alternar_segurar)
 	tela_ficha.decidir_nc.connect(_decidir_nc)
+
+
+func _mudar_galpao(novo: String) -> void:
+	galpao = novo
+	queue_redraw()
 
 
 func _abrir_ficha_completa() -> void:
@@ -545,7 +562,7 @@ func _draw() -> void:
 	var t := Time.get_ticks_msec() / 1000.0
 	if not tela_ficha.visible:
 		var area := Rect2(0, ALTURA_TOPO, size.x, size.y - ALTURA_TOPO - ALTURA_BASE)
-		areas_barcos = Planta.desenhar(self, area, estado, selecionado, t, velocidade > 0, fonte)
+		areas_barcos = Planta.desenhar(self, area, estado, selecionado, t, velocidade > 0, fonte, galpao)
 		for id in areas_barcos:
 			posicao_barcos[id] = areas_barcos[id]
 		_desenhar_inspetora(area)
@@ -710,7 +727,7 @@ func _desenhar_topo() -> void:
 	var ncs := int(estado["qualidade"]["ncsAbertas"])
 	var paciencia := int(fin["pacienciaConselho"])
 	var blocos := [
-		["", "%s · dia %d · %02dh" % [estado["mesReferencia"], int(estado["diaUtilDoMes"]), int(estado["hora"])], Paleta.TEXTO_CLARO],
+		["", "%s d%d %02dh" % [estado["mesReferencia"], int(estado["diaUtilDoMes"]), int(estado["hora"])], Paleta.TEXTO_CLARO],
 		["Caixa", _milhoes(fin["caixa"]), Paleta.MONTAGEM_LIMPA if float(fin["caixa"]) >= 0 else Paleta.CRITICO],
 		["Valor", _milhoes(fin["valorEmpresa"]), Paleta.AGUA],
 		["Moral", "%d%%" % moral, Paleta.MONTAGEM_LIMPA if moral >= 60 else (Paleta.ALERTA if moral >= 40 else Paleta.CRITICO)],
@@ -718,6 +735,22 @@ func _desenhar_topo() -> void:
 		["Conselho", "%d/%d" % [paciencia, int(fin["pacienciaMaxima"])], Paleta.ALERTA if paciencia <= 2 else Paleta.TEXTO_CLARO],
 	]
 	var x := 2.0
+	areas_abas.clear()
+	for aba in ["G1", "G2"]:
+		var quantos := 0
+		for b in estado["barcos"]:
+			if Planta.galpao_do_barco(b) == aba and b["status"] != "ENTREGUE":
+				quantos += 1
+		var texto := "%s (%d)" % [aba, quantos]
+		var largura_aba := fonte.get_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO).x + 6
+		var r := Rect2(x, 1, largura_aba, ALTURA_TOPO - 2)
+		areas_abas[aba] = r
+		draw_rect(r, Paleta.ALERTA_ESCURO if aba == galpao else Paleta.FUNDO_ESCURO)
+		draw_rect(r.grow(-0.5), Paleta.ALERTA if aba == galpao else Paleta.ARMAZEM_ESCURO, false, 1.0)
+		draw_string(fonte, Vector2(x + 3, 12), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO,
+				Paleta.TEXTO_CLARO if aba == galpao else Paleta.TEXTO)
+		x += largura_aba + 2
+	x += 2
 	for b in blocos:
 		var rotulo: String = b[0]
 		var valor: String = b[1]

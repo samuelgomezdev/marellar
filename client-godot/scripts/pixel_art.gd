@@ -30,17 +30,17 @@ static func _dentro(x: int, y: int, comprimento: int, largura: int, recuo: float
 	return absf(x + 0.5 - largura / 2.0) <= _meia_boca(y, comprimento, largura) - recuo
 
 
-## Casco na etapa pedida. `progresso` (0 a 1) só conta no molde: o gelcoat vai cobrindo o molde.
-static func casco(etapa: Etapa, progresso: float = 1.0) -> ImageTexture:
+## Casco na etapa pedida, proa para cima. `popa_para_cima` vira o casco (montagem: popa para o mezanino).
+## `progresso` (0 a 1) só conta no molde: o gelcoat vai cobrindo o molde.
+static func casco(etapa: Etapa, progresso: float = 1.0, popa_para_cima: bool = false) -> ImageTexture:
 	var passo := int(clampf(progresso, 0.0, 1.0) * 8) if etapa == Etapa.MOLDE else 0
-	var chave := "casco_%d_%d" % [etapa, passo]
+	var chave := "casco_%d_%d_%s" % [etapa, passo, popa_para_cima]
 	if _cache.has(chave):
 		return _cache[chave]
-	var tex: ImageTexture
-	if etapa == Etapa.MOLDE:
-		tex = ImageTexture.create_from_image(_molde(passo / 8.0))
-	else:
-		tex = ImageTexture.create_from_image(_casco(etapa))
+	var img := _molde(passo / 8.0) if etapa == Etapa.MOLDE else _casco(etapa)
+	if popa_para_cima:
+		img.flip_y()
+	var tex := ImageTexture.create_from_image(img)
 	_cache[chave] = tex
 	return tex
 
@@ -236,23 +236,46 @@ static func balao(icone: String) -> ImageTexture:
 
 # ---------------------------------------------------------------- veículos
 
+## Empilhadeira vista de cima, garfos para a direita: contrapeso listrado, cabine com
+## proteção e o operador de capacete, mastro e garfos. Com carga, leva um palete de kits.
 const _EMPILHADEIRA := [
-	"MM..........",
-	"MM.YYYYYY...",
-	"MM.YYYYYYY..",
-	"MMMYGGGYYY..",
-	"MM.YGGGYYYY.",
-	"MM.YYYYYYYY.",
-	"MM.YYYYYYYY.",
-	"...KK...KK..",
+	"...KKKK.......KKKK.......",
+	"CYYYYYYYYYYYYYYYYYM......",
+	"BYOOOOOOOOOOOOOOOYMFFFFFF",
+	"CYOGGGGGGGGGGGOOOYM......",
+	"BYOGDDDDDDDDDDGOOYM......",
+	"CYOGDDDSHHDDDDGOOYM......",
+	"BYOGDDDSHHDDDDGOOYM......",
+	"CYOGDDDDDDDDDDGOOYM......",
+	"BYOGGGGGGGGGGGGOOYM......",
+	"CYOOOOOOOOOOOOOOOYMFFFFFF",
+	"BYYYYYYYYYYYYYYYYYM......",
+	"...KKKK.......KKKK.......",
+]
+const _PALETE := [
+	"WWWWWW",
+	"WRRWRR",
+	"WRRWRR",
+	"WWWWWW",
+	"WRRWRR",
+	"WRRWRR",
+	"WWWWWW",
 ]
 
 
-static func empilhadeira() -> ImageTexture:
-	if not _cache.has("empilhadeira"):
-		_cache["empilhadeira"] = ImageTexture.create_from_image(_com_contorno(_de_texto(_EMPILHADEIRA,
-				{"M": Paleta.METAL, "Y": Paleta.ALERTA, "G": Paleta.AGUA_ESCURA, "K": Paleta.FUNDO_ESCURO})))
-	return _cache["empilhadeira"]
+static func empilhadeira(com_carga: bool = false) -> ImageTexture:
+	var chave := "empilhadeira_%s" % com_carga
+	if _cache.has(chave):
+		return _cache[chave]
+	var img := _de_texto(_EMPILHADEIRA, {
+		"K": Paleta.FUNDO_ESCURO, "C": Paleta.FUNDO_ESCURO, "B": Paleta.FAIXA, "Y": Paleta.ALERTA,
+		"O": Paleta.ALERTA_ESCURO, "G": Paleta.FUNDO, "D": Paleta.ARMAZEM_ESCURO, "S": Paleta.FUNDO_ESCURO,
+		"H": Paleta.FAIXA, "M": Paleta.ARMAZEM_ESCURO, "F": Paleta.METAL})
+	if com_carga:
+		var palete := _de_texto(_PALETE, {"W": Paleta.TECA_ESCURA, "R": Paleta.PRODUCAO_SUJA})
+		img.blend_rect(palete, Rect2i(0, 0, palete.get_width(), palete.get_height()), Vector2i(19, 3))
+	_cache[chave] = ImageTexture.create_from_image(_com_contorno(img))
+	return _cache[chave]
 
 
 const _CAVALO := [
