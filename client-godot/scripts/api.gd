@@ -51,6 +51,8 @@ func carregar(id: String) -> bool:
 
 
 func _requisitar(metodo: int, caminho: String, corpo = null) -> Variant:
+	if OS.has_feature("web"):
+		return await _requisitar_no_navegador(metodo, caminho, corpo)
 	var http := HTTPRequest.new()
 	add_child(http)
 	var cabecalhos := PackedStringArray(["Content-Type: application/json", "Accept: application/json"])
@@ -70,6 +72,31 @@ func _requisitar(metodo: int, caminho: String, corpo = null) -> Variant:
 	if resultado != HTTPRequest.RESULT_SUCCESS:
 		erro.emit("API fora do ar. Rode na raiz do repositório: mvnw -pl marellar-api spring-boot:run")
 		return null
+	return _tratar_resposta(codigo, texto)
+
+
+## No navegador (GitHub Pages) não há servidor: o motor Java roda compilado para JavaScript
+## (marellar-web, TeaVM) na mesma página, com as mesmas rotas e respostas da API.
+func _requisitar_no_navegador(metodo: int, caminho: String, corpo) -> Variant:
+	var janela = JavaScriptBridge.get_interface("window")
+	# O motor carrega os dados de data/ em paralelo com o Godot; espera ficar pronto.
+	while janela == null or str(janela.marellarStatus) == "carregando":
+		await get_tree().process_frame
+		janela = JavaScriptBridge.get_interface("window")
+	var situacao := str(janela.marellarStatus)
+	if situacao != "pronto":
+		erro.emit("O motor do jogo não carregou no navegador (%s)." % situacao)
+		return null
+	var nome_metodo := "POST" if metodo == HTTPClient.METHOD_POST else "GET"
+	var dados := "" if corpo == null else JSON.stringify(corpo)
+	var resposta = JSON.parse_string(str(janela.marellarRequisitar(nome_metodo, "/api/v1" + caminho, dados)))
+	if not resposta is Dictionary:
+		erro.emit("Resposta inválida do motor no navegador.")
+		return null
+	return _tratar_resposta(int(resposta["status"]), str(resposta["corpo"]))
+
+
+func _tratar_resposta(codigo: int, texto: String) -> Variant:
 	var json = JSON.parse_string(texto) if not texto.is_empty() else {}
 	if codigo >= 400:
 		var detalhe = json.get("detail", texto) if json is Dictionary else texto

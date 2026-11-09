@@ -6,6 +6,8 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 
 **Plataforma:** PC (Windows) primeiro; celular depois.
 
+**Jogar no navegador:** https://samuelgomezdev.github.io/marellar/ — sem instalar nada e sem servidor: o motor Java roda compilado para JavaScript dentro da página (veja a seção 12).
+
 ## Status
 
 | # | Entrega | Status |
@@ -17,7 +19,8 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | M5 | Finanças, DRE, valor da empresa, conselho | ✅ |
 | M6 | `marellar-cli` | ✅ roda N meses com jogador automático e imprime o relatório do conselho |
 | M7 | `marellar-api` | ✅ criar, estado, avançar, ordens, barco, eventos, conselho, salvar/carregar |
-| M8 | `client-godot`: telas Fábrica, Barco, Conselho | ✅ Fábrica, ficha completa do barco, Equipe, Fornecedores, Conselho e saves, tudo pelo mouse (arte provisória) |
+| M8 | `client-godot`: telas Fábrica, Barco, Conselho | ✅ Fábrica, ficha completa do barco, Equipe, Fornecedores, Conselho e saves, tudo pelo mouse; arte v1 da planta vista de cima |
+| Web | `marellar-web` + GitHub Pages | ✅ motor compilado para JavaScript (TeaVM), cliente Godot exportado para Web, saves no navegador |
 
 ---
 
@@ -110,6 +113,9 @@ marellar/
 │   └── src/main/java/br/marellar/cli/Main.java
 ├── marellar-api/
 │   └── src/main/java/br/marellar/api/  # controllers, DTOs, PartidaService
+├── marellar-web/                   # o motor compilado para JavaScript (TeaVM): a API dentro do navegador
+│   └── src/main/java/br/marellar/web/  # MotorWeb (entrada JS), ServicoWeb (rotas), json/ (JSON sem reflexão)
+├── web/                            # montagem do site: montar_site.sh, marellar-inicio.js, template do Godot
 └── client-godot/
     ├── project.godot
     ├── scenes/ (Fabrica.tscn, Barco.tscn, Conselho.tscn)
@@ -411,6 +417,24 @@ godot --path client-godot -- --dias 12 --selecionar 33-002   # opcional: pula di
 godot --path client-godot -- --dias 40 --painel equipe       # opcional: abre direto no painel equipe ou fornecedores
 godot --path client-godot -- --dias 12 --salvar              # opcional: salva depois de avançar; --carregar abre o último save
 godot --path client-godot -- --dias 15 --selecionar 33-001 --ficha   # opcional: abre a ficha completa; --saves abre a lista de saves
+```
+
+### Jogar no navegador (GitHub Pages)
+
+O site https://samuelgomezdev.github.io/marellar/ é publicado pelo workflow `.github/workflows/pages.yml` a cada push na `main`. Não há servidor:
+
+1. O `marellar-web` compila o `marellar-engine` para JavaScript com o **TeaVM** e expõe a **mesma API** da seção 7 como uma função (`marellarRequisitar(metodo, caminho, corpo)`), com as mesmas respostas e erros.
+2. O cliente Godot é exportado para **Web** (sem threads, então roda no GitHub Pages sem cabeçalhos especiais). No navegador, o `api.gd` troca o HTTP por essa função via `JavaScriptBridge`; o resto do cliente não muda.
+3. Os saves ficam no `localStorage` do navegador.
+
+O JSON no navegador não usa Jackson (precisa de reflexão): `CodecGerado.java` é gerado a partir dos records. Mudou um record do motor? Rode `./mvnw -pl marellar-web test -Dtest=CodecEmDiaTest -Dmarellar.gerarCodec=true`. O `ParidadeJacksonTest` garante que o navegador lê os mesmos parâmetros e escreve o mesmo JSON que a API.
+
+Para montar o site localmente (precisa do Godot 4.7.2 e do template web):
+
+```bash
+python web/baixar_template_web.py 4.7.2 "$APPDATA/Godot/export_templates"   # Linux: ~/.local/share/godot/export_templates
+GODOT=/caminho/do/godot bash web/montar_site.sh
+cd client-godot/export/web && python -m http.server 8000                   # abrir http://localhost:8000
 ```
 
 A CLI tem um jogador automático: NC de material vira RNC, as outras vão para retrabalho, e ele faz 1:1 com quem está com moral abaixo de 70. Use `--sem-decisoes` para desligar.

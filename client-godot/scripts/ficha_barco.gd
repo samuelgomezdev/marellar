@@ -174,28 +174,46 @@ func _draw() -> void:
 
 
 func _desenhar_baia(area: Rect2, t: float) -> void:
-	draw_rect(area, Paleta.ARMAZEM_ESCURO)
-	for x in range(int(area.position.x) + 16, int(area.end.x), 16):
-		draw_line(Vector2(x, area.position.y), Vector2(x, area.end.y), Color(Paleta.ARMAZEM, 0.35))
 	var gate: String = barco["gateAtual"]
-	var etapa := Sprites.etapa_do_gate(gate, barco["status"] == "ENTREGUE")
-	# barco em escala 2 (o sprite tem ~100 px de largura)
-	var origem := Vector2(area.position.x + 4, area.position.y + area.size.y * 0.55)
-	draw_set_transform(origem, 0.0, Vector2(2, 2))
-	Sprites.barco(self, Vector2(4, 0), etapa, float(barco["progressoGate"]), t)
+	var etapa := Planta._etapa(gate)
+	var na_agua: bool = gate in ["PI", "TM", "ET"] or barco["status"] == "ENTREGUE"
+	# piso da baia (ou água), como na planta
+	draw_rect(area, Paleta.AGUA_ESCURA if na_agua else Paleta.PISO)
+	if etapa == PixelArt.Etapa.MOLDE:
+		draw_rect(area, Color(Paleta.PRODUCAO_SUJA, 0.22))
+	var linha := Color(Paleta.AGUA, 0.6) if na_agua else Color(Paleta.PISO_ESCURO, 0.35)
+	for x in range(int(area.position.x) + 16, int(area.end.x), 16):
+		draw_line(Vector2(x, area.position.y), Vector2(x, area.end.y), linha)
+	for y in range(int(area.position.y) + 16, int(area.end.y), 16):
+		draw_line(Vector2(area.position.x, y), Vector2(area.end.x, y), linha)
+	draw_rect(Rect2(area.position, Vector2(area.size.x, 18)), Paleta.FUNDO)
+
+	# casco visto de cima em escala 2, com a equipe em volta
+	var tex := PixelArt.casco(etapa, 0.0 if gate == "RE" else float(barco["progressoGate"]))
+	var escala := 2.0
+	var tamanho := tex.get_size() * escala
+	var pos := (area.position + Vector2((area.size.x - tamanho.x) / 2, 24 + (area.size.y - 52 - tamanho.y) / 2)).floor()
+	if etapa == PixelArt.Etapa.ABERTO or etapa == PixelArt.Etapa.FECHADO:
+		for lado in [pos.x - 18, pos.x + tamanho.x + 10]:
+			draw_rect(Rect2(lado, pos.y + 10, 8, tamanho.y - 8), Paleta.ARMAZEM_ESCURO)
+			for y in range(int(pos.y) + 12, int(pos.y + tamanho.y), 8):
+				draw_rect(Rect2(lado, y, 8, 2), Paleta.ALERTA_ESCURO)
+	draw_rect(Rect2(pos + Vector2(5, 5), tamanho), Color(Paleta.FUNDO_ESCURO, 0.2))
+	draw_texture_rect(tex, Rect2(pos, tamanho), false)
 	var alocadas: Array = barco["pessoasAlocadas"]
-	var uniforme := Paleta.PRODUCAO_SUJA if etapa == Sprites.ETAPA_MOLDE else Paleta.MONTAGEM_LIMPA_ESCURA
-	for k in alocadas.size():
-		var frente := k % 2 == 0
-		var y := 12.0 if frente else -16.0
-		if frente and etapa == Sprites.ETAPA_PISCINA:
-			y += 4.0
-		Sprites.pessoa(self, Vector2(12 + (k / 2) * 26, y), uniforme, int(t * 4 + k) % 2 if animado else 0)
-	draw_set_transform(Vector2.ZERO)
+	var uniforme := Paleta.PRODUCAO_SUJA if etapa == PixelArt.Etapa.MOLDE else Paleta.MONTAGEM_LIMPA_ESCURA
+	if not na_agua:
+		for k in alocadas.size():
+			var quadro := int(t * 4 + k) % 2 if animado else 0
+			var p := PixelArt.pessoa(uniforme, quadro, etapa == PixelArt.Etapa.MOLDE)
+			var px := pos.x - 26 if k % 2 == 0 else pos.x + tamanho.x + 4
+			var py := pos.y + 30 + (k / 2) * 44
+			draw_texture_rect(p, Rect2(Vector2(px, py), p.get_size() * escala), false)
 
 	var x := area.position.x + 4
-	draw_string(fonte, Vector2(x, area.position.y + 14), "%s · %s" % [gate, barco["nomeGate"]],
+	draw_string(fonte, Vector2(x, area.position.y + 13), "%s · %s" % [gate, barco["nomeGate"]],
 			HORIZONTAL_ALIGNMENT_LEFT, area.size.x - 8, tamanho_texto, Paleta.TEXTO_CLARO)
+	draw_rect(Rect2(area.position.x, area.end.y - 26, area.size.x, 26), Paleta.FUNDO)
 	var barra := Rect2(x, area.end.y - 22, area.size.x - 8, 3)
 	draw_rect(barra, Paleta.FUNDO_ESCURO)
 	draw_rect(Rect2(barra.position, Vector2(barra.size.x * float(barco["progressoGate"]), 3)), Paleta.MONTAGEM_LIMPA)

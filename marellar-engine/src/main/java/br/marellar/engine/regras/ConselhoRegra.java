@@ -20,10 +20,8 @@ import br.marellar.engine.relatorio.RelatorioConselho.Opcao;
 import br.marellar.engine.relatorio.Valuation;
 
 import java.math.BigDecimal;
-import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -34,7 +32,6 @@ import java.util.Map;
 public final class ConselhoRegra {
 
     public static final List<String> OPCOES = List.of("TREINAR_NR", "CONTRATAR_2", "ANTECIPAR_COMPRA", "ENCONTRO_EQUIPE");
-    private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
 
     private ConselhoRegra() {
     }
@@ -85,8 +82,7 @@ public final class ConselhoRegra {
         }
 
         var r = partida.relogio();
-        String mesRef = r.mesReferencia().getMonth().getDisplayName(TextStyle.SHORT, PT_BR).replace(".", "")
-                + "/" + r.mesReferencia().getYear();
+        String mesRef = r.rotuloMesReferencia();
         var seguranca = partida;
         RelatorioConselho relatorio = new RelatorioConselho(
                 r.mes() + 1, mesRef, metas, dre, partida.caixa(), v.valor(), v.descontoPercentual(),
@@ -107,15 +103,14 @@ public final class ConselhoRegra {
     }
 
     private static Meta meta(Textos textos, int indice, String alvo, boolean cumprida, String resultado) {
-        var no = textos.no("metas").get(indice);
-        return new Meta(no.get("id").asText(), no.get("descricao").asText().replace("{alvo}", alvo), cumprida, resultado);
+        return new Meta(textos.campo("metas", indice, "id"),
+                textos.campo("metas", indice, "descricao").replace("{alvo}", alvo), cumprida, resultado);
     }
 
     /** Conselheiro financeiro fala de caixa; a de operacoes, de seguranca e metas. Serio quando ha problema. */
     private static List<Fala> falas(Partida partida, List<Meta> metas, boolean caixaNegativo, Dre dre) {
         Textos textos = partida.parametros().textos();
         MesContabil mes = partida.mes();
-        var conselheiros = textos.no("conselheiros");
         boolean caixaOk = metas.get(1).cumprida();
         boolean todasOk = metas.stream().allMatch(Meta::cumprida);
         BigDecimal limiteCompras = mes.custoMaterial().multiply(partida.parametros().financeiro().conselho().fatorMaterialDemais());
@@ -145,11 +140,11 @@ public final class ConselhoRegra {
         } else {
             operacoes = "humor.tudoBem";
         }
-        return List.of(fala(textos, conselheiros.get(0), financeiro), fala(textos, conselheiros.get(1), operacoes));
+        return List.of(fala(textos, 0, financeiro), fala(textos, 1, operacoes));
     }
 
-    private static Fala fala(Textos textos, com.fasterxml.jackson.databind.JsonNode conselheiro, String caminho) {
-        return new Fala(conselheiro.get("nome").asText(), conselheiro.get("papel").asText(),
+    private static Fala fala(Textos textos, int conselheiro, String caminho) {
+        return new Fala(textos.campo("conselheiros", conselheiro, "nome"), textos.campo("conselheiros", conselheiro, "papel"),
                 textos.formatar("conselho." + caminho, Map.of()), caminho.startsWith("serio"));
     }
 

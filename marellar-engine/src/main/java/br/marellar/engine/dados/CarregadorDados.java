@@ -2,7 +2,6 @@ package br.marellar.engine.dados;
 
 import com.fasterxml.jackson.core.JsonProcessingException;
 import com.fasterxml.jackson.databind.DeserializationFeature;
-import com.fasterxml.jackson.databind.JsonNode;
 import com.fasterxml.jackson.databind.ObjectMapper;
 import com.fasterxml.jackson.databind.json.JsonMapper;
 
@@ -82,9 +81,15 @@ public final class CarregadorDados {
                 ler(FORNECEDORES, fonte.ler(FORNECEDORES), ParametrosFornecedores.class),
                 ler(EVENTOS, fonte.ler(EVENTOS), ParametrosEventos.class),
                 ler(FINANCEIRO, fonte.ler(FINANCEIRO), ParametrosFinanceiro.class),
-                new Textos(ler(TEXTOS, fonte.ler(TEXTOS), JsonNode.class)));
+                new Textos(lerArvore(TEXTOS, fonte.ler(TEXTOS))));
         ValidadorDados.validar(parametros);
         return parametros;
+    }
+
+    /** Le um JSON como arvore de Map/List/String/numero (sem tipos do Jackson). */
+    @SuppressWarnings("unchecked")
+    private static java.util.Map<String, Object> lerArvore(String arquivo, String conteudo) {
+        return ler(arquivo, conteudo, java.util.LinkedHashMap.class);
     }
 
     /** Converte um JSON no tipo pedido; qualquer erro vira uma mensagem com o nome do arquivo e a posicao. */

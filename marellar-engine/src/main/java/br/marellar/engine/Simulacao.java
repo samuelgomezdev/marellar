@@ -46,10 +46,8 @@ import br.marellar.engine.save.SaveIncompativelException;
 import java.math.BigDecimal;
 import java.math.RoundingMode;
 import java.time.LocalDate;
-import java.time.format.TextStyle;
 import java.util.ArrayList;
 import java.util.List;
-import java.util.Locale;
 import java.util.Map;
 
 /**
@@ -60,7 +58,6 @@ import java.util.Map;
  */
 public final class Simulacao {
 
-    private static final Locale PT_BR = Locale.forLanguageTag("pt-BR");
 
     private final Partida partida;
     private final LocalDate inicio;
@@ -101,13 +98,7 @@ public final class Simulacao {
         partida.pessoas().forEach(p -> texto.append(visao(p)).append('\n'));
         partida.eventos().forEach(e -> texto.append(e).append('\n'));
         texto.append(partida.caixa().toPlainString());
-        try {
-            byte[] hash = java.security.MessageDigest.getInstance("SHA-256")
-                    .digest(texto.toString().getBytes(java.nio.charset.StandardCharsets.UTF_8));
-            return java.util.HexFormat.of().formatHex(hash);
-        } catch (java.security.NoSuchAlgorithmException e) {
-            throw new IllegalStateException("SHA-256 indisponivel", e);
-        }
+        return br.marellar.engine.save.Sha256.hex(texto.toString());
     }
 
     /**
@@ -248,8 +239,7 @@ public final class Simulacao {
 
     public synchronized EstadoPartida estado() {
         Relogio r = partida.relogio();
-        String mesRef = r.mesReferencia().getMonth().getDisplayName(TextStyle.SHORT, PT_BR).replace(".", "")
-                + "/" + r.mesReferencia().getYear();
+        String mesRef = r.rotuloMesReferencia();
         return new EstadoPartida(
                 partida.semente(),
                 r.tick(),

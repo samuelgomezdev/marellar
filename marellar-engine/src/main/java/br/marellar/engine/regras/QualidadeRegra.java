@@ -168,13 +168,12 @@ public final class QualidadeRegra {
 
     /** Sorteio de Bernoulli com o gerador da partida. Probabilidade 0 nunca acontece; 1 sempre. */
     public static boolean sortear(Partida partida, BigDecimal probabilidade) {
-        double sorteio = partida.aleatorio().nextDouble();
-        return BigDecimal.valueOf(sorteio).compareTo(probabilidade) < 0;
+        return partida.aleatorio().sortear(probabilidade);
     }
 
     private static String fala(Partida partida, String caminho) {
         int quantidade = partida.parametros().textos().quantidadeFalas(caminho);
-        return partida.parametros().textos().fala(caminho, partida.aleatorio().nextInt(Math.max(1, quantidade)));
+        return partida.parametros().textos().fala(caminho, partida.aleatorio().proximoInt(Math.max(1, quantidade)));
     }
 
     private static String primeiroNome(Pessoa p) {
