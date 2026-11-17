@@ -268,7 +268,7 @@ public final class ValidadorDados {
                 "eventos.concessao", "eventos.rncAberta", "eventos.paradoMaterial", "eventos.materialChegou",
                 "eventos.pedidoFeito", "eventos.quebraPeca", "eventos.acidente", "eventos.demissao",
                 "eventos.contratacao", "eventos.chegadaContratado", "eventos.treinamentoInicio",
-                "eventos.treinamentoFim", "eventos.subiuNivel", "eventos.retornoAfastamento", "eventos.umAUm",
+                "eventos.treinamentoFimTecnico", "eventos.treinamentoFimSeguranca", "eventos.subiuNivel", "eventos.retornoAfastamento", "eventos.umAUm",
                 "eventos.oitoDRespondido", "eventos.oitoDVencido", "eventos.scorecard", "eventos.cotaRecebida",
                 "eventos.salarios", "eventos.decisaoConselho", "eventos.derrota",
                 "conselho.serio.acidente", "conselho.serio.caixaRuim", "conselho.serio.metaPerdida",

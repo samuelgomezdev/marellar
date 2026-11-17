@@ -11,6 +11,7 @@ import br.marellar.engine.dominio.Treinamento;
 import br.marellar.engine.ordens.OrdemInvalidaException;
 
 import java.math.BigDecimal;
+import java.math.RoundingMode;
 import java.util.ArrayList;
 import java.util.Map;
 
@@ -51,12 +52,20 @@ public final class PessoasRegra {
             }
             case EM_TREINAMENTO -> p.concluirTreinamento().ifPresent(t -> {
                 if (t == Treinamento.TECNICO) {
-                    p.definirNivel(p.nivel() + 1);
+                    int antes = p.nivel();
+                    p.definirNivel(antes + 1);
+                    var pessoas = partida.parametros().pessoas();
+                    var catalogo = partida.parametros().catalogoNc();
+                    evento(partida, TipoEvento.PESSOA, "eventos.treinamentoFimTecnico", Map.of(
+                            "pessoa", p.nome(), "nivel", String.valueOf(p.nivel()),
+                            "nc", variacao(catalogo.fatorDoNivelDaEquipe(p.nivel()), catalogo.fatorDoNivelDaEquipe(antes)),
+                            "velocidade", variacao(pessoas.fatorDoNivel(p.nivel()), pessoas.fatorDoNivel(antes))));
                 } else {
                     p.definirTreinoSegurancaEmDia(true);
+                    BigDecimal mult = partida.parametros().eventos().acidente().multiplicadorTreinoVencido();
+                    evento(partida, TipoEvento.PESSOA, "eventos.treinamentoFimSeguranca", Map.of(
+                            "pessoa", p.nome(), "acidente", variacao(BigDecimal.ONE, mult)));
                 }
-                evento(partida, TipoEvento.PESSOA, "eventos.treinamentoFim",
-                        Map.of("pessoa", p.nome(), "treinamento", t.nome()));
             });
             case AFASTADA -> {
                 p.mudarSituacao(SituacaoPessoa.ATIVA, 0);
@@ -159,6 +168,13 @@ public final class PessoasRegra {
             throw new OrdemInvalidaException(p.nome() + " nao esta mais na empresa");
         }
         return p;
+    }
+
+    /** Variacao percentual de {@code antes} para {@code depois}, com sinal: "+20%", "-20%". */
+    static String variacao(BigDecimal depois, BigDecimal antes) {
+        BigDecimal pct = depois.divide(antes, 6, RoundingMode.HALF_EVEN).subtract(BigDecimal.ONE)
+                .multiply(BigDecimal.valueOf(100)).setScale(0, RoundingMode.HALF_EVEN);
+        return (pct.signum() > 0 ? "+" : "") + pct.toPlainString() + "%";
     }
 
     private static void evento(Partida partida, TipoEvento tipo, String texto, Map<String, String> valores) {

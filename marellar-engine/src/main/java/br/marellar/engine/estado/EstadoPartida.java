@@ -54,7 +54,17 @@ public record EstadoPartida(
         RelatorioConselho conselho,
         MotivoDerrota derrota,
         BigDecimal horasOciosas,
-        long ultimoEventoId) {
+        long ultimoEventoId,
+        TreinamentosVisao treinamentos) {
+
+    /**
+     * Efeito de cada nivel e dos treinamentos, para o cliente explicar os botoes de treino.
+     * Sao os parametros de data/ (pessoas.json, nc-catalogo.json e eventos.json), sem regra nova.
+     */
+    public record TreinamentosVisao(int diasTreinamento, List<NivelVisao> niveis, BigDecimal multiplicadorAcidenteSemNr) {}
+
+    /** fatorVelocidade multiplica a HH produzida; fatorNc multiplica a chance de NC no gate. */
+    public record NivelVisao(int nivel, BigDecimal fatorVelocidade, BigDecimal fatorNc, BigDecimal salario) {}
 
     public record BarcoVisao(
             String id,
