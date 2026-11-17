@@ -1590,7 +1590,7 @@ function compartimentos(ctx) {
     const K = consoleDims(ctx), yc = apoio(ctx).conves(K.u), Xc = K.u * L;
     return [
       { id: 'PLAT', nome: 'Plataforma e motores de popa', x0: -prof - 1.5, x1: 0, y0: -1, y1: alto, z0: -hB, z1: hB, piso: d.T + 0.3 },
-      { id: 'CONS', nome: 'Interior do console (WC)', x0: Xc - K.c / 2 + 0.03, x1: Xc + K.c / 2 - 0.03, y0: yc - 0.1, y1: yc + K.a, z0: -K.w / 2, z1: K.w / 2, piso: yc, olho: 1.05 },
+      { id: 'CONS', nome: 'Interior do console (WC)', x0: Xc - K.c / 2 + 0.03, x1: Xc + K.c / 2 - 0.03, y0: yc - 0.1, y1: yc + K.a, z0: -K.w / 2, z1: K.w / 2, piso: yc, olho: 0.75 },
       { id: 'PORAO', nome: 'Porão (sob o piso)', x0: 0, x1: 0.64 * L, y0: -1, y1: d.Daft - 0.03, z0: -hB, z1: hB, piso: 0.3, corte: d.Daft - 0.12 },
       { id: 'CMD', nome: 'Console e leaning post', x0: 0.33 * L, x1: 0.64 * L, y0: d.Daft - 0.03, y1: alto, z0: -hB, z1: hB, piso: yc },
       { id: 'CPT', nome: 'Praça de popa', x0: 0, x1: 0.33 * L, y0: d.Daft - 0.03, y1: alto, z0: -hB, z1: hB, piso: d.Daft },
