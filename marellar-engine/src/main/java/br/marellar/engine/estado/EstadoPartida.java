@@ -7,6 +7,7 @@ import br.marellar.engine.dominio.Gravidade;
 import br.marellar.engine.dominio.Linha;
 import br.marellar.engine.dominio.MotivoDerrota;
 import br.marellar.engine.dominio.MotivoPausa;
+import br.marellar.engine.dominio.NcInspecao3d;
 import br.marellar.engine.dominio.Lancamento;
 import br.marellar.engine.relatorio.RelatorioConselho;
 import br.marellar.engine.dominio.Origem;
@@ -54,7 +55,8 @@ public record EstadoPartida(
         RelatorioConselho conselho,
         MotivoDerrota derrota,
         BigDecimal horasOciosas,
-        long ultimoEventoId) {
+        long ultimoEventoId,
+        List<NcInspecao3d> ncsInspecao) {
 
     public record BarcoVisao(
             String id,

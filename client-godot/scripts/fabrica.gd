@@ -135,6 +135,14 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 		i = args.find("--vista")
 		if i >= 0 and i + 1 < args.size() and tela_3d.visible:
 			tela_3d.mudar_vista(args[i + 1])
+		i = args.find("--clique")   # só para testes: clica num ponto da tela de inspeção (x,y em pixels da tela base)
+		if i >= 0 and i + 1 < args.size() and tela_3d.visible:
+			var xy := args[i + 1].split(",")
+			await get_tree().process_frame
+			await get_tree().physics_frame
+			tela_3d.clicar(Vector2(float(xy[0]), float(xy[1])) - tela_3d.position)
+			if args.has("--registrar"):
+				tela_3d._formulario._confirmar()
 	if args.has("--saves"):
 		await _abrir_saves()
 	i = args.find("--painel")
@@ -441,6 +449,7 @@ func _montar_inspecao_3d() -> void:
 	tela_3d.size = Vector2(size.x, size.y - ALTURA_TOPO - ALTURA_BASE)
 	add_child(tela_3d)
 	tela_3d.fechar.connect(_fechar_inspecao_3d)
+	tela_3d.registrar_nc.connect(_registrar_nc_3d)
 
 
 func _abrir_inspecao_3d() -> void:
@@ -449,6 +458,20 @@ func _abrir_inspecao_3d() -> void:
 		_avisar("Selecione um barco para inspecionar em 3D.")
 		return
 	tela_3d.abrir(barco)
+	tela_3d.atualizar_ncs(estado.get("ncsInspecao", []))
+
+
+## NC marcada no 3D: vira a ordem RegistrarNcInspecao; o motor valida e devolve o estado com a NC.
+func _registrar_nc_3d(ordem: Dictionary) -> void:
+	erro_api = ""
+	var novo = await Api.ordem(ordem)
+	if novo == null:
+		tela_3d.resultado_nc(erro_api if not erro_api.is_empty() else "O motor recusou a NC.")
+		return
+	estado = novo
+	tela_3d.resultado_nc("")
+	await _buscar_eventos()
+	_atualizar_interface()
 
 
 func _fechar_inspecao_3d() -> void:
@@ -496,6 +519,8 @@ func _atualizar_interface() -> void:
 	botao_segurar.disabled = not ativo
 	botao_segurar.text = "Liberar" if ativo and barco["retido"] else "Segurar"
 	botao_conselho.disabled = estado.get("conselho") == null
+	if tela_3d != null and tela_3d.visible:
+		tela_3d.atualizar_ncs(estado.get("ncsInspecao", []))
 	if tela_ficha.visible:
 		if barco.is_empty():
 			tela_ficha.visible = false

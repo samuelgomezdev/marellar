@@ -4,9 +4,12 @@ extends Control
 ## A malha vem de assets/barcos/marellar-<linha>.glb (exportada da página three.js; veja docs/ferramentas/exportar_barco.mjs).
 ## O visual é do jogo: cena em baixa resolução, luz em degraus, contorno escuro e redução para a Endesga 32.
 ## Vistas: exterior (órbita), raio-X, corte longitudinal, plantas (de cima, ortográficas) e, por compartimento,
-## "De cima" e "Entrar" (primeira pessoa). Nenhuma regra de jogo aqui: o gate e o barco vêm do estado do motor.
+## "De cima" e "Entrar" (primeira pessoa). Clicar numa peça abre o formulário de NC; a NC vira a ordem
+## RegistrarNcInspecao do motor e aparece como marcador colorido pela gravidade.
+## Nenhuma regra de jogo aqui: o gate, o barco e as NCs vêm do estado do motor.
 
 signal fechar
+signal registrar_nc(ordem: Dictionary)
 
 const REDUCAO := 1            # pixels da tela base (640x360) por pixel do 3D: 1 = resolução cheia do jogo
 ## Reduzir para a Endesga 32 troca as cores dos itens (teca vira laranja, cinzas viram azul); fica desligado
@@ -20,6 +23,8 @@ const SEM_CORTE := 1000.0
 const ETAPA_DO_GATE := {"RE": -1, "DM": 0, "BA": 1, "BF": 3, "ST": 4, "CT": 4, "PI": 5, "TR": 5, "TM": 5, "ET": 5}
 const VISTAS := [["ext", "Exterior"], ["raiox", "Raio-X"], ["corte", "Corte"], ["inf", "Planta inf."], ["pri", "Planta sup."]]
 const VELOCIDADE_ANDAR := 2.2  # m/s em primeira pessoa
+const COR_GRAVIDADE := {"LEVE": Color("#fee761"), "MEDIA": Color("#f77622"), "CRITICA": Color("#e43b44")}
+const LARGURA_FORMULARIO := 236
 
 const TOON := preload("res://shaders/toon.gdshader")
 const TOON_VIDRO := preload("res://shaders/toon_vidro.gdshader")
@@ -62,6 +67,15 @@ var _arrastando := false
 var _botoes_vista := {}
 var _lista_comps: OptionButton
 var _dica: Label
+var _corpos := {}                    # StaticBody3D -> MeshInstance3D (colisão de cada malha, para o clique)
+var _corte_y := SEM_CORTE
+var _corte_z := SEM_CORTE
+var _destacado: Node3D = null        # item sob o mouse
+var _toque := Vector2(-1, -1)        # onde o botão foi apertado (clique sem arrastar abre a NC)
+var _ncs: Array = []                 # NcInspecao3d do motor, só deste barco
+var _marcas: Control
+var _formulario: FormularioNc3d
+var _texto_item := ""
 
 
 func _ready() -> void:
@@ -89,6 +103,10 @@ func _ready() -> void:
 	_fantasma.shader = TOON_VIDRO
 	_fantasma.set_shader_parameter("cor", Color(Paleta.PISO, 0.13))
 	_montar_mundo()
+	_marcas = Control.new()
+	_marcas.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	_marcas.draw.connect(_desenhar_marcas)
+	add_child(_marcas)
 	_montar_botoes()
 	_dica = Label.new()
 	_dica.add_theme_color_override("font_color", Paleta.TEXTO)
@@ -100,6 +118,11 @@ func _ready() -> void:
 	_dica.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_dica.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_dica)
+	_formulario = FormularioNc3d.new()
+	_formulario.visible = false
+	_formulario.confirmar.connect(_confirmar_nc)
+	_formulario.cancelar.connect(func(): _formulario.visible = false)
+	add_child(_formulario)
 	resized.connect(_posicionar)
 	_posicionar()
 
@@ -114,6 +137,11 @@ func _posicionar() -> void:
 	barra.size = Vector2(size.x - 8, ALTURA_BOTOES - 4)
 	_dica.position = Vector2(4, size.y - ALTURA_BOTOES - 17)
 	_dica.size = Vector2(0, 15)   # largura do texto
+	_marcas.position = _container.position
+	_marcas.size = _container.size
+	_formulario.position = Vector2(size.x - LARGURA_FORMULARIO - 4, ALTURA_TITULO + 4)
+	_formulario.size = Vector2(LARGURA_FORMULARIO, 0)
+	_formulario.custom_minimum_size.x = LARGURA_FORMULARIO
 
 
 ## Abre a inspeção de um barco do estado (BarcoVisao do motor).
@@ -123,12 +151,16 @@ func abrir(novo: Dictionary) -> void:
 	if linha != _linha:
 		_carregar_linha(linha)
 	_aplicar_gate()
+	_formulario.visible = false
 	visible = true
 	mudar_vista("ext")
 
 
 ## Esc: de uma vista qualquer volta ao exterior; no exterior, devolve false (quem chamou fecha a inspeção).
 func voltar() -> bool:
+	if _formulario.visible:
+		_formulario.visible = false
+		return true
 	if vista == "ext":
 		return false
 	mudar_vista("ext")
@@ -245,8 +277,16 @@ func _carregar_linha(linha: int) -> void:
 	for no in _modelo.find_children("*", "Node3D", true, false):
 		if no.has_meta("extras") and (no.get_meta("extras") as Dictionary).has("codigo"):
 			_itens.append(no)
+	_corpos.clear()
 	for m in _modelo.find_children("*", "MeshInstance3D", true, false):
-		_pixelizar(m as MeshInstance3D)
+		var mi := m as MeshInstance3D
+		_pixelizar(mi)
+		mi.create_trimesh_collision()   # o clique acha a peça por raio (física do SubViewport)
+		for filho in mi.get_children():
+			if filho is StaticBody3D:
+				_corpos[filho] = mi
+	_formulario.catalogo = dados.get("defeitos", [])
+	_formulario.categorias = dados.get("categorias", {})
 	_berco = _montar_berco(_dim("L", 10.0), _dim("B", 3.4))
 	_viewport.add_child(_berco)
 	var caixa := _caixa_do_modelo()
@@ -380,6 +420,8 @@ func _aplicar_gate() -> void:
 	for no in _itens:
 		var e: Dictionary = no.get_meta("extras")
 		no.visible = bool(e.get("padrao", false)) and int(e.get("etapa", 0)) <= etapa
+	for corpo in _corpos:   # peça escondida não recebe clique
+		(corpo as StaticBody3D).collision_layer = 1 if (_corpos[corpo] as Node3D).is_visible_in_tree() else 0
 	var na_agua := _na_agua()
 	_agua.visible = na_agua
 	_berco.visible = not na_agua
@@ -422,6 +464,8 @@ func mudar_vista(nova: String) -> void:
 			_arfagem = deg_to_rad(-22.0)
 	RenderingServer.global_shader_parameter_set("inspecao_corte_y", corte_y)
 	RenderingServer.global_shader_parameter_set("inspecao_corte_z", corte_z)
+	_corte_y = corte_y
+	_corte_z = corte_z
 	# a água da piscina passa por dentro do casco: nas vistas cortadas e dentro do barco ela sai de cena
 	_agua.visible = _na_agua() and nova in ["ext", "raiox"]
 	if nova == "dentro":
@@ -524,11 +568,17 @@ func _gui_input(event: InputEvent) -> void:
 		var b := event as InputEventMouseButton
 		if b.button_index == MOUSE_BUTTON_LEFT:
 			_arrastando = b.pressed
+			if b.pressed:
+				_toque = b.position
+			elif _toque.distance_to(b.position) < 4.0:
+				clicar(b.position)
 		elif b.pressed and b.button_index == MOUSE_BUTTON_WHEEL_UP:
 			_aproximar(0.88)
 		elif b.pressed and b.button_index == MOUSE_BUTTON_WHEEL_DOWN:
 			_aproximar(1.0 / 0.88)
 		accept_event()
+	elif event is InputEventMouseMotion and not _arrastando:
+		_passar((event as InputEventMouseMotion).position)
 	elif event is InputEventMouseMotion and _arrastando:
 		var mov := (event as InputEventMouseMotion).relative
 		if vista == "dentro":
@@ -567,6 +617,8 @@ func _andar(passo: Vector3) -> void:
 
 
 func _process(delta: float) -> void:
+	if visible:
+		_marcas.queue_redraw()   # os marcadores acompanham a câmera
 	if not visible or vista != "dentro":
 		return
 	var frente := Vector3(cos(_rumo), 0, sin(_rumo))
@@ -624,6 +676,143 @@ func _atualizar_dica() -> void:
 	_dica.text = texto
 
 
+# ---------------------------------------------------------------- NC no ponto clicado
+
+## Peça sob um ponto da tela (coordenadas desta tela): {ponto (mundo), malha, extras} ou {} se não há peça.
+## Ignora o que está cortado e, no raio-X, a casca (o clique passa por ela, como na página three.js).
+func _acertar(pos: Vector2) -> Dictionary:
+	if _modelo == null:
+		return {}
+	var no_3d := (pos - _container.position) / float(REDUCAO)
+	var origem := _camera.project_ray_origin(no_3d)
+	var destino := origem + _camera.project_ray_normal(no_3d) * 300.0
+	var espaco := _camera.get_world_3d().direct_space_state   # own_world_3d: o mundo vem da câmera
+	var excluir: Array[RID] = []
+	for tentativa in 24:
+		var consulta := PhysicsRayQueryParameters3D.create(origem, destino)
+		consulta.exclude = excluir
+		var r := espaco.intersect_ray(consulta)
+		if r.is_empty():
+			return {}
+		var corpo: Object = r["collider"]
+		var malha: MeshInstance3D = _corpos.get(corpo)
+		var ponto: Vector3 = r["position"]
+		var extras := _extras_do_item(malha) if malha != null else {}
+		var cortado := ponto.y > _corte_y + 0.001 or ponto.z > _corte_z + 0.001
+		if malha == null or cortado or (vista == "raiox" and extras.get("casca", false)):
+			excluir.append(r["rid"])
+			continue
+		return {"ponto": ponto, "malha": malha, "extras": extras}
+	return {}
+
+
+func _passar(pos: Vector2) -> void:
+	var r := _acertar(pos)
+	var item: Node3D = null
+	if not r.is_empty():
+		item = _no_do_item(r["malha"])
+	if item == _destacado:
+		return
+	_acender(_destacado, false)
+	_destacado = item
+	_acender(item, true)
+	_texto_item = "" if r.is_empty() else "%s · %s" % [r["extras"].get("codigo", ""), str(r["extras"].get("descricao", "")).capitalize()]
+
+
+## Clique sem arrastar: abre o formulário de NC no ponto da peça.
+func clicar(pos: Vector2) -> void:
+	if str(barco.get("gateAtual", "")) == "RE":
+		return
+	var r := _acertar(pos)
+	if r.is_empty():
+		return
+	var local: Vector3 = _modelo.to_local(r["ponto"])
+	var extras: Dictionary = r["extras"]
+	# como na página three.js: vale o compartimento do item; sem ele, a caixa do ambiente que contém o ponto
+	var comp := str(extras.get("compartimento", "")) if extras.get("compartimento") != null else ""
+	if comp.is_empty():
+		comp = str(_compartimento_no_ponto(local).get("id", ""))
+	var nome := ""
+	for c in dados.get("compartimentos", []):
+		if c["id"] == comp:
+			nome = str(c["nome"])
+	if nome.is_empty() and comp == "CASCO":
+		nome = "Casco, obras vivas" if local.y <= _dim("T", 0.5) else "Casco, obras mortas"
+	_formulario.abrir(local, extras, comp, nome, str(barco.get("gateAtual", "")))
+	_posicionar()
+	_formulario.reset_size()
+
+
+func _compartimento_no_ponto(p: Vector3) -> Dictionary:
+	for c in dados.get("compartimentos", []):
+		if p.x >= float(c["x0"]) and p.x <= float(c["x1"]) and p.y >= float(c["y0"]) and p.y <= float(c["y1"]) \
+				and p.z >= float(c["z0"]) and p.z <= float(c["z1"]):
+			return c
+	return {}
+
+
+func _confirmar_nc(dados_nc: Dictionary) -> void:
+	var ordem := dados_nc.duplicate()
+	ordem["tipo"] = "RegistrarNcInspecao"
+	ordem["barcoId"] = barco.get("id", "")
+	registrar_nc.emit(ordem)
+
+
+## Resposta do motor: erro aparece no formulário; sucesso fecha o formulário.
+func resultado_nc(erro: String) -> void:
+	if erro.is_empty():
+		_formulario.visible = false
+	else:
+		_formulario.mostrar_erro(erro)
+
+
+## NCs da inspeção vindas do estado do motor (todas as da partida; aqui ficam só as deste barco).
+func atualizar_ncs(todas: Array) -> void:
+	_ncs = todas.filter(func(n): return n["barcoId"] == barco.get("id", ""))
+	queue_redraw()
+
+
+func _no_do_item(no: Node) -> Node3D:
+	for a in range(12):
+		if no == null:
+			break
+		if no.has_meta("extras") and (no.get_meta("extras") as Dictionary).has("codigo"):
+			return no as Node3D
+		no = no.get_parent()
+	return null
+
+
+func _acender(item: Node3D, ligado: bool) -> void:
+	if item == null:
+		return
+	for m in item.find_children("*", "MeshInstance3D", true, false):
+		for mat in _materiais.get(m, []):
+			if mat is ShaderMaterial and (mat as ShaderMaterial).shader == TOON:
+				(mat as ShaderMaterial).set_shader_parameter("destaque", Color(0.10, 0.22, 0.45) if ligado else Color.BLACK)
+
+
+## Marcadores das NCs: quadrado de 7x7 pixels na cor da gravidade, com o número, sempre por cima.
+func _desenhar_marcas() -> void:
+	if _modelo == null:
+		return
+	for nc in _ncs:
+		var local := Vector3(float(nc["x"]), float(nc["y"]), float(nc["z"]))
+		var mundo := _modelo.to_global(local)
+		if _camera.is_position_behind(mundo) or mundo.y > _corte_y + 0.01 or mundo.z > _corte_z + 0.01:
+			continue
+		var p := (_camera.unproject_position(mundo) * float(REDUCAO)).floor()
+		var cor: Color = COR_GRAVIDADE.get(str(nc["gravidade"]), Paleta.ALERTA)
+		_marcas.draw_rect(Rect2(p - Vector2(4, 4), Vector2(9, 9)), Paleta.FUNDO_ESCURO)
+		_marcas.draw_rect(Rect2(p - Vector2(3, 3), Vector2(7, 7)), cor)
+		_marcas.draw_string(fonte, p + Vector2(6, -2), str(int(nc["numero"])), HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, cor)
+	if not _texto_item.is_empty() and not _formulario.visible:   # item sob o mouse
+		var largura := fonte.get_string_size(_texto_item, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto).x + 8
+		_marcas.draw_rect(Rect2(4, 4, largura, 15), Color(Paleta.FUNDO_ESCURO, 0.85))
+		_marcas.draw_string(fonte, Vector2(8, 15), _texto_item, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Paleta.TEXTO_CLARO)
+
+
+# ---------------------------------------------------------------- moldura
+
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, size.x, ALTURA_TITULO), Paleta.FUNDO)
 	draw_rect(Rect2(0, size.y - ALTURA_BOTOES, size.x, ALTURA_BOTOES), Paleta.FUNDO)
@@ -632,4 +821,6 @@ func _draw() -> void:
 	draw_string(fonte_titulo, Vector2(6, 12), "INSPEÇÃO 3D · CASCO %s" % barco["id"], HORIZONTAL_ALIGNMENT_LEFT, -1,
 			tamanho_titulo, Paleta.ALERTA)
 	var gate := "%s · %s" % [barco.get("gateAtual", ""), barco.get("nomeGate", "")]
+	if not _ncs.is_empty():
+		gate = "%d NC 3D · %s" % [_ncs.size(), gate]
 	draw_string(fonte, Vector2(0, 12), gate, HORIZONTAL_ALIGNMENT_RIGHT, size.x - 6, tamanho_texto, Paleta.TEXTO_CLARO)

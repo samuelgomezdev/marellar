@@ -120,6 +120,12 @@ class ParidadeJacksonTest {
             if (passo == 5) {
                 ordem(sim, ref, new Ordem.Treinar(p.id(), Treinamento.SEGURANCA));
             }
+            if (passo == 2) {   // NC marcada na inspecao 3D: numeros com casas decimais e texto com acento
+                ordem(sim, ref, new Ordem.RegistrarNcInspecao(e.barcos().get(0).id(), "TEC-INFILTRA",
+                        br.marellar.engine.dominio.Gravidade.CRITICA, "VTR-33-011", "CMD",
+                        new java.math.BigDecimal("5.5512"), new java.math.BigDecimal("2.07"),
+                        new java.math.BigDecimal("-0.3"), "água sob a teca"));
+            }
             if (e.conselho() != null && e.conselho().decisaoEscolhida() == null && !e.conselho().opcoes().isEmpty()) {
                 ordem(sim, ref, new Ordem.EscolherDecisaoConselho(e.conselho().opcoes().get(0).id()));
             }
@@ -142,6 +148,12 @@ class ParidadeJacksonTest {
                 .isEqualTo(new Ordem.DecidirNc("NC-0003", DecisaoNc.RETRABALHO));
         assertThat(CodecGerado.lerOrdem(Json.ler("{\"barcoId\":\"B2\",\"posicao\":1,\"tipo\":\"DefinirPrioridade\"}")))
                 .isEqualTo(new Ordem.DefinirPrioridade("B2", 1));
+        assertThat(CodecGerado.lerOrdem(Json.ler("{\"tipo\":\"RegistrarNcInspecao\",\"barcoId\":\"33-002\","
+                + "\"codigoDefeito\":\"ACA-RISCO\",\"gravidade\":\"LEVE\",\"item\":\"VTR-33-011\",\"compartimento\":\"CMD\","
+                + "\"x\":5.5,\"y\":2.07,\"z\":-0.3,\"observacao\":\"\"}")))
+                .isEqualTo(new Ordem.RegistrarNcInspecao("33-002", "ACA-RISCO", br.marellar.engine.dominio.Gravidade.LEVE,
+                        "VTR-33-011", "CMD", new java.math.BigDecimal("5.5"), new java.math.BigDecimal("2.07"),
+                        new java.math.BigDecimal("-0.3"), ""));
     }
 
     private static void ordem(Simulacao sim, Simulacao ref, Ordem o) {

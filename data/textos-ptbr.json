@@ -108,6 +108,7 @@
     "demissao": "{pessoa} pediu demissão.",
     "contratacao": "{pessoa} contratado(a). Chega em {dias} dias úteis.",
     "chegadaContratado": "{pessoa} começou hoje na linha (nível {nivel}).",
+    "ncInspecao3d": "NC {numero} marcada na inspeção 3D do {barco} (gate {gate}): {descricao}, {gravidade}.",
     "treinamentoInicio": "{pessoa} saiu da linha para o treinamento de {treinamento} ({dias} dias).",
     "treinamentoFim": "{pessoa} terminou o treinamento de {treinamento}.",
     "subiuNivel": "{pessoa} subiu para o nível {nivel}.",

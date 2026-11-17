@@ -10,7 +10,8 @@ public record ParametrosJogo(
         ParametrosFornecedores fornecedores,
         ParametrosEventos eventos,
         ParametrosFinanceiro financeiro,
-        Textos textos) {
+        Textos textos,
+        CatalogoInspecao catalogoInspecao) {
 
     public ParametrosJogo {
         Objects.requireNonNull(linha33, "linha33");
@@ -20,25 +21,26 @@ public record ParametrosJogo(
         Objects.requireNonNull(eventos, "eventos");
         Objects.requireNonNull(financeiro, "financeiro");
         Objects.requireNonNull(textos, "textos");
+        Objects.requireNonNull(catalogoInspecao, "catalogoInspecao");
     }
 
     public ParametrosJogo comLinha33(ParametrosLinha nova) {
-        return new ParametrosJogo(nova, catalogoNc, pessoas, fornecedores, eventos, financeiro, textos);
+        return new ParametrosJogo(nova, catalogoNc, pessoas, fornecedores, eventos, financeiro, textos, catalogoInspecao);
     }
 
     public ParametrosJogo comCatalogoNc(CatalogoNc novo) {
-        return new ParametrosJogo(linha33, novo, pessoas, fornecedores, eventos, financeiro, textos);
+        return new ParametrosJogo(linha33, novo, pessoas, fornecedores, eventos, financeiro, textos, catalogoInspecao);
     }
 
     public ParametrosJogo comFinanceiro(ParametrosFinanceiro novo) {
-        return new ParametrosJogo(linha33, catalogoNc, pessoas, fornecedores, eventos, novo, textos);
+        return new ParametrosJogo(linha33, catalogoNc, pessoas, fornecedores, eventos, novo, textos, catalogoInspecao);
     }
 
     public ParametrosJogo comEventos(ParametrosEventos novos) {
-        return new ParametrosJogo(linha33, catalogoNc, pessoas, fornecedores, novos, financeiro, textos);
+        return new ParametrosJogo(linha33, catalogoNc, pessoas, fornecedores, novos, financeiro, textos, catalogoInspecao);
     }
 
     public ParametrosJogo comPessoas(ParametrosPessoas novas) {
-        return new ParametrosJogo(linha33, catalogoNc, novas, fornecedores, eventos, financeiro, textos);
+        return new ParametrosJogo(linha33, catalogoNc, novas, fornecedores, eventos, financeiro, textos, catalogoInspecao);
     }
 }

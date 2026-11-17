@@ -1,6 +1,7 @@
 package br.marellar.web.json;
 
 import br.marellar.engine.ResultadoAvanco;
+import br.marellar.engine.dados.CatalogoInspecao;
 import br.marellar.engine.dados.CatalogoNc;
 import br.marellar.engine.dados.ParametrosEventos;
 import br.marellar.engine.dados.ParametrosFinanceiro;
@@ -42,7 +43,7 @@ public final class GeradorCodec {
     /** Tipos de entrada (dados e ordens) e de saida (respostas da API). */
     static final List<Class<?>> RAIZES = List.of(
             ParametrosLinha.class, CatalogoNc.class, ParametrosPessoas.class, ParametrosFornecedores.class,
-            ParametrosEventos.class, ParametrosFinanceiro.class,
+            ParametrosEventos.class, ParametrosFinanceiro.class, CatalogoInspecao.class,
             Ordem.class, Save.class,
             EstadoPartida.class, EstadoPartida.BarcoVisao.class, ResultadoAvanco.class, Evento.class,
             RelatorioConselho.class,

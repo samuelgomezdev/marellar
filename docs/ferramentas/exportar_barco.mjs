@@ -47,6 +47,12 @@ try {
       : { glb: Array.from(window.__exportado.glb), json: window.__exportado.json });
     if (r.erro) throw new Error(`linha ${linha}: ${r.erro}`);
     const glb = Buffer.from(r.glb);
+    // o formulario de NC do jogo usa o catalogo ampliado de data/ (quem valida e o motor)
+    const info0 = JSON.parse(r.json);
+    const catalogo = JSON.parse(await readFile(join(raiz, 'data', 'nc-catalogo-inspecao.json'), 'utf-8'));
+    info0.categorias = catalogo.categorias;
+    info0.defeitos = catalogo.tipos;
+    r.json = JSON.stringify(info0, null, 1);
     await writeFile(join(saida, `marellar-${linha}.glb`), glb);
     await writeFile(join(saida, `marellar-${linha}.json`), r.json + '\n');
     const info = JSON.parse(r.json);

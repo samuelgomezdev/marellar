@@ -770,6 +770,71 @@ public final class CodecGerado {
         sb.append("}");
     }
 
+    public static br.marellar.engine.dados.CatalogoInspecao lerCatalogoInspecao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "CatalogoInspecao");
+        return new br.marellar.engine.dados.CatalogoInspecao(
+                Json.inteiro(m.get("versao")),
+                Json.texto(m.get("observacao")),
+                Json.mapa(m.get("categorias"), k -> k, o -> Json.texto(o)),
+                Json.lista(m.get("tipos"), o -> lerCatalogoInspecao_Defeito(o)));
+    }
+
+    public static void escreverCatalogoInspecao(StringBuilder sb, br.marellar.engine.dados.CatalogoInspecao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"versao\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.versao());
+        sb.append(",\"observacao\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.observacao());
+        sb.append(",\"categorias\":");
+        ((Json.Escritor<java.util.Map<java.lang.String, java.lang.String>>) (s, x) -> Json.mapa(s, x, (Json.Escritor<java.lang.String>) Json::texto)).escrever(sb, v.categorias());
+        sb.append(",\"tipos\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.dados.CatalogoInspecao.Defeito>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.dados.CatalogoInspecao.Defeito>) CodecGerado::escreverCatalogoInspecao_Defeito)).escrever(sb, v.tipos());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.dados.CatalogoInspecao.Defeito lerCatalogoInspecao_Defeito(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "Defeito");
+        return new br.marellar.engine.dados.CatalogoInspecao.Defeito(
+                Json.texto(m.get("codigo")),
+                Json.texto(m.get("descricao")),
+                Json.texto(m.get("categoria")),
+                lerGravidade(m.get("gravidade")),
+                Json.lista(m.get("gates"), o -> lerCodigoGate(o)),
+                Json.texto(m.get("base")),
+                Json.lista(m.get("aplica"), o -> Json.texto(o)));
+    }
+
+    public static void escreverCatalogoInspecao_Defeito(StringBuilder sb, br.marellar.engine.dados.CatalogoInspecao.Defeito v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"codigo\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.codigo());
+        sb.append(",\"descricao\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.descricao());
+        sb.append(",\"categoria\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.categoria());
+        sb.append(",\"gravidade\":");
+        ((Json.Escritor<br.marellar.engine.dominio.Gravidade>) CodecGerado::escreverGravidade).escrever(sb, v.gravidade());
+        sb.append(",\"gates\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.dominio.CodigoGate>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.dominio.CodigoGate>) CodecGerado::escreverCodigoGate)).escrever(sb, v.gates());
+        sb.append(",\"base\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.base());
+        sb.append(",\"aplica\":");
+        ((Json.Escritor<java.util.List<java.lang.String>>) (s, x) -> Json.lista(s, x, (Json.Escritor<java.lang.String>) Json::texto)).escrever(sb, v.aplica());
+        sb.append("}");
+    }
+
     public static br.marellar.engine.ordens.Ordem lerOrdem(Object no) {
         if (no == null) {
             return null;
@@ -788,6 +853,7 @@ public final class CodecGerado {
             case "FazerUmAUm" -> lerOrdem_FazerUmAUm(no);
             case "EscolherDecisaoConselho" -> lerOrdem_EscolherDecisaoConselho(no);
             case "MudarVelocidade" -> lerOrdem_MudarVelocidade(no);
+            case "RegistrarNcInspecao" -> lerOrdem_RegistrarNcInspecao(no);
             default -> throw new JsonInvalidoException("Ordem: tipo desconhecido " + tipo);
         };
     }
@@ -831,6 +897,10 @@ public final class CodecGerado {
         }
         if (v instanceof br.marellar.engine.ordens.Ordem.MudarVelocidade x) {
             escreverOrdem_MudarVelocidade(sb, x);
+            return;
+        }
+        if (v instanceof br.marellar.engine.ordens.Ordem.RegistrarNcInspecao x) {
+            escreverOrdem_RegistrarNcInspecao(sb, x);
             return;
         }
         throw new IllegalArgumentException("Ordem sem escritor: " + v);
@@ -981,7 +1051,8 @@ public final class CodecGerado {
                 lerRelatorioConselho(m.get("conselho")),
                 lerMotivoDerrota(m.get("derrota")),
                 Json.decimal(m.get("horasOciosas")),
-                Json.longo(m.get("ultimoEventoId")));
+                Json.longo(m.get("ultimoEventoId")),
+                Json.lista(m.get("ncsInspecao"), o -> lerNcInspecao3d(o)));
     }
 
     public static void escreverEstadoPartida(StringBuilder sb, br.marellar.engine.estado.EstadoPartida v) {
@@ -1041,6 +1112,8 @@ public final class CodecGerado {
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.horasOciosas());
         sb.append(",\"ultimoEventoId\":");
         ((Json.Escritor<Long>) Json::numero).escrever(sb, v.ultimoEventoId());
+        sb.append(",\"ncsInspecao\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.dominio.NcInspecao3d>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.dominio.NcInspecao3d>) CodecGerado::escreverNcInspecao3d)).escrever(sb, v.ncsInspecao());
         sb.append("}");
     }
 
@@ -1859,6 +1932,73 @@ public final class CodecGerado {
         Json.nome(sb, v);
     }
 
+    public static br.marellar.engine.dominio.NcInspecao3d lerNcInspecao3d(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "NcInspecao3d");
+        return new br.marellar.engine.dominio.NcInspecao3d(
+                Json.texto(m.get("id")),
+                Json.inteiro(m.get("numero")),
+                Json.texto(m.get("barcoId")),
+                lerCodigoGate(m.get("gate")),
+                Json.texto(m.get("codigoDefeito")),
+                Json.texto(m.get("codigoBase")),
+                Json.texto(m.get("categoria")),
+                Json.texto(m.get("descricao")),
+                lerGravidade(m.get("gravidade")),
+                Json.texto(m.get("item")),
+                Json.texto(m.get("compartimento")),
+                Json.decimal(m.get("x")),
+                Json.decimal(m.get("y")),
+                Json.decimal(m.get("z")),
+                Json.texto(m.get("observacao")),
+                Json.data(m.get("data")),
+                Json.inteiro(m.get("hora")));
+    }
+
+    public static void escreverNcInspecao3d(StringBuilder sb, br.marellar.engine.dominio.NcInspecao3d v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"id\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.id());
+        sb.append(",\"numero\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.numero());
+        sb.append(",\"barcoId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.barcoId());
+        sb.append(",\"gate\":");
+        ((Json.Escritor<br.marellar.engine.dominio.CodigoGate>) CodecGerado::escreverCodigoGate).escrever(sb, v.gate());
+        sb.append(",\"codigoDefeito\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.codigoDefeito());
+        sb.append(",\"codigoBase\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.codigoBase());
+        sb.append(",\"categoria\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.categoria());
+        sb.append(",\"descricao\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.descricao());
+        sb.append(",\"gravidade\":");
+        ((Json.Escritor<br.marellar.engine.dominio.Gravidade>) CodecGerado::escreverGravidade).escrever(sb, v.gravidade());
+        sb.append(",\"item\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.item());
+        sb.append(",\"compartimento\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.compartimento());
+        sb.append(",\"x\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.x());
+        sb.append(",\"y\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.y());
+        sb.append(",\"z\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.z());
+        sb.append(",\"observacao\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.observacao());
+        sb.append(",\"data\":");
+        ((Json.Escritor<java.time.LocalDate>) Json::data).escrever(sb, v.data());
+        sb.append(",\"hora\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.hora());
+        sb.append("}");
+    }
+
     public static br.marellar.engine.ResultadoAvanco lerResultadoAvanco(Object no) {
         if (no == null) {
             return null;
@@ -2191,6 +2331,50 @@ public final class CodecGerado {
         sb.append("{\"tipo\":\"MudarVelocidade\"");
         sb.append(",\"velocidade\":");
         ((Json.Escritor<br.marellar.engine.dominio.Velocidade>) CodecGerado::escreverVelocidade).escrever(sb, v.velocidade());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.ordens.Ordem.RegistrarNcInspecao lerOrdem_RegistrarNcInspecao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "RegistrarNcInspecao");
+        return new br.marellar.engine.ordens.Ordem.RegistrarNcInspecao(
+                Json.texto(m.get("barcoId")),
+                Json.texto(m.get("codigoDefeito")),
+                lerGravidade(m.get("gravidade")),
+                Json.texto(m.get("item")),
+                Json.texto(m.get("compartimento")),
+                Json.decimal(m.get("x")),
+                Json.decimal(m.get("y")),
+                Json.decimal(m.get("z")),
+                Json.texto(m.get("observacao")));
+    }
+
+    public static void escreverOrdem_RegistrarNcInspecao(StringBuilder sb, br.marellar.engine.ordens.Ordem.RegistrarNcInspecao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"tipo\":\"RegistrarNcInspecao\"");
+        sb.append(",\"barcoId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.barcoId());
+        sb.append(",\"codigoDefeito\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.codigoDefeito());
+        sb.append(",\"gravidade\":");
+        ((Json.Escritor<br.marellar.engine.dominio.Gravidade>) CodecGerado::escreverGravidade).escrever(sb, v.gravidade());
+        sb.append(",\"item\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.item());
+        sb.append(",\"compartimento\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.compartimento());
+        sb.append(",\"x\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.x());
+        sb.append(",\"y\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.y());
+        sb.append(",\"z\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.z());
+        sb.append(",\"observacao\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.observacao());
         sb.append("}");
     }
 }
