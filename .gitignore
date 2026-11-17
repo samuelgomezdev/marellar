@@ -16,8 +16,10 @@ client-godot/.godot/
 client-godot/export/
 *.import.tmp
 
-# Saves de partida
+# Saves de partida e NCs da inspecao 3D
 saves/
+/inspecao/
+/marellar-api/inspecao/
 
 # Documentos de referencia ficam FORA do repositorio (nenhum dado real de empresa)
 *.docx
