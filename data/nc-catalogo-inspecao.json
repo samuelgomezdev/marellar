@@ -1,0 +1,1120 @@
+{
+ "versao": 1,
+ "observacao": "Catalogo ampliado da inspecao 3D. 'base' e o defeito do data/nc-catalogo.json usado para validar a gravidade na API.",
+ "categorias": {
+  "ESTRUTURAL": "Estrutural (laminação)",
+  "ESTANQUEIDADE": "Estanqueidade e infiltração",
+  "ESTETICO": "Estético",
+  "DIMENSIONAL": "Dimensional",
+  "FUNCIONAL": "Funcional",
+  "ELETRICO": "Elétrico e eletrônico",
+  "MOVELARIA": "Movelaria",
+  "MONTAGEM": "Montagem"
+ },
+ "tipos": [
+  {
+   "codigo": "LAM-DELAM",
+   "descricao": "Delaminação (camadas do laminado soltas)",
+   "categoria": "ESTRUTURAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "DM",
+    "BA",
+    "ST",
+    "TM"
+   ],
+   "base": "LAM-SECO",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "LAM-BOLHA",
+   "descricao": "Bolha de ar na laminação",
+   "categoria": "ESTRUTURAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "DM"
+   ],
+   "base": "LAM-BOLHA",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "LAM-SECO",
+   "descricao": "Fibra seca (resina insuficiente)",
+   "categoria": "ESTRUTURAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "DM"
+   ],
+   "base": "LAM-SECO",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "LAM-ESPESSURA",
+   "descricao": "Espessura do laminado abaixo do plano",
+   "categoria": "ESTRUTURAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "DM"
+   ],
+   "base": "LAM-SECO",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "LAM-CURA",
+   "descricao": "Cura incompleta (dureza Barcol baixa)",
+   "categoria": "ESTRUTURAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "DM"
+   ],
+   "base": "LAM-BOLHA",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "LAM-NUCLEO",
+   "descricao": "Núcleo (espuma/balsa) descolado ou com vazio",
+   "categoria": "ESTRUTURAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "DM",
+    "BA"
+   ],
+   "base": "LAM-SECO",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "EST-COLAGEM",
+   "descricao": "Colagem estrutural com vazio (longarina, antepara, casco-convés)",
+   "categoria": "ESTRUTURAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "BA",
+    "BF"
+   ],
+   "base": "LAM-SECO",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "EST-TRINCA",
+   "descricao": "Trinca estrutural (passa do gelcoat para o laminado)",
+   "categoria": "ESTRUTURAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "DM",
+    "BA",
+    "ST",
+    "TM"
+   ],
+   "base": "LAM-SECO",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "EST-REFORCO",
+   "descricao": "Reforço ou inserto faltando ou fora de posição",
+   "categoria": "ESTRUTURAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "DM",
+    "BA"
+   ],
+   "base": "LAM-BOLHA",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "INOX"
+   ]
+  },
+  {
+   "codigo": "TEC-INFILTRA",
+   "descricao": "Infiltração sob a teca (água entre a teca e a fibra)",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "CRITICA",
+   "gates": [
+    "ST",
+    "PI",
+    "TM"
+   ],
+   "base": "EST-INFILTRA",
+   "aplica": [
+    "TECA",
+    "MOLDE"
+   ]
+  },
+  {
+   "codigo": "TEC-CALAFETO",
+   "descricao": "Calafeto da teca solto, falhado ou com bolha",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "MEDIA",
+   "gates": [
+    "ST",
+    "PI"
+   ],
+   "base": "VID-VEDACAO",
+   "aplica": [
+    "TECA"
+   ]
+  },
+  {
+   "codigo": "TEC-DESCOLA",
+   "descricao": "Régua de teca descolada ou soando oca",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "MEDIA",
+   "gates": [
+    "ST",
+    "PI"
+   ],
+   "base": "VID-VEDACAO",
+   "aplica": [
+    "TECA"
+   ]
+  },
+  {
+   "codigo": "EST-INFILTRA",
+   "descricao": "Infiltração no teste de mangueira (convés, casaria, tampas)",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "CRITICA",
+   "gates": [
+    "ST"
+   ],
+   "base": "EST-INFILTRA",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "VIDRO"
+   ]
+  },
+  {
+   "codigo": "VID-VEDACAO",
+   "descricao": "Vidro com falha de vedação",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "MEDIA",
+   "gates": [
+    "ST",
+    "PI"
+   ],
+   "base": "VID-VEDACAO",
+   "aplica": [
+    "VIDRO"
+   ]
+  },
+  {
+   "codigo": "EST-PASSACASCO",
+   "descricao": "Passa-casco ou válvula de fundo com vazamento",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "CRITICA",
+   "gates": [
+    "ST",
+    "PI"
+   ],
+   "base": "EST-INFILTRA",
+   "aplica": [
+    "MOLDE",
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "EST-TANQUE",
+   "descricao": "Tanque reprovado no teste de estanqueidade",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "CRITICA",
+   "gates": [
+    "BA",
+    "ST"
+   ],
+   "base": "EST-INFILTRA",
+   "aplica": [
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "EST-DRENO",
+   "descricao": "Dreno entupido ou caimento invertido (água empoçada)",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "MEDIA",
+   "gates": [
+    "ST",
+    "PI"
+   ],
+   "base": "VID-VEDACAO",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "EST-TAMPA",
+   "descricao": "Tampa ou escotilha sem vedação (borracha, calha)",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "MEDIA",
+   "gates": [
+    "ST"
+   ],
+   "base": "VID-VEDACAO",
+   "aplica": [
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "HID-VAZAMENTO",
+   "descricao": "Vazamento em tubulação ou conexão hidráulica",
+   "categoria": "ESTANQUEIDADE",
+   "gravidade": "MEDIA",
+   "gates": [
+    "ST",
+    "CT"
+   ],
+   "base": "VID-VEDACAO",
+   "aplica": [
+    "COMPRADO",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "GEL-TRINCA",
+   "descricao": "Trinca fina no gelcoat (aranha)",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "DM",
+    "BA",
+    "ST"
+   ],
+   "base": "GEL-TRINCA",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "GEL-LOTE",
+   "descricao": "Gelcoat com cor fora do padrão",
+   "categoria": "ESTETICO",
+   "gravidade": "MEDIA",
+   "gates": [
+    "DM"
+   ],
+   "base": "GEL-LOTE",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "GEL-POROSIDADE",
+   "descricao": "Porosidade ou furinhos no gelcoat",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "DM"
+   ],
+   "base": "GEL-TRINCA",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "GEL-MARCA",
+   "descricao": "Marca de fibra ou de molde aparente (print-through)",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "DM",
+    "PI"
+   ],
+   "base": "GEL-TRINCA",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "GEL-REPARO",
+   "descricao": "Reparo de gelcoat aparente (diferença de cor ou brilho)",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "PI",
+    "ET"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "PIN-ESCORRIDO",
+   "descricao": "Pintura ou verniz escorrido",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT",
+    "PI"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "PIN-CASCA",
+   "descricao": "Casca de laranja ou sujeira na pintura",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT",
+    "PI"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "POL-HOLOGRAMA",
+   "descricao": "Polimento com hologramas ou queimado",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "PI",
+    "ET"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "INOX"
+   ]
+  },
+  {
+   "codigo": "ACA-RISCO",
+   "descricao": "Risco de acabamento",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "PI",
+    "ET"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "VIDRO",
+    "INOX",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "ACA-MANCHA",
+   "descricao": "Mancha, cola ou silicone aparente",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT",
+    "PI",
+    "ET"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "VIDRO",
+    "ESTOFADO",
+    "MOVEL",
+    "TECA"
+   ]
+  },
+  {
+   "codigo": "INX-OXIDACAO",
+   "descricao": "Inox com oxidação, solda sem acabamento ou sem polimento",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "ST",
+    "PI"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "INOX"
+   ]
+  },
+  {
+   "codigo": "ESF-COSTURA",
+   "descricao": "Estofado com costura torta, ruga ou mancha",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT",
+    "ET"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "ESTOFADO"
+   ]
+  },
+  {
+   "codigo": "TEC-COR",
+   "descricao": "Teca com diferença de tom ou veio fora do padrão",
+   "categoria": "ESTETICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "ST",
+    "PI"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "TECA"
+   ]
+  },
+  {
+   "codigo": "VID-RISCO",
+   "descricao": "Vidro riscado, lascado ou com serigrafia falhada",
+   "categoria": "ESTETICO",
+   "gravidade": "MEDIA",
+   "gates": [
+    "ST",
+    "PI"
+   ],
+   "base": "VID-VEDACAO",
+   "aplica": [
+    "VIDRO"
+   ]
+  },
+  {
+   "codigo": "TRA-AVARIA",
+   "descricao": "Avaria de manuseio ou transporte",
+   "categoria": "ESTETICO",
+   "gravidade": "MEDIA",
+   "gates": [
+    "TR",
+    "ET"
+   ],
+   "base": "TRA-AVARIA",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "VIDRO",
+    "INOX",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "DIM-FORA",
+   "descricao": "Medida fora da tolerância do desenho",
+   "categoria": "DIMENSIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "DM",
+    "BA",
+    "BF",
+    "ST"
+   ],
+   "base": "LAM-BOLHA",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "VIDRO",
+    "INOX",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "DIM-SIMETRIA",
+   "descricao": "Assimetria entre bombordo e boreste",
+   "categoria": "DIMENSIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "DM",
+    "BF"
+   ],
+   "base": "LAM-BOLHA",
+   "aplica": [
+    "MOLDE",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "DIM-EMPENO",
+   "descricao": "Peça empenada ou torcida",
+   "categoria": "DIMENSIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "DM",
+    "BA"
+   ],
+   "base": "LAM-BOLHA",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "DIM-FOLGA",
+   "descricao": "Folga ou vão irregular entre peças (gap)",
+   "categoria": "DIMENSIONAL",
+   "gravidade": "LEVE",
+   "gates": [
+    "BF",
+    "ST",
+    "CT"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "FRP",
+    "VIDRO",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "DIM-FURACAO",
+   "descricao": "Furação ou recorte fora de posição",
+   "categoria": "DIMENSIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "BA",
+    "BF",
+    "ST"
+   ],
+   "base": "LAM-BOLHA",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "INOX"
+   ]
+  },
+  {
+   "codigo": "DIM-NIVEL",
+   "descricao": "Piso ou tampo fora de nível ou de prumo",
+   "categoria": "DIMENSIONAL",
+   "gravidade": "LEVE",
+   "gates": [
+    "BA",
+    "CT"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "FRP",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "DIM-ALINHA",
+   "descricao": "Desalinhamento de linha de eixo ou de motor",
+   "categoria": "DIMENSIONAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "BA",
+    "TM"
+   ],
+   "base": "MOT-VIBRACAO",
+   "aplica": [
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "DIM-LINHADAGUA",
+   "descricao": "Linha d'água ou linha de beleza fora da marcação",
+   "categoria": "DIMENSIONAL",
+   "gravidade": "LEVE",
+   "gates": [
+    "PI"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "MOLDE"
+   ]
+  },
+  {
+   "codigo": "FUN-NAOOPERA",
+   "descricao": "Equipamento não funciona",
+   "categoria": "FUNCIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "COMPRADO",
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "FUN-INTERMITENTE",
+   "descricao": "Equipamento funciona de forma intermitente",
+   "categoria": "FUNCIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "COMPRADO",
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "FUN-RUIDO",
+   "descricao": "Ruído ou vibração anormal em equipamento",
+   "categoria": "FUNCIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "MOT-VIBRACAO",
+   "descricao": "Vibração anormal no motor",
+   "categoria": "FUNCIONAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "TM"
+   ],
+   "base": "MOT-VIBRACAO",
+   "aplica": [
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "MOT-VAZAMENTO",
+   "descricao": "Vazamento de óleo, diesel ou água no motor ou gerador",
+   "categoria": "FUNCIONAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "BA",
+    "TM"
+   ],
+   "base": "MOT-VIBRACAO",
+   "aplica": [
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "FUN-PORTA",
+   "descricao": "Porta, tampa ou gaveta não fecha, não trava ou raspa",
+   "categoria": "FUNCIONAL",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT",
+    "ET"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "MOVEL",
+    "FRP",
+    "VIDRO"
+   ]
+  },
+  {
+   "codigo": "FUN-CURSO",
+   "descricao": "Curso incompleto (pedestal, elevador de TV, escada, pistão)",
+   "categoria": "FUNCIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "CT"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "COMPRADO",
+    "MOVEL",
+    "INOX",
+    "TECA"
+   ]
+  },
+  {
+   "codigo": "FUN-AR",
+   "descricao": "Ar-condicionado não atinge a temperatura",
+   "categoria": "FUNCIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "FUN-BOMBA",
+   "descricao": "Bomba (porão, água doce, esgoto) sem vazão ou sem automático",
+   "categoria": "FUNCIONAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "EST-INFILTRA",
+   "aplica": [
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "FUN-DIRECAO",
+   "descricao": "Direção, manete ou joystick com folga ou sem resposta",
+   "categoria": "FUNCIONAL",
+   "gravidade": "CRITICA",
+   "gates": [
+    "TM"
+   ],
+   "base": "MOT-VIBRACAO",
+   "aplica": [
+    "COMPRADO",
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "FUN-ESTABILIZADOR",
+   "descricao": "Estabilizador com alarme ou sem redução de balanço",
+   "categoria": "FUNCIONAL",
+   "gravidade": "MEDIA",
+   "gates": [
+    "TM"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "ELE-COMPONENTE",
+   "descricao": "Falha em componente eletrônico (tela, módulo, placa, sensor)",
+   "categoria": "ELETRICO",
+   "gravidade": "MEDIA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "ELETRICA",
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "ELE-PAINEL",
+   "descricao": "Painel elétrico com defeito",
+   "categoria": "ELETRICO",
+   "gravidade": "MEDIA",
+   "gates": [
+    "CT"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "ELE-CHICOTE",
+   "descricao": "Chicote elétrico sem identificação",
+   "categoria": "ELETRICO",
+   "gravidade": "MEDIA",
+   "gates": [
+    "BF",
+    "CT"
+   ],
+   "base": "ELE-CHICOTE",
+   "aplica": [
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "ELE-CABO",
+   "descricao": "Cabo sem proteção, mal fixado ou com raio de curva apertado",
+   "categoria": "ELETRICO",
+   "gravidade": "MEDIA",
+   "gates": [
+    "BA",
+    "BF",
+    "CT"
+   ],
+   "base": "ELE-CHICOTE",
+   "aplica": [
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "ELE-CONEXAO",
+   "descricao": "Conexão frouxa, oxidada ou aquecendo",
+   "categoria": "ELETRICO",
+   "gravidade": "CRITICA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "EST-INFILTRA",
+   "aplica": [
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "ELE-CURTO",
+   "descricao": "Curto, fuga de corrente ou disjuntor desarmando",
+   "categoria": "ELETRICO",
+   "gravidade": "CRITICA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "EST-INFILTRA",
+   "aplica": [
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "ELE-REDE",
+   "descricao": "Falha de comunicação (NMEA 2000, CAN, sensores sem leitura)",
+   "categoria": "ELETRICO",
+   "gravidade": "MEDIA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "ELE-ILUMINA",
+   "descricao": "Luminária ou LED queimado, piscando ou com tom diferente",
+   "categoria": "ELETRICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT",
+    "ET"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "ELETRICA",
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "ELE-BATERIA",
+   "descricao": "Bateria ou carregador fora da tensão",
+   "categoria": "ELETRICO",
+   "gravidade": "MEDIA",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "ELE-PAINEL",
+   "aplica": [
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "ELE-SOFTWARE",
+   "descricao": "Software ou configuração de equipamento desatualizada",
+   "categoria": "ELETRICO",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "ELETRICA"
+   ]
+  },
+  {
+   "codigo": "MOV-ALINHA",
+   "descricao": "Frentes de móvel desalinhadas ou com folga desigual",
+   "categoria": "MOVELARIA",
+   "gravidade": "LEVE",
+   "gates": [
+    "BA",
+    "CT"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "MOV-VERNIZ",
+   "descricao": "Verniz com falha, bolha ou diferença de brilho",
+   "categoria": "MOVELARIA",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT"
+   ],
+   "base": "ACA-RISCO",
+   "aplica": [
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "MOV-LAMINA",
+   "descricao": "Lâmina de madeira descolada ou lascada",
+   "categoria": "MOVELARIA",
+   "gravidade": "MEDIA",
+   "gates": [
+    "BA",
+    "CT"
+   ],
+   "base": "ELE-CHICOTE",
+   "aplica": [
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "MOV-RANGIDO",
+   "descricao": "Móvel ou piso rangendo ou solto",
+   "categoria": "MOVELARIA",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT",
+    "TM"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "MOVEL",
+    "FRP"
+   ]
+  },
+  {
+   "codigo": "MON-FIXACAO",
+   "descricao": "Fixação solta em móvel",
+   "categoria": "MOVELARIA",
+   "gravidade": "LEVE",
+   "gates": [
+    "BA",
+    "BF"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "MOV-FERRAGEM",
+   "descricao": "Ferragem (dobradiça, corrediça, fecho) com defeito",
+   "categoria": "MOVELARIA",
+   "gravidade": "LEVE",
+   "gates": [
+    "CT"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "MOVEL"
+   ]
+  },
+  {
+   "codigo": "MON-FALTA",
+   "descricao": "Item faltando em relação à estrutura de produto",
+   "categoria": "MONTAGEM",
+   "gravidade": "MEDIA",
+   "gates": [
+    "BA",
+    "BF",
+    "ST",
+    "CT"
+   ],
+   "base": "ELE-CHICOTE",
+   "aplica": [
+    "MOLDE",
+    "FRP",
+    "VIDRO",
+    "INOX",
+    "ESTOFADO",
+    "MOVEL",
+    "ELETRICA",
+    "COMPRADO",
+    "TECA"
+   ]
+  },
+  {
+   "codigo": "MON-ERRADO",
+   "descricao": "Item diferente do especificado (modelo, cor, lado)",
+   "categoria": "MONTAGEM",
+   "gravidade": "MEDIA",
+   "gates": [
+    "BA",
+    "BF",
+    "ST",
+    "CT"
+   ],
+   "base": "ELE-CHICOTE",
+   "aplica": [
+    "FRP",
+    "VIDRO",
+    "INOX",
+    "ESTOFADO",
+    "MOVEL",
+    "ELETRICA",
+    "COMPRADO",
+    "TECA"
+   ]
+  },
+  {
+   "codigo": "MON-TORQUE",
+   "descricao": "Parafuso sem torque, sem trava ou sem contraplaca",
+   "categoria": "MONTAGEM",
+   "gravidade": "MEDIA",
+   "gates": [
+    "BA",
+    "ST"
+   ],
+   "base": "ELE-CHICOTE",
+   "aplica": [
+    "INOX",
+    "COMPRADO"
+   ]
+  },
+  {
+   "codigo": "MON-SELANTE",
+   "descricao": "Selante faltando ou aplicado em excesso",
+   "categoria": "MONTAGEM",
+   "gravidade": "LEVE",
+   "gates": [
+    "ST",
+    "CT"
+   ],
+   "base": "MON-FIXACAO",
+   "aplica": [
+    "INOX",
+    "VIDRO",
+    "FRP",
+    "TECA"
+   ]
+  }
+ ]
+}

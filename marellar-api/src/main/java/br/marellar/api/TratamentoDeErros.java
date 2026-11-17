@@ -1,5 +1,6 @@
 package br.marellar.api;
 
+import br.marellar.api.inspecao.InspecaoService;
 import br.marellar.engine.ordens.OrdemInvalidaException;
 import br.marellar.engine.save.SaveIncompativelException;
 import org.springframework.http.HttpStatus;
@@ -36,6 +37,20 @@ public class TratamentoDeErros {
     public ProblemDetail ordemInvalida(OrdemInvalidaException e) {
         ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage());
         p.setTitle("Ordem invalida");
+        return p;
+    }
+
+    @ExceptionHandler(InspecaoService.NcNaoEncontradaException.class)
+    public ProblemDetail ncNaoEncontrada(InspecaoService.NcNaoEncontradaException e) {
+        ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.NOT_FOUND, e.getMessage());
+        p.setTitle("NC nao encontrada");
+        return p;
+    }
+
+    @ExceptionHandler(InspecaoService.NcInvalidaException.class)
+    public ProblemDetail ncInvalida(InspecaoService.NcInvalidaException e) {
+        ProblemDetail p = ProblemDetail.forStatusAndDetail(HttpStatus.UNPROCESSABLE_ENTITY, e.getMessage());
+        p.setTitle("NC invalida");
         return p;
     }
 }
