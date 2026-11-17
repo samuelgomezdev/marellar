@@ -72,6 +72,7 @@ var botoes_painel := {}
 var tela_conselho: PanelContainer
 var tela_saves: PanelContainer
 var tela_ficha: FichaBarco
+var tela_3d: Inspecao3D
 var botao_ficha: Button
 var botao_conselho: Button
 
@@ -86,6 +87,7 @@ func _ready() -> void:
 	_montar_barra_inferior()
 	_montar_ficha()
 	_montar_ficha_completa()
+	_montar_inspecao_3d()
 	_atualizar_interface()
 	if await Api.criar_partida(SEMENTE):
 		await _atualizar_estado()
@@ -118,6 +120,13 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 		galpao = args[i + 1]
 	if args.has("--ficha"):
 		_abrir_ficha_completa()
+	if args.has("--inspecao"):
+		_abrir_inspecao_3d()
+		i = args.find("--gate")   # só para capturas: mostra a inspeção como se o barco estivesse noutro gate
+		if i >= 0 and i + 1 < args.size() and tela_3d.visible:
+			var copia := _barco(selecionado).duplicate()
+			copia["gateAtual"] = args[i + 1]
+			tela_3d.abrir(copia)
 	if args.has("--saves"):
 		await _abrir_saves()
 	i = args.find("--painel")
@@ -301,6 +310,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_ENTER, KEY_KP_ENTER:
 				_abrir_ficha_completa()
 			KEY_ESCAPE:
+				if tela_3d.visible:
+					_fechar_inspecao_3d()
+					return
 				if tela_ficha.visible:
 					_fechar_ficha_completa()
 					return
@@ -405,6 +417,34 @@ func _montar_ficha_completa() -> void:
 	tela_ficha.priorizar.connect(_priorizar)
 	tela_ficha.alternar_segurar.connect(_alternar_segurar)
 	tela_ficha.decidir_nc.connect(_decidir_nc)
+	tela_ficha.inspecionar.connect(_abrir_inspecao_3d)
+
+
+## Inspeção 3D (pixel art) por cima da fábrica e da ficha, entre as barras de cima e de baixo.
+func _montar_inspecao_3d() -> void:
+	tela_3d = Inspecao3D.new()
+	tela_3d.fonte = fonte
+	tela_3d.fonte_titulo = fonte_titulo
+	tela_3d.tamanho_texto = TAMANHO_TEXTO
+	tela_3d.tamanho_titulo = TAMANHO_TITULO
+	tela_3d.visible = false
+	tela_3d.position = Vector2(0, ALTURA_TOPO)
+	tela_3d.size = Vector2(size.x, size.y - ALTURA_TOPO - ALTURA_BASE)
+	add_child(tela_3d)
+	tela_3d.fechar.connect(_fechar_inspecao_3d)
+
+
+func _abrir_inspecao_3d() -> void:
+	var barco := _barco(selecionado)
+	if barco.is_empty():
+		_avisar("Selecione um barco para inspecionar em 3D.")
+		return
+	tela_3d.abrir(barco)
+
+
+func _fechar_inspecao_3d() -> void:
+	tela_3d.visible = false
+	_atualizar_interface()
 
 
 func _mudar_galpao(novo: String) -> void:
