@@ -3,16 +3,23 @@ extends Control
 ## Inspeção 3D dentro do jogo, em pixel art: o barco selecionado no estado do gate atual.
 ## A malha vem de assets/barcos/marellar-<linha>.glb (exportada da página three.js; veja docs/ferramentas/exportar_barco.mjs).
 ## O visual é do jogo: cena em baixa resolução, luz em degraus, contorno escuro e redução para a Endesga 32.
-## Nenhuma regra de jogo aqui: o gate e o barco vêm do estado do motor.
+## Vistas: exterior (órbita), raio-X, corte longitudinal, plantas (de cima, ortográficas) e, por compartimento,
+## "De cima" e "Entrar" (primeira pessoa). Nenhuma regra de jogo aqui: o gate e o barco vêm do estado do motor.
 
 signal fechar
 
-const REDUCAO := 2            # pixels da tela por pixel do 3D (a tela base é 640x360)
+const REDUCAO := 1            # pixels da tela base (640x360) por pixel do 3D: 1 = resolução cheia do jogo
+## Reduzir para a Endesga 32 troca as cores dos itens (teca vira laranja, cinzas viram azul); fica desligado
+## e o pixel art vem do pixel nítido, da luz em degraus e do contorno.
+const REDUZIR_PALETA := false
 const ALTURA_TITULO := 16
-const ALTURA_DICA := 14
+const ALTURA_BOTOES := 22
 const ALTURA_BERCO := 0.6
+const SEM_CORTE := 1000.0
 ## Gate do motor -> etapa de montagem do modelo (gates da página 3D: DM, BA, BF convés, BF casaria, ST/CT, PI).
 const ETAPA_DO_GATE := {"RE": -1, "DM": 0, "BA": 1, "BF": 3, "ST": 4, "CT": 4, "PI": 5, "TR": 5, "TM": 5, "ET": 5}
+const VISTAS := [["ext", "Exterior"], ["raiox", "Raio-X"], ["corte", "Corte"], ["inf", "Planta inf."], ["pri", "Planta sup."]]
+const VELOCIDADE_ANDAR := 2.2  # m/s em primeira pessoa
 
 const TOON := preload("res://shaders/toon.gdshader")
 const TOON_VIDRO := preload("res://shaders/toon_vidro.gdshader")
@@ -26,21 +33,35 @@ var tamanho_titulo := 8
 
 var barco: Dictionary = {}
 var dados: Dictionary = {}           # marellar-<linha>.json
+var vista := "ext"                   # ext, raiox, corte, inf, pri, cima (compartimento) ou dentro
+var compartimento: Dictionary = {}   # compartimento escolhido (de dados.compartimentos)
 var _linha := 0
 var _container: SubViewportContainer
 var _viewport: SubViewport
 var _camera: Camera3D
+var _luz_cabine: OmniLight3D
+var _sol: DirectionalLight3D
 var _pivo: Node3D                    # centro do barco; a câmera orbita em volta dele
 var _modelo: Node3D
 var _berco: Node3D
 var _agua: MeshInstance3D
 var _itens: Array[Node3D] = []       # nós de item (com metadado "extras")
 var _contornos: Array[ShaderMaterial] = []
+var _materiais := {}                 # MeshInstance3D -> [material normal por superfície]
+var _fantasma := ShaderMaterial.new()
 var _medias := {}                    # textura -> cor média
 var _guinada := deg_to_rad(-35.0)    # rotação em volta do eixo vertical
 var _arfagem := deg_to_rad(-22.0)    # inclinação da câmera
 var _distancia := 18.0
+var _tamanho_orto := 8.0
+var _centro_orto := Vector3.ZERO
+var _olho := Vector3.ZERO            # primeira pessoa, em coordenadas do barco
+var _rumo := 0.0                     # 0 = proa, +90° = boreste
+var _inclinacao := 0.0
 var _arrastando := false
+var _botoes_vista := {}
+var _lista_comps: OptionButton
+var _dica: Label
 
 
 func _ready() -> void:
@@ -50,13 +71,14 @@ func _ready() -> void:
 	_container.stretch_shrink = REDUCAO
 	_container.texture_filter = CanvasItem.TEXTURE_FILTER_NEAREST
 	_container.mouse_filter = Control.MOUSE_FILTER_IGNORE
-	var material := ShaderMaterial.new()
-	material.shader = PALETA
-	var cores := PackedVector3Array()
-	for c in Paleta.ENDESGA_32:
-		cores.append(Vector3(c.r, c.g, c.b))
-	material.set_shader_parameter("paleta", cores)
-	_container.material = material
+	if REDUZIR_PALETA:
+		var material := ShaderMaterial.new()
+		material.shader = PALETA
+		var cores := PackedVector3Array()
+		for c in Paleta.ENDESGA_32:
+			cores.append(Vector3(c.r, c.g, c.b))
+		material.set_shader_parameter("paleta", cores)
+		_container.material = material
 	add_child(_container)
 
 	_viewport = SubViewport.new()
@@ -64,7 +86,20 @@ func _ready() -> void:
 	_viewport.msaa_3d = Viewport.MSAA_DISABLED
 	_viewport.positional_shadow_atlas_size = 0
 	_container.add_child(_viewport)
+	_fantasma.shader = TOON_VIDRO
+	_fantasma.set_shader_parameter("cor", Color(Paleta.PISO, 0.13))
 	_montar_mundo()
+	_montar_botoes()
+	_dica = Label.new()
+	_dica.add_theme_color_override("font_color", Paleta.TEXTO)
+	var fundo_dica := StyleBoxFlat.new()
+	fundo_dica.bg_color = Color(Paleta.FUNDO_ESCURO, 0.85)
+	fundo_dica.content_margin_left = 3
+	fundo_dica.content_margin_right = 3
+	_dica.add_theme_stylebox_override("normal", fundo_dica)
+	_dica.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
+	_dica.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(_dica)
 	resized.connect(_posicionar)
 	_posicionar()
 
@@ -73,7 +108,12 @@ func _posicionar() -> void:
 	if _container == null:
 		return
 	_container.position = Vector2(0, ALTURA_TITULO)
-	_container.size = Vector2(size.x, size.y - ALTURA_TITULO - ALTURA_DICA)
+	_container.size = Vector2(size.x, size.y - ALTURA_TITULO - ALTURA_BOTOES)
+	var barra := get_node("Botoes") as HBoxContainer
+	barra.position = Vector2(4, size.y - ALTURA_BOTOES + 2)
+	barra.size = Vector2(size.x - 8, ALTURA_BOTOES - 4)
+	_dica.position = Vector2(4, size.y - ALTURA_BOTOES - 17)
+	_dica.size = Vector2(0, 15)   # largura do texto
 
 
 ## Abre a inspeção de um barco do estado (BarcoVisao do motor).
@@ -84,7 +124,53 @@ func abrir(novo: Dictionary) -> void:
 		_carregar_linha(linha)
 	_aplicar_gate()
 	visible = true
-	queue_redraw()
+	mudar_vista("ext")
+
+
+## Esc: de uma vista qualquer volta ao exterior; no exterior, devolve false (quem chamou fecha a inspeção).
+func voltar() -> bool:
+	if vista == "ext":
+		return false
+	mudar_vista("ext")
+	return true
+
+
+# ---------------------------------------------------------------- botões
+
+func _montar_botoes() -> void:
+	var barra := HBoxContainer.new()
+	barra.name = "Botoes"
+	barra.add_theme_constant_override("separation", 3)
+	add_child(barra)
+	for v in VISTAS:
+		var b := _botao(v[1], mudar_vista.bind(v[0]))
+		b.toggle_mode = true
+		barra.add_child(b)
+		_botoes_vista[v[0]] = b
+	barra.add_child(VSeparator.new())
+	_lista_comps = OptionButton.new()
+	_lista_comps.focus_mode = Control.FOCUS_NONE
+	_lista_comps.fit_to_longest_item = false
+	_lista_comps.custom_minimum_size.x = 150
+	_lista_comps.clip_text = true
+	_lista_comps.item_selected.connect(func(i): compartimento = (dados.get("compartimentos", []) as Array)[i])
+	barra.add_child(_lista_comps)
+	var cima := _botao("De cima", func(): mudar_vista("cima"))
+	cima.toggle_mode = true
+	barra.add_child(cima)
+	_botoes_vista["cima"] = cima
+	var dentro := _botao("Entrar", func(): mudar_vista("dentro"))
+	dentro.toggle_mode = true
+	barra.add_child(dentro)
+	_botoes_vista["dentro"] = dentro
+
+
+func _botao(texto: String, acao: Callable) -> Button:
+	var b := Button.new()
+	b.text = texto
+	b.focus_mode = Control.FOCUS_NONE
+	b.pressed.connect(acao)
+	return b
 
 
 # ---------------------------------------------------------------- mundo 3D
@@ -94,25 +180,25 @@ func _montar_mundo() -> void:
 	ambiente.background_mode = Environment.BG_COLOR
 	ambiente.background_color = Paleta.FUNDO_ESCURO
 	ambiente.ambient_light_source = Environment.AMBIENT_SOURCE_COLOR
-	ambiente.ambient_light_color = Paleta.PISO
-	ambiente.ambient_light_energy = 0.35
+	ambiente.ambient_light_color = Color.WHITE
+	ambiente.ambient_light_energy = 0.2
 	ambiente.tonemap_mode = Environment.TONE_MAPPER_LINEAR
 	var mundo := WorldEnvironment.new()
 	mundo.environment = ambiente
 	_viewport.add_child(mundo)
 
-	var sol := DirectionalLight3D.new()
-	sol.rotation = Vector3(deg_to_rad(-55), deg_to_rad(-30), 0)
-	sol.light_energy = 1.6
-	sol.shadow_enabled = true
-	sol.directional_shadow_max_distance = 40.0
-	_viewport.add_child(sol)
+	_sol = DirectionalLight3D.new()
+	_sol.rotation = Vector3(deg_to_rad(-55), deg_to_rad(-30), 0)
+	_sol.light_energy = 0.9   # lado iluminado ~ a cor do item
+	_sol.shadow_enabled = true
+	_sol.directional_shadow_max_distance = 40.0
+	_viewport.add_child(_sol)
 
 	var chao := MeshInstance3D.new()
 	var plano := PlaneMesh.new()
 	plano.size = Vector2(60, 60)
 	chao.mesh = plano
-	chao.material_override = _toon(Paleta.ARMAZEM_ESCURO, null, Color.BLACK)
+	chao.material_override = _toon(Paleta.ARMAZEM_ESCURO, null, Color.BLACK, false)
 	_viewport.add_child(chao)
 
 	_agua = MeshInstance3D.new()
@@ -122,6 +208,7 @@ func _montar_mundo() -> void:
 	var mat_agua := ShaderMaterial.new()
 	mat_agua.shader = TOON_VIDRO
 	mat_agua.set_shader_parameter("cor", Color(Paleta.AGUA, 0.7))
+	mat_agua.set_shader_parameter("cortavel", false)
 	_agua.material_override = mat_agua
 	_agua.visible = false
 	_viewport.add_child(_agua)
@@ -130,9 +217,15 @@ func _montar_mundo() -> void:
 	_viewport.add_child(_pivo)
 	_camera = Camera3D.new()
 	_camera.fov = 32.0
-	_camera.near = 0.1
+	_camera.near = 0.05
 	_camera.far = 200.0
 	_viewport.add_child(_camera)
+	_luz_cabine = OmniLight3D.new()     # primeira pessoa: luz junto do olho, como a lanterna do inspetor
+	_luz_cabine.omni_range = 6.0
+	_luz_cabine.omni_attenuation = 1.5
+	_luz_cabine.light_energy = 0.8
+	_luz_cabine.visible = false
+	_camera.add_child(_luz_cabine)
 
 
 func _carregar_linha(linha: int) -> void:
@@ -141,25 +234,34 @@ func _carregar_linha(linha: int) -> void:
 		_berco.queue_free()
 	_itens.clear()
 	_contornos.clear()
+	_materiais.clear()
 	_linha = linha
 	var arquivo := FileAccess.open("res://assets/barcos/marellar-%d.json" % linha, FileAccess.READ)
 	dados = JSON.parse_string(arquivo.get_as_text()) if arquivo != null else {}
 	var cena: PackedScene = load("res://assets/barcos/marellar-%d.glb" % linha)
 	_modelo = cena.instantiate()
-	var comprimento: float = dados.get("dims", {}).get("L", 10.0)
-	_modelo.position = Vector3(-comprimento / 2.0, ALTURA_BERCO, 0)   # x do modelo vai da popa (0) à proa (L)
+	_modelo.position = Vector3(-_dim("L", 10.0) / 2.0, ALTURA_BERCO, 0)   # x do modelo vai da popa (0) à proa (L)
 	_viewport.add_child(_modelo)
 	for no in _modelo.find_children("*", "Node3D", true, false):
 		if no.has_meta("extras") and (no.get_meta("extras") as Dictionary).has("codigo"):
 			_itens.append(no)
 	for m in _modelo.find_children("*", "MeshInstance3D", true, false):
 		_pixelizar(m as MeshInstance3D)
-	_berco = _montar_berco(comprimento, float(dados.get("dims", {}).get("B", 3.4)))
+	_berco = _montar_berco(_dim("L", 10.0), _dim("B", 3.4))
 	_viewport.add_child(_berco)
 	var caixa := _caixa_do_modelo()
 	_distancia = caixa.size.x * 1.15
 	_pivo.position = Vector3(caixa.get_center().x, ALTURA_BERCO + minf(caixa.size.y * 0.25, 1.0), 0)
-	_atualizar_camera()
+	_lista_comps.clear()
+	for c in dados.get("compartimentos", []):
+		_lista_comps.add_item(str(c["nome"]))
+	if _lista_comps.item_count > 0:
+		_lista_comps.select(0)
+		compartimento = dados["compartimentos"][0]
+
+
+func _dim(nome: String, padrao: float) -> float:
+	return float(dados.get("dims", {}).get(nome, padrao))
 
 
 ## Caixa do barco montado (todas as peças), no sistema do mundo 3D.
@@ -179,6 +281,7 @@ func _caixa_do_modelo() -> AABB:
 
 ## Troca o material de cada superfície pela versão em pixel art (toon + contorno), mantendo a cor do .glb.
 func _pixelizar(m: MeshInstance3D) -> void:
+	var normais: Array[Material] = []
 	for i in m.mesh.get_surface_count():
 		var original := m.get_active_material(i) as BaseMaterial3D
 		var cor := Color.WHITE
@@ -188,40 +291,42 @@ func _pixelizar(m: MeshInstance3D) -> void:
 		if original != null:
 			cor = original.albedo_color
 			if original.albedo_texture != null:
-				if _peca_do_item(m) == "casco":   # pintura do casco: faixas largas, a textura fica legível
+				if _extras_do_item(m).get("peca", "") == "casco":   # pintura do casco: faixas largas, a textura fica legível
 					textura = original.albedo_texture
-				else:                              # ripas da teca viram ruído em baixa resolução: cor média
+				else:                                                # ripas da teca viram ruído em baixa resolução: cor média
 					cor *= _cor_media(original.albedo_texture)
 			transparente = original.transparency != BaseMaterial3D.TRANSPARENCY_DISABLED
 			if original.emission_enabled:
 				emissao = original.emission * original.emission_energy_multiplier
+		var novo: ShaderMaterial
 		if transparente:
-			var vidro := ShaderMaterial.new()
-			vidro.shader = TOON_VIDRO
-			vidro.set_shader_parameter("cor", Color(cor, clampf(cor.a, 0.25, 0.6)))
-			m.set_surface_override_material(i, vidro)
+			novo = ShaderMaterial.new()
+			novo.shader = TOON_VIDRO
+			novo.set_shader_parameter("cor", Color(cor, clampf(cor.a, 0.25, 0.6)))
 		else:
-			var toon := _toon(cor, textura, emissao)
+			novo = _toon(cor, textura, emissao, true)
 			var contorno := ShaderMaterial.new()
 			contorno.shader = CONTORNO
 			contorno.set_shader_parameter("cor", Paleta.FUNDO_ESCURO)
-			toon.next_pass = contorno
+			novo.next_pass = contorno
 			_contornos.append(contorno)
-			m.set_surface_override_material(i, toon)
-		m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if transparente else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+		m.set_surface_override_material(i, novo)
+		normais.append(novo)
+	m.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+	_materiais[m] = normais
 
 
-## "casco", "conves", "casaria", "internos" ou "acabamento": a peça do item a que a malha pertence.
-func _peca_do_item(no: Node) -> String:
+## Dados do item (extras do glTF) a que a malha pertence.
+func _extras_do_item(no: Node) -> Dictionary:
 	for a in range(12):
 		if no == null:
 			break
 		if no.has_meta("extras"):
 			var e: Dictionary = no.get_meta("extras")
-			if e.has("peca"):
-				return str(e["peca"])
+			if e.has("codigo"):
+				return e
 		no = no.get_parent()
-	return ""
+	return {}
 
 
 func _cor_media(textura: Texture2D) -> Color:
@@ -244,11 +349,12 @@ func _cor_media(textura: Texture2D) -> Color:
 	return media
 
 
-func _toon(cor: Color, textura: Texture2D, emissao: Color) -> ShaderMaterial:
+func _toon(cor: Color, textura: Texture2D, emissao: Color, cortavel: bool) -> ShaderMaterial:
 	var mat := ShaderMaterial.new()
 	mat.shader = TOON
 	mat.set_shader_parameter("cor", cor)
 	mat.set_shader_parameter("emissao", Vector3(emissao.r, emissao.g, emissao.b))
+	mat.set_shader_parameter("cortavel", cortavel)
 	if textura != null:
 		mat.set_shader_parameter("textura", textura)
 		mat.set_shader_parameter("usar_textura", true)
@@ -263,7 +369,7 @@ func _montar_berco(comprimento: float, boca: float) -> Node3D:
 		caixa.size = Vector3(0.3, ALTURA_BERCO, boca * 0.7)
 		bloco.mesh = caixa
 		bloco.position = Vector3(u * comprimento - comprimento / 2.0, ALTURA_BERCO / 2.0, 0)
-		bloco.material_override = _toon(Paleta.AGUA_ESCURA, null, Color.BLACK)
+		bloco.material_override = _toon(Paleta.AGUA_ESCURA, null, Color.BLACK, false)
 		berco.add_child(bloco)
 	return berco
 
@@ -274,23 +380,142 @@ func _aplicar_gate() -> void:
 	for no in _itens:
 		var e: Dictionary = no.get_meta("extras")
 		no.visible = bool(e.get("padrao", false)) and int(e.get("etapa", 0)) <= etapa
-	var na_agua := etapa >= 5
+	var na_agua := _na_agua()
 	_agua.visible = na_agua
 	_berco.visible = not na_agua
-	var calado: float = dados.get("dims", {}).get("T", 0.5)
 	_modelo.position.y = 0.0 if na_agua else ALTURA_BERCO
-	_agua.position.y = calado if na_agua else -1.0
+	_agua.position.y = _dim("T", 0.5) if na_agua else -1.0
+
+
+# ---------------------------------------------------------------- vistas
+
+func _na_agua() -> bool:
+	return int(ETAPA_DO_GATE.get(str(barco.get("gateAtual", "ET")), 5)) >= 5
+
+
+## Muda a vista: ext, raiox, corte, inf, pri (barco inteiro) ou cima, dentro (compartimento escolhido).
+func mudar_vista(nova: String) -> void:
+	if (nova == "cima" or nova == "dentro") and compartimento.is_empty():
+		return
+	vista = nova
+	for chave in _botoes_vista:
+		_botoes_vista[chave].set_pressed_no_signal(chave == nova)
+	_aplicar_raio_x(nova == "raiox")
+	var corte_y := SEM_CORTE
+	var corte_z := SEM_CORTE
+	var base := _modelo.position.y if _modelo != null else 0.0
+	match nova:
+		"corte":
+			corte_z = 0.02            # some boreste: o corte fica na linha de centro
+			_guinada = 0.0            # olhando de boreste para o corte
+			_arfagem = deg_to_rad(-12.0)
+		"inf":
+			corte_y = base + _altura_planta_inferior()
+		"pri":
+			corte_y = base + _altura_planta_superior()
+		"cima":
+			var c := compartimento
+			var corte = c.get("corte")
+			corte_y = base + (float(corte) if corte != null else float(c["piso"]) + 1.9)
+		"ext", "raiox":
+			_guinada = deg_to_rad(-35.0)
+			_arfagem = deg_to_rad(-22.0)
+	RenderingServer.global_shader_parameter_set("inspecao_corte_y", corte_y)
+	RenderingServer.global_shader_parameter_set("inspecao_corte_z", corte_z)
+	# a água da piscina passa por dentro do casco: nas vistas cortadas e dentro do barco ela sai de cena
+	_agua.visible = _na_agua() and nova in ["ext", "raiox"]
+	if nova == "dentro":
+		_entrar(compartimento)
+	else:
+		_luz_cabine.visible = false
+		_sol.light_energy = 0.9
+		_camera.fov = 32.0
+	if nova in ["inf", "pri"]:
+		_enquadrar_planta()
+	elif nova == "cima":
+		_enquadrar_compartimento(compartimento)
+	_atualizar_camera()
+	_atualizar_dica()
+	queue_redraw()
+
+
+## Planta inferior: logo abaixo do piso de quem anda no barco (porão, cabines); superior: acima dos móveis.
+func _altura_planta_inferior() -> float:
+	var piso = dados.get("dims", {}).get("piso")
+	return float(piso["salao"]) - 0.15 if piso is Dictionary else _dim("Daft", 1.2) - 0.12
+
+
+func _altura_planta_superior() -> float:
+	var piso = dados.get("dims", {}).get("piso")
+	return float(piso["salao"]) + 2.0 if piso is Dictionary else _dim("Daft", 1.2) + 1.2
+
+
+## Raio-X: a casca (casco, convés, casaria, vidros) fica quase transparente e sem sombra.
+func _aplicar_raio_x(ligado: bool) -> void:
+	for m in _materiais:
+		var mi := m as MeshInstance3D
+		var casca: bool = _extras_do_item(mi).get("casca", false)
+		var normais: Array = _materiais[mi]
+		for i in normais.size():
+			mi.set_surface_override_material(i, _fantasma if ligado and casca else normais[i])
+		mi.cast_shadow = GeometryInstance3D.SHADOW_CASTING_SETTING_OFF if ligado and casca else GeometryInstance3D.SHADOW_CASTING_SETTING_ON
+
+
+func _enquadrar_planta() -> void:
+	var comprimento := _dim("L", 10.0)
+	_centro_orto = Vector3(_pivo.position.x, 0, 0)
+	_tamanho_orto = maxf((comprimento + 3.0) / _aspecto(), _dim("B", 3.4) + 1.5)
+
+
+func _enquadrar_compartimento(c: Dictionary) -> void:
+	var comprimento := _dim("L", 10.0)
+	var boca := _dim("B", 3.4)
+	var x0 := maxf(float(c["x0"]), -1.5)
+	var x1 := minf(float(c["x1"]), comprimento + 0.5)
+	var z0 := maxf(float(c["z0"]), -boca / 2.0 - 0.2)
+	var z1 := minf(float(c["z1"]), boca / 2.0 + 0.2)
+	_centro_orto = Vector3((x0 + x1) / 2.0 - comprimento / 2.0, 0, (z0 + z1) / 2.0)
+	_tamanho_orto = maxf((x1 - x0 + 1.0) / _aspecto(), z1 - z0 + 1.0)
+
+
+func _aspecto() -> float:
+	return float(_viewport.size.x) / maxf(1.0, float(_viewport.size.y))
+
+
+func _entrar(c: Dictionary) -> void:
+	var e: Dictionary = c["entrada"]
+	_olho = Vector3(float(e["x"]), float(e["y"]), float(e["z"]))
+	_rumo = float(e["rumo"])
+	_inclinacao = float(e["inclinacao"])
+	_camera.fov = 70.0
+	_luz_cabine.visible = true
+	_sol.light_energy = 0.5   # dentro, as paredes finas deixam o sol vazar; quem dá volume é a luz de cabine
 
 
 # ---------------------------------------------------------------- câmera
 
 func _atualizar_camera() -> void:
-	var direcao := Vector3(cos(_arfagem) * sin(_guinada), -sin(_arfagem), cos(_arfagem) * cos(_guinada))
-	_camera.position = _pivo.position + direcao * _distancia
-	_camera.look_at(_pivo.position, Vector3.UP)
-	# contorno de ~1 pixel do 3D, qualquer que seja a distância
-	var metros_por_pixel := 2.0 * _distancia * tan(deg_to_rad(_camera.fov / 2.0)) / maxf(1.0, _viewport.size.y)
-	for c in _contornos:
+	if _modelo == null:
+		return
+	var metros_por_pixel := 0.0
+	if vista == "dentro":
+		_camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		_camera.position = _olho + _modelo.position
+		_camera.rotation = Vector3(_inclinacao, -PI / 2.0 - _rumo, 0)
+		metros_por_pixel = 0.004
+	elif vista in ["inf", "pri", "cima"]:
+		_camera.projection = Camera3D.PROJECTION_ORTHOGONAL
+		_camera.size = _tamanho_orto
+		_camera.position = _centro_orto + Vector3(0, 40, 0)
+		_camera.look_at(_centro_orto, Vector3(0, 0, -1))   # proa para a direita, bombordo para cima
+		metros_por_pixel = _tamanho_orto / maxf(1.0, _viewport.size.y)
+	else:
+		_camera.projection = Camera3D.PROJECTION_PERSPECTIVE
+		var direcao := Vector3(cos(_arfagem) * sin(_guinada), -sin(_arfagem), cos(_arfagem) * cos(_guinada))
+		_camera.position = _pivo.position + direcao * _distancia
+		_camera.look_at(_pivo.position, Vector3.UP)
+		metros_por_pixel = 2.0 * _distancia * tan(deg_to_rad(_camera.fov / 2.0)) / maxf(1.0, _viewport.size.y)
+	for c in _contornos:   # contorno de ~1 pixel do 3D
 		c.set_shader_parameter("espessura", metros_por_pixel * 0.9)
 
 
@@ -306,20 +531,65 @@ func _gui_input(event: InputEvent) -> void:
 		accept_event()
 	elif event is InputEventMouseMotion and _arrastando:
 		var mov := (event as InputEventMouseMotion).relative
-		_guinada -= mov.x * 0.01
-		_arfagem = clampf(_arfagem + mov.y * 0.008, deg_to_rad(-85), deg_to_rad(-3))
+		if vista == "dentro":
+			_rumo += mov.x * 0.006
+			_inclinacao = clampf(_inclinacao - mov.y * 0.006, -1.3, 1.3)
+		elif vista in ["inf", "pri", "cima"]:
+			var escala := _tamanho_orto / maxf(1.0, size.y)
+			_centro_orto -= Vector3(mov.x, 0, mov.y) * escala
+		else:
+			_guinada -= mov.x * 0.01
+			_arfagem = clampf(_arfagem + mov.y * 0.008, deg_to_rad(-85), deg_to_rad(-3))
 		_atualizar_camera()
 		accept_event()
 
 
 func _aproximar(fator: float) -> void:
-	var comprimento: float = dados.get("dims", {}).get("L", 10.0)
-	_distancia = clampf(_distancia * fator, comprimento * 0.5, comprimento * 3.0)
+	var comprimento := _dim("L", 10.0)
+	if vista == "dentro":
+		_andar(Vector3(cos(_rumo), 0, sin(_rumo)) * (0.35 if fator < 1.0 else -0.35))
+		return
+	if vista in ["inf", "pri", "cima"]:
+		_tamanho_orto = clampf(_tamanho_orto * fator, 1.5, comprimento * 1.5)
+	else:
+		_distancia = clampf(_distancia * fator, comprimento * 0.5, comprimento * 3.0)
 	_atualizar_camera()
 
 
+## Primeira pessoa: anda no plano, preso perto do barco (como na página three.js).
+func _andar(passo: Vector3) -> void:
+	var comprimento := _dim("L", 10.0)
+	var boca := _dim("B", 3.4)
+	_olho.x = clampf(_olho.x + passo.x, -3.0, comprimento + 2.0)
+	_olho.z = clampf(_olho.z + passo.z, -boca / 2.0 - 1.0, boca / 2.0 + 1.0)
+	_olho.y = clampf(_olho.y + passo.y, 0.5, 9.0)
+	_atualizar_camera()
+
+
+func _process(delta: float) -> void:
+	if not visible or vista != "dentro":
+		return
+	var frente := Vector3(cos(_rumo), 0, sin(_rumo))
+	var lado := Vector3(-sin(_rumo), 0, cos(_rumo))   # boreste
+	var mov := Vector3.ZERO
+	if Input.is_key_pressed(KEY_W) or Input.is_key_pressed(KEY_UP):
+		mov += frente
+	if Input.is_key_pressed(KEY_S) or Input.is_key_pressed(KEY_DOWN):
+		mov -= frente
+	if Input.is_key_pressed(KEY_D) or Input.is_key_pressed(KEY_RIGHT):
+		mov += lado
+	if Input.is_key_pressed(KEY_A) or Input.is_key_pressed(KEY_LEFT):
+		mov -= lado
+	if Input.is_key_pressed(KEY_R) or Input.is_key_pressed(KEY_PAGEUP):
+		mov.y += 0.7
+	if Input.is_key_pressed(KEY_F) or Input.is_key_pressed(KEY_PAGEDOWN):
+		mov.y -= 0.7
+	if mov != Vector3.ZERO:
+		_andar(mov * VELOCIDADE_ANDAR * delta)
+
+
 func _unhandled_input(event: InputEvent) -> void:
-	if not visible or not event is InputEventKey or not event.pressed:
+	if not visible or vista == "dentro" or not event is InputEventKey or not event.pressed:
 		return
 	match (event as InputEventKey).keycode:
 		KEY_LEFT:
@@ -338,16 +608,28 @@ func _unhandled_input(event: InputEvent) -> void:
 
 # ---------------------------------------------------------------- moldura
 
+func _atualizar_dica() -> void:
+	var textos := {
+		"ext": "Arraste para girar · roda ou setas aproximam · Esc volta à fábrica",
+		"raiox": "Raio-X: a casca fica transparente · arraste para girar · Esc volta ao exterior",
+		"corte": "Corte na linha de centro, visto de boreste · arraste para girar · Esc volta",
+		"inf": "Planta inferior, vista de cima · arraste move · roda aproxima · Esc volta",
+		"pri": "Planta superior, vista de cima · arraste move · roda aproxima · Esc volta",
+		"cima": "De cima: %s · arraste move · roda aproxima · Esc volta" % compartimento.get("nome", ""),
+		"dentro": "Dentro: %s · arraste olha · WASD anda · R/F sobe e desce · Esc sai" % compartimento.get("nome", ""),
+	}
+	var texto: String = textos.get(vista, "")
+	if str(barco.get("gateAtual", "")) == "RE":
+		texto = "O casco ainda não saiu do molde (RE: recebimento de materiais) · Esc volta"
+	_dica.text = texto
+
+
 func _draw() -> void:
 	draw_rect(Rect2(0, 0, size.x, ALTURA_TITULO), Paleta.FUNDO)
-	draw_rect(Rect2(0, size.y - ALTURA_DICA, size.x, ALTURA_DICA), Paleta.FUNDO)
+	draw_rect(Rect2(0, size.y - ALTURA_BOTOES, size.x, ALTURA_BOTOES), Paleta.FUNDO)
 	if barco.is_empty():
 		return
 	draw_string(fonte_titulo, Vector2(6, 12), "INSPEÇÃO 3D · CASCO %s" % barco["id"], HORIZONTAL_ALIGNMENT_LEFT, -1,
 			tamanho_titulo, Paleta.ALERTA)
 	var gate := "%s · %s" % [barco.get("gateAtual", ""), barco.get("nomeGate", "")]
 	draw_string(fonte, Vector2(0, 12), gate, HORIZONTAL_ALIGNMENT_RIGHT, size.x - 6, tamanho_texto, Paleta.TEXTO_CLARO)
-	var dica := "Arraste para girar · roda ou setas aproximam · Esc volta"
-	if str(barco.get("gateAtual", "")) == "RE":
-		dica = "O casco ainda não saiu do molde (RE: recebimento de materiais) · Esc volta"
-	draw_string(fonte, Vector2(6, size.y - 3), dica, HORIZONTAL_ALIGNMENT_LEFT, size.x - 12, tamanho_texto, Paleta.TEXTO)

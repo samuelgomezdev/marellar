@@ -127,6 +127,14 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 			var copia := _barco(selecionado).duplicate()
 			copia["gateAtual"] = args[i + 1]
 			tela_3d.abrir(copia)
+		i = args.find("--comp")
+		if i >= 0 and i + 1 < args.size() and tela_3d.visible:
+			for c in tela_3d.dados.get("compartimentos", []):
+				if c["id"] == args[i + 1]:
+					tela_3d.compartimento = c
+		i = args.find("--vista")
+		if i >= 0 and i + 1 < args.size() and tela_3d.visible:
+			tela_3d.mudar_vista(args[i + 1])
 	if args.has("--saves"):
 		await _abrir_saves()
 	i = args.find("--painel")
@@ -311,7 +319,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				_abrir_ficha_completa()
 			KEY_ESCAPE:
 				if tela_3d.visible:
-					_fechar_inspecao_3d()
+					if not tela_3d.voltar():   # vistas e primeira pessoa voltam ao exterior; do exterior, fecha
+						_fechar_inspecao_3d()
 					return
 				if tela_ficha.visible:
 					_fechar_ficha_completa()
