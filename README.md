@@ -6,7 +6,7 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 
 **Plataforma:** PC (Windows) primeiro; celular depois.
 
-**Jogar no navegador:** https://samuelgomezdev.github.io/marellar/ — sem instalar nada e sem servidor: o motor Java roda compilado para JavaScript dentro da página (veja a seção 12).
+**Jogar no navegador:** https://samuelgomezdev.github.io/marellar/ — sem instalar nada e sem servidor: o motor Java roda compilado para JavaScript dentro da página (veja a seção 12). **Inspeção 3D:** https://samuelgomezdev.github.io/marellar/inspecao/ (modo demonstração: as NCs ficam no navegador).
 
 ## Status
 
@@ -438,6 +438,7 @@ O site https://samuelgomezdev.github.io/marellar/ é publicado pelo workflow `.g
 1. O `marellar-web` compila o `marellar-engine` para JavaScript com o **TeaVM** e expõe a **mesma API** da seção 7 como uma função (`marellarRequisitar(metodo, caminho, corpo)`), com as mesmas respostas e erros.
 2. O cliente Godot é exportado para **Web** (sem threads, então roda no GitHub Pages sem cabeçalhos especiais). No navegador, o `api.gd` troca o HTTP por essa função via `JavaScriptBridge`; o resto do cliente não muda.
 3. Os saves ficam no `localStorage` do navegador.
+4. A inspeção 3D vai junto em `/inspecao/`. Sem a `marellar-api` ela entra em **modo demonstração**: mesmas regras de catálogo e gravidade, mas as NCs ficam só no `localStorage` daquele navegador. Para gravar no servidor, rode a API e abra `localhost:8080/inspecao/`.
 
 O JSON no navegador não usa Jackson (precisa de reflexão): `CodecGerado.java` é gerado a partir dos records. Mudou um record do motor? Rode `./mvnw -pl marellar-web test -Dtest=CodecEmDiaTest -Dmarellar.gerarCodec=true`. O `ParidadeJacksonTest` garante que o navegador lê os mesmos parâmetros e escreve o mesmo JSON que a API.
 
