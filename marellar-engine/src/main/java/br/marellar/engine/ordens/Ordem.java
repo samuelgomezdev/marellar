@@ -2,6 +2,7 @@ package br.marellar.engine.ordens;
 
 import br.marellar.engine.dominio.DecisaoNc;
 import br.marellar.engine.dominio.Funcao;
+import br.marellar.engine.dominio.Gravidade;
 import br.marellar.engine.dominio.Treinamento;
 import br.marellar.engine.dominio.Velocidade;
 import com.fasterxml.jackson.annotation.JsonSubTypes;
@@ -21,7 +22,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(Ordem.Treinar.class),
         @JsonSubTypes.Type(Ordem.FazerUmAUm.class),
         @JsonSubTypes.Type(Ordem.EscolherDecisaoConselho.class),
-        @JsonSubTypes.Type(Ordem.MudarVelocidade.class)
+        @JsonSubTypes.Type(Ordem.MudarVelocidade.class),
+        @JsonSubTypes.Type(Ordem.RegistrarNcInspecao.class)
 })
 public sealed interface Ordem {
 
@@ -50,4 +52,12 @@ public sealed interface Ordem {
     record EscolherDecisaoConselho(String opcaoId) implements Ordem {}
 
     record MudarVelocidade(Velocidade velocidade) implements Ordem {}
+    /**
+     * Marca uma NC no ponto clicado do modelo 3D do barco (inspecao dentro do jogo). O gate e o atual do barco;
+     * {@code codigoDefeito} vem do catalogo ampliado ({@code nc-catalogo-inspecao.json}); x, y, z em metros no
+     * sistema do barco; {@code item} e o codigo do item clicado e {@code compartimento} o ambiente.
+     */
+    record RegistrarNcInspecao(String barcoId, String codigoDefeito, Gravidade gravidade, String item,
+                               String compartimento, java.math.BigDecimal x, java.math.BigDecimal y,
+                               java.math.BigDecimal z, String observacao) implements Ordem {}
 }
