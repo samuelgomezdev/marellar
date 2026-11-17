@@ -1,0 +1,1170 @@
+{
+ "versao": 1,
+ "linha": 33,
+ "gerado": "docs/ferramentas/exportar_barco.mjs a partir de static/inspecao/index.html",
+ "eixos": "metros; x da popa (0) para a proa (L), y para cima a partir da quilha, z para boreste",
+ "dims": {
+  "L": 10.3,
+  "B": 3.4,
+  "T": 0.55,
+  "Daft": 1.24,
+  "Dfwd": 1.55,
+  "Hc": 1.85,
+  "tipo": "hardtop"
+ },
+ "gates": [
+  {
+   "etapa": 0,
+   "id": "DM",
+   "nome": "Desmolde do casco",
+   "pecas": [
+    "casco"
+   ]
+  },
+  {
+   "etapa": 1,
+   "id": "BA",
+   "nome": "Barco aberto",
+   "pecas": [
+    "internos"
+   ]
+  },
+  {
+   "etapa": 2,
+   "id": "BF",
+   "nome": "Fechamento: convés",
+   "pecas": [
+    "conves"
+   ]
+  },
+  {
+   "etapa": 3,
+   "id": "BF",
+   "nome": "Fechamento: casaria",
+   "pecas": [
+    "casaria"
+   ]
+  },
+  {
+   "etapa": 4,
+   "id": "ST/CT",
+   "nome": "Sistemas e acabamento",
+   "pecas": [
+    "acabamento"
+   ]
+  },
+  {
+   "etapa": 5,
+   "id": "PI",
+   "nome": "Piscina",
+   "pecas": []
+  }
+ ],
+ "compartimentos": [
+  {
+   "id": "PLAT",
+   "nome": "Plataforma e motores de popa",
+   "x0": -2.066,
+   "x1": 0,
+   "y0": -1,
+   "y1": 50,
+   "z0": -1.9,
+   "z1": 1.9,
+   "piso": 0.85,
+   "corte": null,
+   "entrada": {
+    "x": 0.35,
+    "y": 2.45,
+    "z": 0,
+    "rumo": 3.142,
+    "inclinacao": -0.35
+   }
+  },
+  {
+   "id": "CONS",
+   "nome": "Interior do console (WC)",
+   "x0": 4.48,
+   "x1": 5.82,
+   "y0": 1.222,
+   "y1": 2.572,
+   "z0": -0.65,
+   "z1": 0.65,
+   "piso": 1.322,
+   "corte": null,
+   "entrada": {
+    "x": 5.55,
+    "y": 2.372,
+    "z": 0,
+    "rumo": 3.142,
+    "inclinacao": -0.25
+   }
+  },
+  {
+   "id": "PORAO",
+   "nome": "Porão (sob o piso)",
+   "x0": 0,
+   "x1": 6.592,
+   "y0": -1,
+   "y1": 1.21,
+   "z0": -1.9,
+   "z1": 1.9,
+   "piso": 0.3,
+   "corte": 1.12,
+   "entrada": {
+    "x": 1.03,
+    "y": 1.12,
+    "z": 0,
+    "rumo": 0,
+    "inclinacao": -0.45
+   }
+  },
+  {
+   "id": "CMD",
+   "nome": "Console e leaning post",
+   "x0": 3.399,
+   "x1": 6.592,
+   "y0": 1.21,
+   "y1": 50,
+   "z0": -1.9,
+   "z1": 1.9,
+   "piso": 1.322,
+   "corte": null,
+   "entrada": {
+    "x": 3.361,
+    "y": 2.922,
+    "z": 0.25,
+    "rumo": 0,
+    "inclinacao": -0.2
+   }
+  },
+  {
+   "id": "CPT",
+   "nome": "Praça de popa",
+   "x0": 0,
+   "x1": 3.399,
+   "y0": 1.21,
+   "y1": 50,
+   "z0": -1.9,
+   "z1": 1.9,
+   "piso": 1.24,
+   "corte": null,
+   "entrada": {
+    "x": 1.854,
+    "y": 2.84,
+    "z": 0.4,
+    "rumo": 0,
+    "inclinacao": -0.08
+   }
+  },
+  {
+   "id": "PROA",
+   "nome": "Proa e solário",
+   "x0": 6.592,
+   "x1": 11.3,
+   "y0": -1,
+   "y1": 50,
+   "z0": -1.9,
+   "z1": 1.9,
+   "piso": 1.62,
+   "corte": null,
+   "entrada": {
+    "x": 7.004,
+    "y": 3.22,
+    "z": 0,
+    "rumo": 0,
+    "inclinacao": -0.08
+   }
+  },
+  {
+   "id": "CONVES",
+   "nome": "Bordas e guarda-mancebo",
+   "x0": 0,
+   "x1": 10.3,
+   "y0": 1.04,
+   "y1": 50,
+   "z0": -1.9,
+   "z1": 1.9,
+   "piso": 1.271,
+   "corte": null,
+   "entrada": {
+    "x": 5.15,
+    "y": 2.871,
+    "z": 1.4,
+    "rumo": 0,
+    "inclinacao": -0.08
+   }
+  }
+ ],
+ "itens": [
+  {
+   "codigo": "VTR-33-001",
+   "descricao": "CASCO VTR 33",
+   "tipo": "MOLDE",
+   "gate": "DM",
+   "etapa": 0,
+   "peca": "casco",
+   "compartimento": "CASCO",
+   "escopo": "E33-STD-01",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": true,
+   "verificar": [
+    "Espessura e cura do laminado",
+    "Gelcoat: bolhas, trincas, porosidade",
+    "Simetria BB/BE e linha d'agua"
+   ],
+   "ref": "REF-PC-QUA-002 Plano de Controle Casco",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-002",
+   "descricao": "VARAS D'AGUA (FRISOS) DO FUNDO - LAMINADAS NO CASCO",
+   "tipo": "FRP",
+   "gate": "DM",
+   "etapa": 0,
+   "peca": "casco",
+   "compartimento": "CASCO",
+   "escopo": "E33-STD-01",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": true,
+   "verificar": [
+    "Frisos sem falha de laminacao",
+    "Alinhamento com a quilha"
+   ],
+   "ref": "REF-PC-QUA-002 Plano de Controle Casco",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-003",
+   "descricao": "TAMPA SAIDA DE AGUA CASCO BB VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "casco",
+   "compartimento": "CASCO",
+   "escopo": "E33-STD-01",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Vedacao da tampa",
+    "Altura acima da linha d'agua"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": "BB"
+  },
+  {
+   "codigo": "VTR-33-004",
+   "descricao": "TAMPA SAIDA DE AGUA CASCO BE VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "casco",
+   "compartimento": "CASCO",
+   "escopo": "E33-STD-01",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Vedacao da tampa",
+    "Altura acima da linha d'agua"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": "BE"
+  },
+  {
+   "codigo": "CMP-FLAPS-33",
+   "descricao": "FLAPS DE TRIM ELETRICOS COM INDICADOR (PAR)",
+   "tipo": "COMPRADO",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "casco",
+   "compartimento": "PLAT",
+   "escopo": "E33-STD-06",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Curso e indicador no painel",
+    "Vedacao dos parafusos no espelho"
+   ],
+   "ref": "REF-FM-QUA-009 Checklist de Seatrial (FM-CQ017)",
+   "lado": null
+  },
+  {
+   "codigo": "ELE-LUZ-SUB",
+   "descricao": "LUZ SUBAQUATICA LED RGB NO ESPELHO DE POPA",
+   "tipo": "ELETRICA",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "casco",
+   "compartimento": "PLAT",
+   "escopo": "E33-OPC-07",
+   "padrao": false,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Acendem e mudam de cor",
+    "Vedacao do passa-casco"
+   ],
+   "ref": "REF-TR-PRD-001 Carregador de Baterias e Bomba de Porao",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-005",
+   "descricao": "CONVES VTR 33",
+   "tipo": "MOLDE",
+   "gate": "BF",
+   "etapa": 2,
+   "peca": "conves",
+   "compartimento": "CONVES",
+   "escopo": "E33-STD-03",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": true,
+   "verificar": [
+    "Colagem casco-conves",
+    "Antiderrapante e gelcoat",
+    "Caimento para os drenos"
+   ],
+   "ref": "REF-PC-QUA-003 Plano de Controle Conves",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-MOT-V10-350",
+   "descricao": "MOTOR DE POPA V10 350 HP RABETA 25 POL",
+   "tipo": "COMPRADO",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PLAT",
+   "escopo": "E33-STD-02",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Torque dos parafusos do espelho",
+    "Altura de montagem",
+    "Curso de trim e direcao"
+   ],
+   "ref": "REF-FM-QUA-019 Checklist de Motores e Linha de Eixo (FM-CQ031)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-TQ-0400",
+   "descricao": "TANQUE DE COMBUSTIVEL 400 L",
+   "tipo": "COMPRADO",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-STD-02",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Teste de estanqueidade",
+    "Fixacao e respiros",
+    "Sensor de nivel"
+   ],
+   "ref": "REF-FM-QUA-023 Teste de Estanqueidade de Tanques de Diesel (FM-CQ038)",
+   "lado": null
+  },
+  {
+   "codigo": "ELE-BAT-33",
+   "descricao": "BATERIA AGM GRUPO 31 EM CAIXA (2 PARTIDA + 1 SERVICO) COM CHAVES GERAIS",
+   "tipo": "ELETRICA",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-STD-13",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Fixacao e ventilacao da caixa",
+    "Bornes protegidos e identificados",
+    "Tensao e carregador"
+   ],
+   "ref": "REF-TR-PRD-001 Carregador de Baterias e Bomba de Porao",
+   "lado": null
+  },
+  {
+   "codigo": "ELE-CARREG-33",
+   "descricao": "CARREGADOR DE BATERIAS 3 BANCOS COM TOMADA DE CAIS E ISOLADOR GALVANICO",
+   "tipo": "ELETRICA",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-STD-13",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Carrega todos os bancos",
+    "Tomada de cais e isolador galvanico",
+    "Fixacao e ventilacao"
+   ],
+   "ref": "REF-TR-PRD-001 Carregador de Baterias e Bomba de Porao",
+   "lado": null
+  },
+  {
+   "codigo": "HID-BP-33",
+   "descricao": "BOMBA DE PORAO AUTOMATICA COM BOIA (1 A VANTE, 2 A RE)",
+   "tipo": "COMPRADO",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-STD-14",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Acionamento da boia automatica",
+    "Alarme de porao no painel",
+    "Saida de agua no costado"
+   ],
+   "ref": "REF-TR-PRD-001 Carregador de Baterias e Bomba de Porao",
+   "lado": null
+  },
+  {
+   "codigo": "HID-SEP-33",
+   "descricao": "FILTRO SEPARADOR DE AGUA E COMBUSTIVEL",
+   "tipo": "COMPRADO",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-STD-14",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Drenar a agua do copo",
+    "Vazamento nas conexoes",
+    "Fixacao"
+   ],
+   "ref": "REF-FM-QUA-019 Checklist de Motores e Linha de Eixo (FM-CQ031)",
+   "lado": null
+  },
+  {
+   "codigo": "HID-AGUA-33",
+   "descricao": "TANQUE DE AGUA DOCE 150 L COM BOMBA PRESSURIZADORA",
+   "tipo": "COMPRADO",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-STD-14",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Estanqueidade e fixacao",
+    "Sensor de nivel"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "HID-WASH-33",
+   "descricao": "BOMBA DE LAVAGEM COM AGUA SALGADA (WASHDOWN)",
+   "tipo": "COMPRADO",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-STD-14",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Pressao na mangueira",
+    "Filtro de entrada limpo"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-SK-2",
+   "descricao": "ESTABILIZADOR GIROSCOPICO SEAKEEPER 2 (12 V)",
+   "tipo": "COMPRADO",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-OPC-16",
+   "padrao": false,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Torque de fixacao na base",
+    "Refrigeracao e alimentacao",
+    "Tempo de giro e reducao de balanco"
+   ],
+   "ref": "REF-FM-QUA-021 Checklist de Seakeeper (FM-CQ033)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-THR-12V",
+   "descricao": "PROPULSOR DE PROA 12 V COM TUNEL LAMINADO",
+   "tipo": "COMPRADO",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PROA",
+   "escopo": "E33-OPC-17",
+   "padrao": false,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Empuxo nos dois sentidos",
+    "Vedacao do tunel e da base do motor",
+    "Protecao termica"
+   ],
+   "ref": "REF-FM-QUA-009 Checklist de Seatrial (FM-CQ017)",
+   "lado": null
+  },
+  {
+   "codigo": "STR-33-001",
+   "descricao": "LONGARINAS DO FUNDO VTR (KIT 4)",
+   "tipo": "FRP",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-STD-18",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Colagem ao fundo sem vazios (bater com martelo)",
+    "Delaminacao na base",
+    "Alinhamento dos calcos do motor"
+   ],
+   "ref": "REF-PC-QUA-002 Plano de Controle Casco",
+   "lado": null
+  },
+  {
+   "codigo": "STR-33-002",
+   "descricao": "HASTILHAS E CAVERNAS DO FUNDO VTR (KIT)",
+   "tipo": "FRP",
+   "gate": "BA",
+   "etapa": 1,
+   "peca": "internos",
+   "compartimento": "PORAO",
+   "escopo": "E33-STD-18",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Colagem ao fundo e as longarinas",
+    "Furos de drenagem (bueiros) livres"
+   ],
+   "ref": "REF-PC-QUA-002 Plano de Controle Casco",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-006",
+   "descricao": "TAMPA COMPARTIMENTO DE POPA VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CPT",
+   "escopo": "E33-STD-03",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Vedacao e dreno da calha",
+    "Abertura (pistao) e trava"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "INX-CUNHO-300",
+   "descricao": "CUNHO DE AMARRACAO 300 MM ACO INOX 316",
+   "tipo": "INOX",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CONVES",
+   "escopo": "E33-STD-03",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Contraplaca e torque",
+    "Vedacao do furo"
+   ],
+   "ref": "REF-PC-QUA-003 Plano de Controle Conves",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-007",
+   "descricao": "TAMPA PAIOL DE ANCORA VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PROA",
+   "escopo": "E33-STD-04",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Vedacao e dobradica"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-008",
+   "descricao": "TAMPA GUINCHO DE AMARRACAO VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PROA",
+   "escopo": "E33-STD-04",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Vedacao e dobradica"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-GUI-1500",
+   "descricao": "GUINCHO DE ANCORA 700 W",
+   "tipo": "COMPRADO",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PROA",
+   "escopo": "E33-STD-04",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Funciona nos dois sentidos",
+    "Contraplaca e vedacao"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-ANC-XR",
+   "descricao": "ANCORA 10 KG ACO INOX 316L",
+   "tipo": "COMPRADO",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PROA",
+   "escopo": "E33-STD-04",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Assenta no rolete sem bater no casco"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "INX-ROLETE",
+   "descricao": "ROLETE DE PROA ACO INOX",
+   "tipo": "INOX",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PROA",
+   "escopo": "E33-STD-04",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Fixacao e alinhamento"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-009",
+   "descricao": "BASE SOLARIO DE PROA VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PROA",
+   "escopo": "E33-STD-05",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Fixacao e gelcoat"
+   ],
+   "ref": "REF-IT-QUA-003 Lista de Defeitos de Gelcoat em Produtos VTR",
+   "lado": null
+  },
+  {
+   "codigo": "EST-SOL-PROA",
+   "descricao": "ESTOFADOS SOLARIO DE PROA (KIT)",
+   "tipo": "ESTOFADO",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PROA",
+   "escopo": "E33-STD-05",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Costura, manchas e encaixe"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-010",
+   "descricao": "PLATAFORMA DE POPA VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PLAT",
+   "escopo": "E33-STD-06",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Fixacao ao espelho",
+    "Teca: calafeto e infiltracao"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "INX-ESCADA-TEL",
+   "descricao": "ESCADA TELESCOPICA EMBUTIVEL ACO INOX",
+   "tipo": "INOX",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PLAT",
+   "escopo": "E33-STD-06",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Abre, trava e recolhe"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "HID-CHUV-POPA",
+   "descricao": "CHUVEIRO DE POPA AGUA DOCE",
+   "tipo": "INOX",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PLAT",
+   "escopo": "E33-STD-06",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Agua quente e fria sem vazamento",
+    "Mangueira recolhe sem prender"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "INX-GM-25",
+   "descricao": "GUARDA-MANCEBO TUBO 25 MM ACO INOX 316 (KIT)",
+   "tipo": "INOX",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CONVES",
+   "escopo": "E33-STD-08",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Fixacao das bases",
+    "Polimento e soldas"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-011",
+   "descricao": "CONSOLE DE COMANDO VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-09",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Gelcoat e furacoes"
+   ],
+   "ref": "REF-IT-QUA-003 Lista de Defeitos de Gelcoat em Produtos VTR",
+   "lado": null
+  },
+  {
+   "codigo": "VID-PB-33",
+   "descricao": "PARA-BRISA CURVO DO CONSOLE ACRILICO 8 MM",
+   "tipo": "VIDRO",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-09",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Riscos e trincas",
+    "Fixacao"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-TELA-12",
+   "descricao": "TELA MULTIFUNCAO 12 POL",
+   "tipo": "ELETRICA",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-09",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Liga, toque e rede NMEA"
+   ],
+   "ref": "REF-FM-QUA-009 Checklist de Seatrial (FM-CQ017)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-VOLANTE",
+   "descricao": "VOLANTE ACO INOX COM DIRECAO ELETRO-HIDRAULICA",
+   "tipo": "COMPRADO",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-09",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Folga e curso da direcao"
+   ],
+   "ref": "REF-FM-QUA-009 Checklist de Seatrial (FM-CQ017)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-MANETE",
+   "descricao": "MANETE DIGITAL DUPLA",
+   "tipo": "COMPRADO",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-09",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Curso e neutro",
+    "Sincronismo"
+   ],
+   "ref": "REF-FM-QUA-009 Checklist de Seatrial (FM-CQ017)",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-012",
+   "descricao": "LEANING POST COM 2 BANCOS VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-09",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Fixacao e gelcoat"
+   ],
+   "ref": "REF-IT-QUA-003 Lista de Defeitos de Gelcoat em Produtos VTR",
+   "lado": null
+  },
+  {
+   "codigo": "EST-LP-33",
+   "descricao": "ESTOFADOS LEANING POST",
+   "tipo": "ESTOFADO",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-09",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Costura e encaixe"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-HT-33",
+   "descricao": "HARDTOP COMPLETO COM COLUNAS INOX (FORNECEDOR)",
+   "tipo": "COMPRADO",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-10",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": true,
+   "verificar": [
+    "Fixacao das colunas",
+    "Gelcoat"
+   ],
+   "ref": "REF-IT-QUA-003 Lista de Defeitos de Gelcoat em Produtos VTR",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-101",
+   "descricao": "VIVEIRO DE ISCA 150 L NA RE DO LEANING POST COM TAMPA",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CPT",
+   "escopo": "E33-STD-10",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Bomba enche e recircula",
+    "Dreno e ladrao escoam",
+    "Tampa veda e trava"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "VTR-33-013",
+   "descricao": "BASE SOFA DE POPA VTR",
+   "tipo": "FRP",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CPT",
+   "escopo": "E33-STD-11",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Fixacao e gelcoat"
+   ],
+   "ref": "REF-IT-QUA-003 Lista de Defeitos de Gelcoat em Produtos VTR",
+   "lado": null
+  },
+  {
+   "codigo": "EST-SOFA-POPA",
+   "descricao": "ESTOFADOS SOFA DE POPA",
+   "tipo": "ESTOFADO",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CPT",
+   "escopo": "E33-STD-11",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Costura, manchas e encaixe"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "TEC-MESA-PROA",
+   "descricao": "TAMPO TECA MESA PROA + PEDESTAL",
+   "tipo": "TECA",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "PROA",
+   "escopo": "E33-OPC-12",
+   "padrao": false,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Verniz/oleo da teca",
+    "Pedestal firme"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "ELE-PAINEL-33",
+   "descricao": "PAINEL DE DISJUNTORES E CHAVES NO CONSOLE",
+   "tipo": "ELETRICA",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-13",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Identificacao dos circuitos",
+    "Cada disjuntor desliga o circuito certo"
+   ],
+   "ref": "REF-TR-PRD-001 Carregador de Baterias e Bomba de Porao",
+   "lado": null
+  },
+  {
+   "codigo": "ELE-NAV-33",
+   "descricao": "LUZES DE NAVEGACAO LED E LUZ DE FUNDEIO (KIT)",
+   "tipo": "ELETRICA",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-13",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Navegacao e fundeio acendem",
+    "Setor e cor corretos",
+    "Vedacao das luminarias"
+   ],
+   "ref": "REF-TR-PRD-001 Carregador de Baterias e Bomba de Porao",
+   "lado": null
+  },
+  {
+   "codigo": "ELE-VHF-33",
+   "descricao": "RADIO VHF COM ANTENA 2,4 M NO HARDTOP",
+   "tipo": "ELETRICA",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-13",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Base reclinavel trava",
+    "ROE da antena (estacionaria)",
+    "Teste de chamada no canal 16"
+   ],
+   "ref": "REF-FM-QUA-009 Checklist de Seatrial (FM-CQ017)",
+   "lado": null
+  },
+  {
+   "codigo": "CMP-BUZINA",
+   "descricao": "BUZINA ELETRICA INOX",
+   "tipo": "COMPRADO",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-13",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Toca pelos comandos",
+    "Fixacao e dreno"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "ELE-SPOTS-33",
+   "descricao": "ILUMINACAO LED SOB O HARDTOP",
+   "tipo": "ELETRICA",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CMD",
+   "escopo": "E33-STD-13",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Todos acendem com o mesmo tom",
+    "Vedacao e fixacao no teto"
+   ],
+   "ref": "REF-TR-PRD-001 Carregador de Baterias e Bomba de Porao",
+   "lado": null
+  },
+  {
+   "codigo": "VID-PORTA-CONS",
+   "descricao": "PORTA DO CONSOLE EM ACRILICO COM FECHADURA",
+   "tipo": "VIDRO",
+   "gate": "ST",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CONS",
+   "escopo": "E33-STD-15",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Fecha e tranca",
+    "Riscos no acrilico"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  },
+  {
+   "codigo": "HID-VASO-33",
+   "descricao": "VASO SANITARIO ELETRICO COM TANQUE DE AGUAS NEGRAS 26 L",
+   "tipo": "COMPRADO",
+   "gate": "CT",
+   "etapa": 4,
+   "peca": "acabamento",
+   "compartimento": "CONS",
+   "escopo": "E33-STD-15",
+   "padrao": true,
+   "exclusivo": null,
+   "casca": false,
+   "verificar": [
+    "Descarga e valvulas",
+    "Tanque de aguas negras sem odor",
+    "Ventilacao do console"
+   ],
+   "ref": "REF-FM-QUA-007 Checklist Geral de Embarcacoes (FM-CQ013)",
+   "lado": null
+  }
+ ]
+}

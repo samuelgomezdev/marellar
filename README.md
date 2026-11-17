@@ -24,6 +24,7 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | M9 | Inspeção 3D (three.js) na `marellar-api` | ✅ página `/inspecao/` com os 3 moldes montados pelos gates; NC no ponto clicado gravada em `inspecao/ncs.json` |
 | M10 | Estrutura de produto (`data/estrutura-produto.json`) e exterior 3D | ✅ linhas 33/47/59 no modelo do SD4 (barco → escopos STD/OPC → itens); cada item vira uma peça 3D clicável; a NC grava o código do item |
 | M11 | Interiores, sistemas e inspeção por compartimento (Aula 6 do 3D) | ✅ estrutura v3 (51/126/135 itens: praça de popa, paiol de popa, antenas, ar-condicionado por ambiente, sistemas pelos checklists FM-CQ013/FM-CQ034, 33 com o básico de um center console); v2 (32/90/98 itens) com `compartimento`, `verificar` e `ref`; casaria oca, vidros curvos, longarinas, anteparas, sala de máquinas (gerador, estabilizadores OPC) e cabines; cortes, raio-X e câmera em primeira pessoa; catálogo ampliado `data/nc-catalogo-inspecao.json` (73 defeitos em 8 categorias). A NC grava o defeito detalhado em campos próprios (`codigoDefeito`, `codigoBase`, `categoria`, `compartimento`). |
+| 3D no jogo | Inspeção 3D refeita dentro do jogo Godot, em pixel art | 🔄 passo 1/4: modelo da linha 33 exportado para `client-godot/assets/barcos/` (`.glb` com os dados de cada item + `.json` com dimensões, gates e compartimentos). Próximos: visualizador, vistas e NC no ponto clicado |
 
 ---
 
@@ -423,6 +424,7 @@ Pré-requisitos: **JDK 21** e **Godot 4** (o Maven vem pelo wrapper).
 java -jar marellar-cli/target/marellar-cli.jar --semente 42 --meses 1
 ./mvnw -pl marellar-api spring-boot:run      # API em http://localhost:8080/api/v1
 # inspeção 3D: com a API ligada, abrir http://localhost:8080/inspecao/
+node docs/ferramentas/exportar_barco.mjs 33       # regera o modelo 3D do jogo (precisa de um Playwright instalado; veja o cabeçalho do script)
 # abrir client-godot/project.godot no Godot 4 e rodar (com a API ligada)
 godot --path client-godot -- --rodar          # opcional: abre o jogo já em x4
 godot --path client-godot -- --dias 12 --selecionar 33-002   # opcional: pula dias e abre a ficha de um barco
