@@ -3,6 +3,8 @@
 #   1. compila o motor para JavaScript (marellar-web, TeaVM);
 #   2. exporta o cliente Godot para Web (sem threads: roda sem cabecalhos COOP/COEP);
 #   3. copia o motor, o script de inicio e os dados de data/ ao lado do index.html.
+#   4. copia a inspecao 3D (three.js) para inspecao/; sem a API ela roda em modo demonstracao
+#      e guarda as NCs no proprio navegador.
 # Uso: GODOT=/caminho/do/godot web/montar_site.sh
 set -euo pipefail
 cd "$(dirname "$0")/.."
@@ -15,6 +17,7 @@ rm -rf "$SAIDA" && mkdir -p "$SAIDA/data"
 "$GODOT" --headless --path client-godot --export-release "Web" export/web/index.html
 cp marellar-web/target/js/marellar-motor.js web/marellar-inicio.js "$SAIDA/"
 cp data/*.json "$SAIDA/data/"
+cp -r marellar-api/src/main/resources/static/inspecao "$SAIDA/inspecao"
 touch "$SAIDA/.nojekyll"
 echo "Site pronto em $SAIDA"
 ls -la "$SAIDA"
