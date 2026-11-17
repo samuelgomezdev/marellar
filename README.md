@@ -21,9 +21,9 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | M7 | `marellar-api` | ✅ criar, estado, avançar, ordens, barco, eventos, conselho, salvar/carregar |
 | M8 | `client-godot`: telas Fábrica, Barco, Conselho | ✅ Fábrica, ficha completa do barco, Equipe, Fornecedores, Conselho e saves, tudo pelo mouse; arte v1 da planta vista de cima |
 | Web | `marellar-web` + GitHub Pages | ✅ motor compilado para JavaScript (TeaVM), cliente Godot exportado para Web, saves no navegador |
-| M11 | Interiores, sistemas e inspeção por compartimento (Aula 6 do 3D) | ✅ estrutura v3 (51/126/135 itens: praça de popa, paiol de popa, antenas, ar-condicionado por ambiente, sistemas pelos checklists FM-CQ013/FM-CQ034, 33 com o básico de um center console); v2 (32/90/98 itens) com `compartimento`, `verificar` e `ref`; casaria oca, vidros curvos, longarinas, anteparas, sala de máquinas (gerador, estabilizadores OPC) e cabines; cortes, raio-X e câmera em primeira pessoa; catálogo ampliado `data/nc-catalogo-inspecao.json` (73 defeitos em 8 categorias). Falta recompilar o jar para a página nova aparecer em `/inspecao/` |
-| M10 | Estrutura de produto (`data/estrutura-produto.json`) e exterior 3D | ✅ linhas 33/47/59 no modelo do SD4 (barco → escopos STD/OPC → itens); cada item vira uma peça 3D clicável; a NC grava o código do item |
 | M9 | Inspeção 3D (three.js) na `marellar-api` | ✅ página `/inspecao/` com os 3 moldes montados pelos gates; NC no ponto clicado gravada em `inspecao/ncs.json` |
+| M10 | Estrutura de produto (`data/estrutura-produto.json`) e exterior 3D | ✅ linhas 33/47/59 no modelo do SD4 (barco → escopos STD/OPC → itens); cada item vira uma peça 3D clicável; a NC grava o código do item |
+| M11 | Interiores, sistemas e inspeção por compartimento (Aula 6 do 3D) | ✅ estrutura v3 (51/126/135 itens: praça de popa, paiol de popa, antenas, ar-condicionado por ambiente, sistemas pelos checklists FM-CQ013/FM-CQ034, 33 com o básico de um center console); v2 (32/90/98 itens) com `compartimento`, `verificar` e `ref`; casaria oca, vidros curvos, longarinas, anteparas, sala de máquinas (gerador, estabilizadores OPC) e cabines; cortes, raio-X e câmera em primeira pessoa; catálogo ampliado `data/nc-catalogo-inspecao.json` (73 defeitos em 8 categorias). A NC grava o defeito detalhado em campos próprios (`codigoDefeito`, `codigoBase`, `categoria`, `compartimento`). |
 
 ---
 
@@ -333,16 +333,16 @@ Base: `/api/v1`. JSON em camelCase. Valores em reais como string decimal (`"3200
 | POST | `/partidas/{id}/salvar` | Grava `saves/{id}.json` |
 | POST | `/partidas/carregar` | Carrega um save (`{"id": "..."}`); a partida volta para a memória com o mesmo id |
 | GET | `/partidas/saves` | Lista os saves, do mais recente para o mais antigo |
-| GET | `/inspecao/defeitos` | Catálogo de defeitos da inspeção 3D (o mesmo `data/nc-catalogo.json` do motor) |
+| GET | `/inspecao/defeitos` | Catálogo ampliado da inspeção 3D (`data/nc-catalogo-inspecao.json`): código, descrição, categoria, gravidade, gates, defeito-base do motor e tipos de item |
 | GET | `/inspecao/ncs?linha=59` | NCs da inspeção 3D de uma linha (33, 47 ou 59) |
-| POST | `/inspecao/ncs` | Registra uma NC no ponto clicado: peça, posição (m), baliza 0–15, bordo (BB/BE/LC), gate, defeito e gravidade |
+| POST | `/inspecao/ncs` | Registra uma NC no ponto clicado: peça, posição (m), baliza 0–15, bordo (BB/BE/LC), zona, compartimento, gate, defeito e gravidade |
 | PUT | `/inspecao/ncs/{id}` | Edita uma NC aberta: defeito, gravidade, gate, observação e o ponto (peça e posição); número, linha e data de registro não mudam |
 | POST | `/inspecao/ncs/{id}/fechar` | Fecha a NC |
 | DELETE | `/inspecao/ncs/{id}` | Exclui a NC |
 
 - O motor **pausa sozinho**, devolvendo `"pausado": true` e o motivo, quando acontece acidente, NC crítica, conselho ou evento com escolha.
 - Erros no formato `application/problem+json`.
-- Catálogo ampliado da inspeção (`data/nc-catalogo-inspecao.json`, gerado por `docs/ferramentas/gerar_catalogo_inspecao.py`): 73 defeitos em 8 categorias (estrutural, estanqueidade, estético, dimensional, funcional, elétrico, movelaria, montagem). **Ponte provisória, sem mudar o Java:** a página envia em `codigoDefeito` o defeito-base do motor (campo `base`) e grava o defeito detalhado entre colchetes no começo de `observacao` (`[TEC-INFILTRA] ...`); `zona` leva o nome do compartimento. O catálogo do motor (`data/nc-catalogo.json`) não mudou.
+- Catálogo ampliado da inspeção (`data/nc-catalogo-inspecao.json`, gerado por `docs/ferramentas/gerar_catalogo_inspecao.py`): 73 defeitos em 8 categorias (estrutural, estanqueidade, estético, dimensional, funcional, elétrico, movelaria, montagem). A NC envia em `codigoDefeito` o defeito detalhado e, opcionalmente, o `compartimento` (código da estrutura de produto, ex.: `SAL`); o servidor preenche `descricaoDefeito`, `categoria` e `codigoBase` (o defeito do motor em `data/nc-catalogo.json`, que não mudou). Compartimento que não existe nos itens da linha dá 422. NCs antigas com `[CODIGO]` no começo da observação são migradas ao carregar.
 - Inspeção 3D: a gravidade pode **subir** em relação ao catálogo, mas não pode ficar abaixo dele (422). As NCs ficam em `inspecao/ncs.json` (`marellar.inspecao.arquivo`). A página em `/inspecao/` traz o three.js r187 junto (`static/inspecao/vendor`, licença MIT), então funciona sem internet.
 
 ---
