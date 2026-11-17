@@ -9,7 +9,10 @@ import jakarta.validation.constraints.NotBlank;
 import jakarta.validation.constraints.NotNull;
 import jakarta.validation.constraints.Size;
 
-/** Corpo do POST de uma NC nova. O servidor gera id, numero, descricao do defeito e data. */
+/**
+ * Corpo do POST de uma NC nova. {@code codigoDefeito} e o defeito do catalogo ampliado da inspecao;
+ * o servidor gera id, numero, data, descricao, categoria e defeito-base.
+ */
 public record NovaNcRequest(
         @NotNull Integer linha,
         @NotNull NcInspecao.Peca peca,
@@ -17,6 +20,7 @@ public record NovaNcRequest(
         @Min(0) @Max(15) int baliza,
         @NotNull NcInspecao.Bordo bordo,
         @Size(max = 40) String zona,
+        @Size(max = 10) String compartimento,
         @Size(max = 40) String componente,
         @NotNull CodigoGate gate,
         @NotBlank String codigoDefeito,

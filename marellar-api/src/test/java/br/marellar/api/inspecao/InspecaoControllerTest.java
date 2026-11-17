@@ -57,11 +57,82 @@ class InspecaoControllerTest {
     }
 
     @Test
-    void catalogoEOMesmoDoMotor() throws Exception {
+    void catalogoEOAmpliadoDaInspecaoLigadoAoMotor() throws Exception {
         mvc.perform(get("/api/v1/inspecao/defeitos"))
                 .andExpect(status().isOk())
-                .andExpect(jsonPath("$.length()").value(12))
-                .andExpect(jsonPath("$[?(@.codigo == 'LAM-SECO')].gravidade").value("CRITICA"));
+                .andExpect(jsonPath("$.length()").value(73))
+                .andExpect(jsonPath("$[?(@.codigo == 'LAM-SECO')].gravidade").value("CRITICA"))
+                .andExpect(jsonPath("$[?(@.codigo == 'TEC-INFILTRA')].categoria").value("ESTANQUEIDADE"))
+                .andExpect(jsonPath("$[?(@.codigo == 'TEC-INFILTRA')].base").value("EST-INFILTRA"));
+    }
+
+    private static String ncDetalhada(int linha, String defeito, String compartimento) {
+        return """
+                {"linha": %d, "peca": "CONVES", "posicao": {"x": 4.0, "y": 2.0, "z": 0.5},
+                 "baliza": 5, "bordo": "BE", "zona": "Salão", "compartimento": "%s", "componente": "Teca",
+                 "gate": "ST", "codigoDefeito": "%s", "gravidade": "CRITICA", "observacao": "pingando no salão"}
+                """.formatted(linha, compartimento, defeito);
+    }
+
+    @Test
+    void ncNovaGravaDefeitoDetalhadoCategoriaECompartimento() throws Exception {
+        String id = registrar(ncDetalhada(59, "TEC-INFILTRA", "SAL"));
+        mvc.perform(get("/api/v1/inspecao/ncs").param("linha", "59"))
+                .andExpect(jsonPath("$[0].id").value(id))
+                .andExpect(jsonPath("$[0].codigoDefeito").value("TEC-INFILTRA"))
+                .andExpect(jsonPath("$[0].codigoBase").value("EST-INFILTRA"))
+                .andExpect(jsonPath("$[0].categoria").value("ESTANQUEIDADE"))
+                .andExpect(jsonPath("$[0].compartimento").value("SAL"))
+                .andExpect(jsonPath("$[0].descricaoDefeito").value("Infiltração sob a teca (água entre a teca e a fibra)"))
+                .andExpect(jsonPath("$[0].observacao").value("pingando no salão"));
+    }
+
+    @Test
+    void recusaCodigoDetalhadoInvalidoECompartimentoForaDaLinha() throws Exception {
+        mvc.perform(post("/api/v1/inspecao/ncs").contentType(MediaType.APPLICATION_JSON)
+                        .content(ncDetalhada(59, "TEC-NAO-EXISTE", "SAL")))
+                .andExpect(status().isUnprocessableEntity())
+                .andExpect(jsonPath("$.detail").value("Defeito fora do catalogo da inspecao: TEC-NAO-EXISTE"));
+        mvc.perform(post("/api/v1/inspecao/ncs").contentType(MediaType.APPLICATION_JSON)
+                        .content(ncDetalhada(33, "TEC-INFILTRA", "SAL")))            // a 33 nao tem salao
+                .andExpect(status().isUnprocessableEntity());
+    }
+
+    @Test
+    void ncAntigaComCodigoNaObservacaoEMigradaAoCarregar() throws Exception {
+        Path arquivo = Path.of("target/inspecao-teste/ncs-antigas.json");
+        Files.createDirectories(arquivo.getParent());
+        Files.writeString(arquivo, """
+                [{"id": "a1", "numero": 1, "linha": 59, "peca": "CONVES", "posicao": {"x": 4.0, "y": 2.0, "z": 0.5},
+                  "baliza": 5, "bordo": "BE", "zona": "Salão", "componente": "Teca", "gate": "ST",
+                  "codigoDefeito": "EST-INFILTRA", "descricaoDefeito": "Infiltração no teste de estanqueidade",
+                  "gravidade": "CRITICA", "observacao": "[TEC-INFILTRA] pingando no salão", "status": "ABERTA",
+                  "registradaEm": "2026-11-15T12:00:00Z"},
+                 {"id": "a2", "numero": 2, "linha": 59, "peca": "CASCO", "posicao": {"x": 8.0, "y": 1.0, "z": 2.0},
+                  "baliza": 8, "bordo": "BE", "zona": "obras mortas", "componente": "Casco", "gate": "DM",
+                  "codigoDefeito": "LAM-BOLHA", "descricaoDefeito": "Bolha de ar na laminação",
+                  "gravidade": "MEDIA", "observacao": "[SEM-CODIGO] texto livre", "status": "ABERTA",
+                  "registradaEm": "2026-11-15T12:00:00Z"}]
+                """);
+
+        InspecaoService carregado = new InspecaoService(json, arquivo, Clock.systemUTC());
+
+        assertThat(carregado.listar(59)).satisfiesExactly(
+                n -> {
+                    assertThat(n.codigoDefeito()).isEqualTo("TEC-INFILTRA");
+                    assertThat(n.codigoBase()).isEqualTo("EST-INFILTRA");
+                    assertThat(n.categoria()).isEqualTo("ESTANQUEIDADE");
+                    assertThat(n.observacao()).isEqualTo("pingando no salão");
+                    assertThat(n.gravidade().name()).isEqualTo("CRITICA");
+                    assertThat(n.numero()).isEqualTo(1);
+                },
+                n -> {                                              // codigo entre colchetes que nao e do catalogo
+                    assertThat(n.codigoDefeito()).isEqualTo("LAM-BOLHA");
+                    assertThat(n.codigoBase()).isEqualTo("LAM-BOLHA");
+                    assertThat(n.categoria()).isEqualTo("ESTRUTURAL");
+                    assertThat(n.observacao()).isEqualTo("[SEM-CODIGO] texto livre");
+                });
+        assertThat(Files.readString(arquivo)).contains("\"codigoBase\"").doesNotContain("[TEC-INFILTRA]");
     }
 
     @Test
@@ -75,7 +146,7 @@ class InspecaoControllerTest {
                 .andExpect(jsonPath("$.length()").value(2))
                 .andExpect(jsonPath("$[0].numero").value(1))
                 .andExpect(jsonPath("$[1].numero").value(2))
-                .andExpect(jsonPath("$[1].descricaoDefeito").value("Bolha na laminação"))
+                .andExpect(jsonPath("$[1].descricaoDefeito").value("Bolha de ar na laminação"))
                 .andExpect(jsonPath("$[0].observacao").value("lixar e retocar"))
                 .andExpect(jsonPath("$[0].componente").value("Casco"))
                 .andExpect(jsonPath("$[0].status").value("ABERTA"));
@@ -151,7 +222,7 @@ class InspecaoControllerTest {
                 .andExpect(jsonPath("$.posicao.x").value(10.5))
                 .andExpect(jsonPath("$.bordo").value("BB"))
                 .andExpect(jsonPath("$.gate").value("BF"))
-                .andExpect(jsonPath("$.descricaoDefeito").value("Bolha na laminação"))
+                .andExpect(jsonPath("$.descricaoDefeito").value("Bolha de ar na laminação"))
                 .andExpect(jsonPath("$.gravidade").value("CRITICA"))
                 .andExpect(jsonPath("$.editadaEm").isNotEmpty());
         assertThat(service.listar(59)).hasSize(2);

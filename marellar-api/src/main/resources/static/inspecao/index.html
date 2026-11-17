@@ -181,7 +181,7 @@
     <div class="passo"><b>Corte (clipping)</b>: <code>material.clippingPlanes</code> esconde tudo acima de um plano; o raio do mouse ignora o que foi cortado.</div>
     <div class="passo"><b>Câmera em primeira pessoa</b>: dentro do barco o <code>OrbitControls</code> sai de cena; guinada e inclinação viram a rotação da câmera e as teclas andam no plano.</div>
     <div class="passo"><b>Sistemas que um barco de verdade tem</b>: cada evaporadora do ar-condicionado, bomba, filtro, chave de bateria, antena e luz de navegação é um item da estrutura com ponto de inspeção tirado dos checklists FM-CQ013 e FM-CQ034. Uma função (<code>baseAntenas</code>) decide onde vão antenas e luzes em cada linha: arco no fly, mastro no hardtop ou teto do hardtop comprado.</div>
-    <div class="passo"><b>Compartimento e pontos de inspeção</b>: cada item da estrutura tem <code>compartimento</code>, <code>verificar</code> e <code>ref</code>; a NC grava o ambiente em <code>zona</code>.</div>
+    <div class="passo"><b>Compartimento e pontos de inspeção</b>: cada item da estrutura tem <code>compartimento</code>, <code>verificar</code> e <code>ref</code>; a NC grava o código do ambiente em <code>compartimento</code> e o defeito detalhado em <code>codigoDefeito</code>.</div>
     <div class="nota">Arranjo interno, alturas de piso e posição dos equipamentos são um projeto conceitual da Marellar, proporcionado pelo casco deste modelo; não reproduzem nenhum barco real. Gerador, estabilizadores e motores usam medidas de catálogo (fonte no cartão do item). Para gravar NCs no servidor: rode a marellar-api e abra <code>localhost:8080/inspecao/</code>.</div>
   </aside>
 </div>
@@ -2066,30 +2066,16 @@ const GATES = [
   { id: 'PI', nome: 'Piscina', txt: 'Polido e inspecionado, o barco desce para a água.', pecas: [] },
 ];
 
-// Cópia do data/nc-catalogo.json (o catálogo do motor), usada para validar a gravidade no modo offline
-const CATALOGO_LOCAL = [
-  { codigo: 'LAM-BOLHA', descricao: 'Bolha na laminação', gravidade: 'MEDIA', gates: ['DM'] },
-  { codigo: 'LAM-SECO', descricao: 'Fibra seca (resina insuficiente)', gravidade: 'CRITICA', gates: ['DM'] },
-  { codigo: 'GEL-TRINCA', descricao: 'Trinca no gelcoat', gravidade: 'LEVE', gates: ['DM', 'BA'] },
-  { codigo: 'GEL-LOTE', descricao: 'Gelcoat com cor fora do padrão', gravidade: 'MEDIA', gates: ['DM'] },
-  { codigo: 'MON-FIXACAO', descricao: 'Fixação solta em móvel', gravidade: 'LEVE', gates: ['BA', 'BF'] },
-  { codigo: 'ELE-CHICOTE', descricao: 'Chicote elétrico sem identificação', gravidade: 'MEDIA', gates: ['BF', 'CT'] },
-  { codigo: 'ELE-PAINEL', descricao: 'Painel elétrico com defeito', gravidade: 'MEDIA', gates: ['CT'] },
-  { codigo: 'EST-INFILTRA', descricao: 'Infiltração no teste de estanqueidade', gravidade: 'CRITICA', gates: ['ST'] },
-  { codigo: 'VID-VEDACAO', descricao: 'Vidro laminado com falha de vedação', gravidade: 'MEDIA', gates: ['ST', 'PI'] },
-  { codigo: 'ACA-RISCO', descricao: 'Risco de acabamento', gravidade: 'LEVE', gates: ['PI', 'ET'] },
-  { codigo: 'MOT-VIBRACAO', descricao: 'Vibração anormal no motor', gravidade: 'CRITICA', gates: ['TM'] },
-  { codigo: 'TRA-AVARIA', descricao: 'Avaria no transporte', gravidade: 'MEDIA', gates: ['TR'] },
-];
 const GRAV = ['LEVE', 'MEDIA', 'CRITICA'];
 const ROTULO = { LEVE: 'Leve', MEDIA: 'Média', CRITICA: 'Crítica' };
 const GATE_API = { 'ST/CT': 'ST' };                   // o motor separa ST e CT; a tela junta os dois
 const PECA_API = { casco: 'CASCO', conves: 'CONVES', casaria: 'CASARIA', internos: 'INTERNOS', acabamento: 'ACABAMENTO' };
 
-// Catálogo ampliado da inspeção: o defeito detalhado vai entre colchetes no começo da observação
-// e a API recebe o defeito-base do motor (que valida a gravidade mínima).
+// Catálogo ampliado da inspeção: a NC grava o defeito detalhado em codigoDefeito; o servidor preenche
+// categoria e codigoBase (o defeito do motor). NCs antigas do navegador ainda podem ter [CODIGO] na observação.
 const TIPO_INSP = Object.fromEntries(CAT_INSP.tipos.map(t => [t.codigo, t]));
 function detalhe(n) {
+  if (n.categoria) return { codigo: n.codigoDefeito, descricao: n.descricaoDefeito, categoria: n.categoria, obs: n.observacao || '' };
   const m = /^\[([A-Z0-9-]+)\]\s?([\s\S]*)$/.exec(n.observacao || '');
   const t = m && TIPO_INSP[m[1]];
   if (t) return { codigo: t.codigo, descricao: t.descricao, categoria: t.categoria, obs: m[2] };
@@ -2100,7 +2086,7 @@ function detalhe(n) {
 // ---------- Armazém: API (Spring Boot) ou navegador ----------
 const API = '/api/v1/inspecao';
 const armazem = {
-  modo: 'local', catalogo: CATALOGO_LOCAL,
+  modo: 'local', catalogo: CAT_INSP.tipos,
   async iniciar() {
     try {
       const r = await fetch(API + '/defeitos', { headers: { Accept: 'application/json' } });
@@ -2131,6 +2117,7 @@ const armazem = {
     const l = this._local();
     const numero = l.filter(n => n.linha === req.linha).reduce((m, n) => Math.max(m, n.numero), 0) + 1;
     const nc = { ...req, id: crypto.randomUUID ? crypto.randomUUID() : String(Date.now()), numero, descricaoDefeito: tipo.descricao,
+                 codigoBase: tipo.base, categoria: tipo.categoria,
                  status: 'ABERTA', registradaEm: new Date().toISOString(), fechadaEm: null };
     l.push(nc); this._gravar(l); return nc;
   },
@@ -2142,7 +2129,7 @@ const armazem = {
     const l = this._local(); const n = l.find(x => x.id === id);
     if (!n) throw new Error('NC não encontrada');
     if (n.status === 'FECHADA') throw new Error(`A NC ${n.numero} está fechada e não pode ser editada`);
-    Object.assign(n, req, { descricaoDefeito: tipo.descricao, editadaEm: new Date().toISOString() });
+    Object.assign(n, req, { descricaoDefeito: tipo.descricao, codigoBase: tipo.base, categoria: tipo.categoria, editadaEm: new Date().toISOString() });
     this._gravar(l); return n;
   },
   async fechar(id) {
@@ -2448,7 +2435,7 @@ const itensDoComp = (c) => itensObj.filter(x => x.item.compartimento === c.id &&
 function desenharComps() {
   const el = document.getElementById('comps');
   el.innerHTML = comps.map(c => {
-    const n = itensDoComp(c).length, ab = ncs.filter(x => x.status === 'ABERTA' && x.zona === c.nome).length;
+    const n = itensDoComp(c).length, ab = ncs.filter(x => x.status === 'ABERTA' && (x.compartimento ? x.compartimento === c.id : x.zona === c.nome)).length;
     return `<button class="comp ${compAtual === c ? 'ativo' : ''}" data-comp="${c.id}">${c.nome}<small>${n} ${n === 1 ? 'item' : 'itens'}${ab ? ` · <span class="nc">${ab} NC</span>` : ''}</small></button>`;
   }).join('');
   el.querySelectorAll('[data-comp]').forEach(b => b.addEventListener('click', () => escolherComp(comps.find(c => c.id === b.dataset.comp))));
@@ -2762,7 +2749,14 @@ function marcarPonto(obj, pontoMundo) {
   pendente = { pecaNome: obj.userData.peca, componente: (obj.userData.componente || '').slice(0, 40),
                x: local.x, y: local.y, z: local.z, parte: peca.name, item: it };
   pendente.zona = zonaDe(pendente);
+  pendente.compartimento = compDe(pendente);
   mostrarLocal();
+}
+// Código do compartimento (SM, SAL, VIP...) pelo item clicado ou pela caixa do ambiente; null fora deles
+function compDe(n) {
+  if (n.item && n.item.compartimento) return n.item.compartimento;
+  const c = compNoPonto(n.x, n.y, n.z);
+  return c ? c.id : null;
 }
 function zonaDe(n) {
   const porItem = n.item && n.item.compartimento && comps.find(c => c.id === n.item.compartimento);
@@ -2797,7 +2791,7 @@ function abrirForm(nc) {
   if (nc) {
     const det = detalhe(nc);
     pendente = { pecaNome: NOME_PECA[nc.peca], componente: nc.componente || NOME_PECA[nc.peca],
-                 x: nc.posicao.x, y: nc.posicao.y, z: nc.posicao.z, parte: PARTE[nc.peca], zona: nc.zona, item: null };
+                 x: nc.posicao.x, y: nc.posicao.y, z: nc.posicao.z, parte: PARTE[nc.peca], zona: nc.zona, compartimento: nc.compartimento || null, item: null };
     selCat.value = det.categoria || '+'; preencherDefeitos(det.codigo);
     document.getElementById('fGrav').value = nc.gravidade;
     document.getElementById('fGate').value = nc.gate;
@@ -2857,10 +2851,10 @@ document.getElementById('fOk').addEventListener('click', async () => {
   if (!pendente) return;
   const loc = local3d(pendente), tipo = TIPO_INSP[selDef.value];
   const req = { peca: PECA_API[pendente.parte], posicao: { x: pendente.x, y: pendente.y, z: pendente.z },
-                baliza: loc.baliza, bordo: loc.bordo, zona: loc.zona, componente: pendente.componente,
-                gate: document.getElementById('fGate').value,
-                codigoDefeito: tipo.base, gravidade: document.getElementById('fGrav').value,
-                observacao: `[${tipo.codigo}] ${document.getElementById('fObs').value.trim()}`.slice(0, 300) };
+                baliza: loc.baliza, bordo: loc.bordo, zona: loc.zona, compartimento: pendente.compartimento || null,
+                componente: pendente.componente, gate: document.getElementById('fGate').value,
+                codigoDefeito: tipo.codigo, gravidade: document.getElementById('fGrav').value,
+                observacao: document.getElementById('fObs').value.trim().slice(0, 300) };
   try {
     const n = editando ? await armazem.editar(editando.id, req) : await armazem.registrar({ linha: +linhaAtual, ...req });
     const msg = editando ? `NC ${n.numero} atualizada.` : `NC ${n.numero} registrada (${tipo.descricao}, ${ROTULO[n.gravidade]})${armazem.modo === 'api' ? ' no servidor' : ''}.`;

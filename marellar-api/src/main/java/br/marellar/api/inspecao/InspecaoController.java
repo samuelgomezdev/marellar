@@ -1,6 +1,6 @@
 package br.marellar.api.inspecao;
 
-import br.marellar.engine.dados.CatalogoNc.TipoNc;
+import br.marellar.api.inspecao.CatalogoInspecao.Defeito;
 import jakarta.validation.Valid;
 import org.springframework.http.HttpStatus;
 import org.springframework.web.bind.annotation.DeleteMapping;
@@ -18,7 +18,7 @@ import java.util.List;
 
 /**
  * Inspecao 3D: o cliente (pagina three.js em /inspecao/) registra NCs no ponto clicado do barco.
- * O catalogo de defeitos e o mesmo do motor (data/nc-catalogo.json).
+ * O catalogo de defeitos e o ampliado da inspecao (data/nc-catalogo-inspecao.json), ligado ao do motor por {@code base}.
  */
 @RestController
 @RequestMapping("/api/v1/inspecao")
@@ -30,10 +30,11 @@ public class InspecaoController {
         this.service = service;
     }
 
-    public record DefeitoVisao(String codigo, String descricao, String gravidade, List<String> gates) {
-        static DefeitoVisao de(TipoNc t) {
-            return new DefeitoVisao(t.codigo(), t.descricao(), t.gravidade().name(),
-                    t.gates().stream().map(Enum::name).toList());
+    public record DefeitoVisao(String codigo, String descricao, String categoria, String gravidade,
+                               List<String> gates, String base, List<String> aplica) {
+        static DefeitoVisao de(Defeito d) {
+            return new DefeitoVisao(d.codigo(), d.descricao(), d.categoria(), d.gravidade().name(),
+                    d.gates().stream().map(Enum::name).toList(), d.base(), d.aplica());
         }
     }
 

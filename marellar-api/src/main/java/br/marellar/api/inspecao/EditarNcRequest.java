@@ -19,6 +19,7 @@ public record EditarNcRequest(
         @Min(0) @Max(15) int baliza,
         @NotNull NcInspecao.Bordo bordo,
         @Size(max = 40) String zona,
+        @Size(max = 10) String compartimento,
         @Size(max = 40) String componente,
         @NotNull CodigoGate gate,
         @NotBlank String codigoDefeito,
