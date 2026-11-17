@@ -35,3 +35,11 @@ const MADEIRA_ESCURA := Color("#3e2731")
 const TIJOLO := Color("#be4a2f")
 const TIJOLO_ESCURO := Color("#733e39")
 const FAIXA := Color("#fee761")
+
+## As 32 cores da Endesga 32, na ordem da paleta original. A inspeção 3D reduz cada pixel a uma delas.
+const ENDESGA_32: Array[Color] = [
+	Color("#be4a2f"), Color("#d77643"), Color("#ead4aa"), Color("#e4a672"), Color("#b86f50"), Color("#733e39"), Color("#3e2731"), Color("#a22633"),
+	Color("#e43b44"), Color("#f77622"), Color("#feae34"), Color("#fee761"), Color("#63c74d"), Color("#3e8948"), Color("#265c42"), Color("#193c3e"),
+	Color("#124e89"), Color("#0099db"), Color("#2ce8f5"), Color("#ffffff"), Color("#c0cbdc"), Color("#8b9bb4"), Color("#5a6988"), Color("#3a4466"),
+	Color("#262b44"), Color("#181425"), Color("#ff0044"), Color("#68386c"), Color("#b55088"), Color("#f6757a"), Color("#e8b796"), Color("#c28569"),
+]

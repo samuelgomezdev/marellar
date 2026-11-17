@@ -24,7 +24,7 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | M9 | Inspeção 3D (three.js) na `marellar-api` | ✅ página `/inspecao/` com os 3 moldes montados pelos gates; NC no ponto clicado gravada em `inspecao/ncs.json` |
 | M10 | Estrutura de produto (`data/estrutura-produto.json`) e exterior 3D | ✅ linhas 33/47/59 no modelo do SD4 (barco → escopos STD/OPC → itens); cada item vira uma peça 3D clicável; a NC grava o código do item |
 | M11 | Interiores, sistemas e inspeção por compartimento (Aula 6 do 3D) | ✅ estrutura v3 (51/126/135 itens: praça de popa, paiol de popa, antenas, ar-condicionado por ambiente, sistemas pelos checklists FM-CQ013/FM-CQ034, 33 com o básico de um center console); v2 (32/90/98 itens) com `compartimento`, `verificar` e `ref`; casaria oca, vidros curvos, longarinas, anteparas, sala de máquinas (gerador, estabilizadores OPC) e cabines; cortes, raio-X e câmera em primeira pessoa; catálogo ampliado `data/nc-catalogo-inspecao.json` (73 defeitos em 8 categorias). A NC grava o defeito detalhado em campos próprios (`codigoDefeito`, `codigoBase`, `categoria`, `compartimento`). |
-| 3D no jogo | Inspeção 3D refeita dentro do jogo Godot, em pixel art | 🔄 passo 1/4: modelo da linha 33 exportado para `client-godot/assets/barcos/` (`.glb` com os dados de cada item + `.json` com dimensões, gates e compartimentos). Próximos: visualizador, vistas e NC no ponto clicado |
+| 3D no jogo | Inspeção 3D refeita dentro do jogo Godot, em pixel art | 🔄 passo 2/4: botão **Inspecionar 3D** na ficha abre o barco no gate atual, em pixel art (baixa resolução, luz em degraus, contorno, Endesga 32 com dithering); modelo da linha 33 em `client-godot/assets/barcos/`. Próximos: vistas (raio-X, cortes, plantas, primeira pessoa) e NC no ponto clicado |
 
 ---
 
@@ -431,6 +431,7 @@ godot --path client-godot -- --dias 12 --selecionar 33-002   # opcional: pula di
 godot --path client-godot -- --dias 40 --painel equipe       # opcional: abre direto no painel equipe ou fornecedores
 godot --path client-godot -- --dias 12 --salvar              # opcional: salva depois de avançar; --carregar abre o último save
 godot --path client-godot -- --dias 15 --selecionar 33-001 --ficha   # opcional: abre a ficha completa; --saves abre a lista de saves
+godot --path client-godot -- --dias 6 --selecionar 33-002 --inspecao  # opcional: abre a inspeção 3D; --gate PI mostra outro gate (só para capturas)
 ```
 
 ### Jogar no navegador (GitHub Pages)
@@ -454,7 +455,7 @@ cd client-godot/export/web && python -m http.server 8000                   # abr
 
 A CLI tem um jogador automático: NC de material vira RNC, as outras vão para retrabalho, e ele faz 1:1 com quem está com moral abaixo de 70. Use `--sem-decisoes` para desligar.
 
-Tudo se joga com o mouse pela barra de baixo: velocidade (**Pausa**, **x1**, **x2**, **x4**), **Ficha**, **Prior. 1**, **Segurar**, **Equipe** (contratar, 1:1, treinar), **Fornec.** (scorecard, estoque, pedidos), **Conselho** (última reunião), **Salvar** e **Carregar** (lista de saves). Clique num barco para selecioná-lo; **duplo clique** abre a ficha completa (caminho pelos gates, horas-homem, material, NCs com **Retrabalho**, **Concessão** ou **RNC**, e cotas do cliente).
+Tudo se joga com o mouse pela barra de baixo: velocidade (**Pausa**, **x1**, **x2**, **x4**), **Ficha**, **Prior. 1**, **Segurar**, **Equipe** (contratar, 1:1, treinar), **Fornec.** (scorecard, estoque, pedidos), **Conselho** (última reunião), **Salvar** e **Carregar** (lista de saves). Clique num barco para selecioná-lo; **duplo clique** abre a ficha completa (caminho pelos gates, horas-homem, material, NCs com **Retrabalho**, **Concessão** ou **RNC**, e cotas do cliente). Na ficha, **Inspecionar 3D** abre o barco em 3D no estado do gate atual: arraste para girar, roda ou setas aproximam, Esc volta.
 
 Atalhos de teclado: **Espaço** pausa, **1/2/3** velocidade, **Enter** ficha, **F1** Equipe, **F2** Fornecedores, **F5** salva, **F9** carrega o último save, **Esc** volta.
 

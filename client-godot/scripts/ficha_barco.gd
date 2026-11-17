@@ -8,6 +8,7 @@ signal fechar
 signal priorizar
 signal alternar_segurar
 signal decidir_nc(nc_id: String, decisao: String)
+signal inspecionar
 
 const GATES := ["RE", "DM", "BA", "BF", "ST", "CT", "PI", "TR", "TM", "ET"]
 const NOMES_STATUS_NC := {"EM_RETRABALHO": "em retrabalho", "RESOLVIDA": "fechada", "CONCEDIDA": "concessão",
@@ -46,6 +47,9 @@ func _ready() -> void:
 	botoes.add_theme_constant_override("separation", 4)
 	add_child(botoes)
 	botoes.add_child(_botao("< Fábrica", func(): fechar.emit()))
+	var botao_3d := _botao("Inspecionar 3D", func(): inspecionar.emit())
+	botao_3d.tooltip_text = "Abre o barco em 3D, no estado do gate atual."
+	botoes.add_child(botao_3d)
 	_botao_prioridade = _botao("Prioridade 1", func(): priorizar.emit())
 	botoes.add_child(_botao_prioridade)
 	_botao_segurar = _botao("Segurar gate", func(): alternar_segurar.emit())
