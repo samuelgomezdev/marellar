@@ -80,6 +80,8 @@ var botao_conselho: Button
 func _ready() -> void:
 	fonte = _fonte_pixel(FONTE_TEXTO)
 	fonte_titulo = _fonte_pixel(FONTE_TITULO)
+	# Estilos vêm do tema do projeto (assets/tema). Até a migração das telas (sprint 1, etapa 4) a fábrica
+	# continua com a fonte antiga: a Pixelify Sans 16 é mais larga e pede o ajuste de layout dessa etapa.
 	theme = Theme.new()
 	theme.default_font = fonte
 	theme.default_font_size = TAMANHO_TEXTO
