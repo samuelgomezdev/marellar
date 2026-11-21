@@ -76,6 +76,17 @@ var _ncs: Array = []                 # NcInspecao3d do motor, só deste barco
 var _marcas: Control
 var _formulario: FormularioNc3d
 var _texto_item := ""
+
+## Aberta é o estado (a lógica usa isto); o `visible` acompanha com a animação de abrir e fechar (Movimento).
+var aberta := false:
+	set(v):
+		if v == aberta:
+			return
+		aberta = v
+		if v:
+			Movimento.abrir(self)
+		else:
+			Movimento.fechar(self)
 var _botao_fechar: Button
 
 
@@ -155,13 +166,13 @@ func abrir(novo: Dictionary) -> void:
 		_carregar_linha(linha)
 	_aplicar_gate()
 	_formulario.visible = false
-	visible = true
+	aberta = true
 	mudar_vista("ext")
 
 
 ## Esc: de uma vista qualquer volta ao exterior; no exterior, devolve false (quem chamou fecha a inspeção).
 func voltar() -> bool:
-	if _formulario.visible:
+	if Movimento.aberto(_formulario):
 		_fechar_formulario()
 		return true
 	if vista == "ext":
@@ -211,7 +222,7 @@ func focar_acao_principal() -> void:
 ## Formulário fechado (Cancelar, X, Esc ou clique fora): o foco volta para a vista se tiver ficado no formulário.
 func _fechar_formulario() -> void:
 	var dono := get_viewport().gui_get_focus_owner()
-	_formulario.visible = false
+	Movimento.fechar(_formulario)
 	if dono == null or _formulario.is_ancestor_of(dono):
 		focar_acao_principal()
 
@@ -584,7 +595,7 @@ func _atualizar_camera() -> void:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var b := event as InputEventMouseButton
-		if b.button_index == MOUSE_BUTTON_LEFT and b.pressed and _formulario.visible:
+		if b.button_index == MOUSE_BUTTON_LEFT and b.pressed and Movimento.aberto(_formulario):
 			_fechar_formulario()   # clique fora do formulário só fecha (M12-8)
 			_toque = Vector2(-1000, -1000)
 			accept_event()
@@ -642,7 +653,7 @@ func _andar(passo: Vector3) -> void:
 func _process(delta: float) -> void:
 	if visible:
 		_marcas.queue_redraw()   # os marcadores acompanham a câmera
-	if not visible or vista != "dentro":
+	if not aberta or vista != "dentro":
 		return
 	var frente := Vector3(cos(_rumo), 0, sin(_rumo))
 	var lado := Vector3(-sin(_rumo), 0, cos(_rumo))   # boreste
@@ -666,7 +677,7 @@ func _process(delta: float) -> void:
 ## As setas do teclado são da câmera (antes da navegação de foco da interface). Tab e o D-pad do controle
 ## continuam trocando de botão. Num campo de texto, as setas ficam com o campo.
 func _input(event: InputEvent) -> void:
-	if not visible or not event is InputEventKey:
+	if not aberta or not event is InputEventKey:
 		return
 	var tecla := (event as InputEventKey).keycode
 	if not tecla in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN]:
@@ -794,7 +805,7 @@ func _confirmar_nc(dados_nc: Dictionary) -> void:
 ## Resposta do motor: erro aparece no formulário; sucesso fecha o formulário.
 func resultado_nc(erro: String) -> void:
 	if erro.is_empty():
-		_formulario.visible = false
+		_fechar_formulario()   # NC registrada
 	else:
 		_formulario.mostrar_erro(erro)
 
@@ -838,7 +849,7 @@ func _desenhar_marcas() -> void:
 		_marcas.draw_rect(Rect2(p - Vector2(4, 4), Vector2(9, 9)), Paleta.FUNDO_ESCURO)
 		_marcas.draw_rect(Rect2(p - Vector2(3, 3), Vector2(7, 7)), cor)
 		_marcas.draw_string(fonte, p + Vector2(6, -2), str(int(nc["numero"])), HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, cor)
-	if not _texto_item.is_empty() and not _formulario.visible:   # item sob o mouse
+	if not _texto_item.is_empty() and not Movimento.aberto(_formulario):   # item sob o mouse
 		var largura := fonte.get_string_size(_texto_item, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto).x + 8
 		_marcas.draw_rect(Rect2(4, 4, largura, 15), Color(Paleta.FUNDO_ESCURO, 0.85))
 		_marcas.draw_string(fonte, Vector2(8, 15), _texto_item, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Paleta.TEXTO_CLARO)

@@ -26,6 +26,17 @@ var tamanho_texto := 16
 var tamanho_titulo := 8
 var animado := false
 
+## Aberta é o estado (a lógica usa isto); o `visible` acompanha com a animação de abrir e fechar (Movimento).
+var aberta := false:
+	set(v):
+		if v == aberta:
+			return
+		aberta = v
+		if v:
+			Movimento.abrir(self)
+		else:
+			Movimento.fechar(self)
+
 var _lista_ncs: VBoxContainer
 var _rolagem_ncs: ScrollContainer
 var _assinatura_ncs := ""

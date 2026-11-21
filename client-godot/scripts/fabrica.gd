@@ -88,6 +88,13 @@ var botoes_barcos := {}    # id do barco -> Button sem fundo na área clicável 
 var botao_cartao: Button
 var botao_alerta: Button
 var botao_fechar_painel: Button   # X do painel lateral (Equipe/Fornecedores)
+var painel_desenhado := ""   # painel lateral na tela (continua desenhado enquanto esmaece ao fechar)
+var alfa_painel := 0.0:       # transparência do painel lateral na animação de abrir/fechar (Movimento)
+	set(v):
+		alfa_painel = v
+		if rolagem != null:
+			rolagem.modulate.a = v
+			botao_fechar_painel.modulate.a = v
 var foco_ao_fechar := {}   # painel -> Control que tinha o foco antes de abrir (o foco volta para ele ao fechar)
 
 
@@ -142,20 +149,20 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 	if args.has("--inspecao"):
 		_abrir_inspecao_3d()
 		i = args.find("--gate")   # só para capturas: mostra a inspeção como se o barco estivesse noutro gate
-		if i >= 0 and i + 1 < args.size() and tela_3d.visible:
+		if i >= 0 and i + 1 < args.size() and tela_3d.aberta:
 			var copia := _barco(selecionado).duplicate()
 			copia["gateAtual"] = args[i + 1]
 			tela_3d.abrir(copia)
 		i = args.find("--comp")
-		if i >= 0 and i + 1 < args.size() and tela_3d.visible:
+		if i >= 0 and i + 1 < args.size() and tela_3d.aberta:
 			for c in tela_3d.dados.get("compartimentos", []):
 				if c["id"] == args[i + 1]:
 					tela_3d.compartimento = c
 		i = args.find("--vista")
-		if i >= 0 and i + 1 < args.size() and tela_3d.visible:
+		if i >= 0 and i + 1 < args.size() and tela_3d.aberta:
 			tela_3d.mudar_vista(args[i + 1])
 		i = args.find("--clique")   # só para testes: clica num ponto da tela de inspeção (x,y em pixels da tela base)
-		if i >= 0 and i + 1 < args.size() and tela_3d.visible:
+		if i >= 0 and i + 1 < args.size() and tela_3d.aberta:
 			var xy := args[i + 1].split(",")
 			await get_tree().process_frame
 			await get_tree().physics_frame
@@ -294,7 +301,7 @@ func _carregar(id: String) -> void:
 	if not await Api.carregar(id):
 		return
 	_fechar_conselho()
-	tela_ficha.visible = false
+	tela_ficha.aberta = false
 	selecionado = ""
 	painel = PAINEL_BARCO
 	await _atualizar_estado()
@@ -368,11 +375,11 @@ func _fechar_o_de_cima() -> void:
 	if tela_conselho != null:
 		_fechar_conselho()
 		return
-	if tela_3d.visible:
+	if tela_3d.aberta:
 		if not tela_3d.voltar():   # formulário e vistas voltam ao exterior; do exterior, fecha
 			_fechar_inspecao_3d()
 		return
-	if tela_ficha.visible:
+	if tela_ficha.aberta:
 		_fechar_ficha_completa()
 		return
 	if painel != PAINEL_BARCO:
@@ -556,7 +563,7 @@ func _registrar_nc_3d(ordem: Dictionary) -> void:
 
 
 func _fechar_inspecao_3d() -> void:
-	tela_3d.visible = false
+	tela_3d.aberta = false
 	_atualizar_interface()
 	_devolver_foco("3d")
 
@@ -572,22 +579,22 @@ func _abrir_ficha_completa() -> void:
 	if _barco(selecionado).is_empty():
 		_avisar("Selecione um barco para abrir a ficha.")
 		return
-	if not tela_ficha.visible:
+	if not tela_ficha.aberta:
 		_guardar_foco("ficha", botao_ficha)
-	tela_ficha.visible = true
+	tela_ficha.aberta = true
 	_atualizar_interface()
 	tela_ficha.focar_acao_principal()
 
 
 func _fechar_ficha_completa() -> void:
-	tela_ficha.visible = false
+	tela_ficha.aberta = false
 	_atualizar_interface()
 	_devolver_foco("ficha")
 
 
 ## O mesmo botão que abre fecha (M12-8).
 func _alternar_ficha_completa() -> void:
-	if tela_ficha.visible:
+	if tela_ficha.aberta:
 		_fechar_ficha_completa()
 	else:
 		_abrir_ficha_completa()
@@ -597,12 +604,16 @@ func _abrir_painel(qual: String) -> void:
 	if painel == qual:
 		_fechar_painel()
 		return
-	if tela_ficha.visible:
+	if tela_ficha.aberta:
 		_fechar_ficha_completa()
-	if painel == PAINEL_BARCO:
+	var estava_fechado := painel == PAINEL_BARCO
+	if estava_fechado:
 		_guardar_foco("lateral", botoes_painel[qual])
 	painel = qual
+	painel_desenhado = qual
 	_atualizar_interface()
+	if estava_fechado:
+		_animar_painel(1.0, "abrir_painel")
 	# Equipe: a ação principal é Contratar; Fornecedores não tem ação, o foco vai para o X.
 	var botoes := _botoes_em(ficha)
 	_focar_depois(botoes[0] if qual == PAINEL_EQUIPE and not botoes.is_empty() else botao_fechar_painel)
@@ -612,6 +623,19 @@ func _fechar_painel() -> void:
 	painel = PAINEL_BARCO
 	_atualizar_interface()
 	_devolver_foco("lateral")
+	_animar_painel(0.0, "fechar_painel")
+
+
+## O painel lateral é desenhado à mão: a animação muda alfa_painel (desenho, lista e X juntos).
+func _animar_painel(alvo: float, som: String) -> void:
+	Sons.tocar(som)
+	var t := create_tween().set_trans(Tokens.MOV_UI_TRANSICAO).set_ease(Tokens.MOV_UI_SUAVIZACAO)
+	t.tween_property(self, "alfa_painel", alvo, Tokens.MOV_UI)
+	if alvo == 0.0:
+		t.tween_callback(func():
+			if painel == PAINEL_BARCO:
+				painel_desenhado = ""
+				_posicionar_rolagem())
 
 
 func _botao(texto: String, acao: Callable) -> Button:
@@ -670,7 +694,7 @@ func _botao_invisivel(acao: Callable) -> Button:
 ## Põe os botões invisíveis sobre o que foi desenhado no último quadro. Com a ficha ou o 3D na frente,
 ## os botões dos barcos só se escondem (o foco volta para o barco ao fechar).
 func _sincronizar_botoes_planta() -> void:
-	var na_planta := not estado.is_empty() and not tela_ficha.visible and not tela_3d.visible
+	var na_planta := not estado.is_empty() and not tela_ficha.aberta and not tela_3d.aberta
 	for id in botoes_barcos.keys():
 		if not areas_barcos.has(id):
 			botoes_barcos[id].queue_free()
@@ -777,11 +801,11 @@ func _atualizar_interface() -> void:
 		_atualizar_dica(b, motivo)
 	_atualizar_abas()
 	botao_conselho.disabled = estado.get("conselho") == null
-	if tela_3d != null and tela_3d.visible:
+	if tela_3d != null and tela_3d.aberta:
 		tela_3d.atualizar_ncs(estado.get("ncsInspecao", []))
-	if tela_ficha.visible:
+	if tela_ficha.aberta:
 		if barco.is_empty():
-			tela_ficha.visible = false
+			tela_ficha.aberta = false
 		else:
 			tela_ficha.animado = velocidade > 0
 			tela_ficha.atualizar(barco, int(estado["tick"]))
@@ -799,7 +823,7 @@ func _atualizar_interface() -> void:
 
 func _atualizar_abas() -> void:
 	# Sempre visíveis na fábrica; a ficha completa e a inspeção 3D ocupam a tela toda e escondem a faixa.
-	barra_abas.visible = not estado.is_empty() and not tela_ficha.visible and not (tela_3d != null and tela_3d.visible)
+	barra_abas.visible = not estado.is_empty() and not tela_ficha.aberta and not (tela_3d != null and tela_3d.aberta)
 	if estado.is_empty():
 		return
 	for aba in botoes_abas:
@@ -819,7 +843,7 @@ func _topo_planta() -> float:
 ## Equipe e fornecedores abrem por cima da fábrica, à direita.
 func _posicionar_rolagem() -> void:
 	var topo := _topo_planta() + 22
-	rolagem.visible = painel != PAINEL_BARCO
+	rolagem.visible = painel_desenhado != ""
 	var r := _retangulo_painel()
 	botao_fechar_painel.visible = rolagem.visible
 	botao_fechar_painel.position = Vector2(r.end.x - 18, r.position.y + 2)
@@ -936,7 +960,7 @@ func _draw() -> void:
 				TAMANHO_TEXTO, -1, Paleta.ALERTA)
 		return
 	var t := Time.get_ticks_msec() / 1000.0
-	if not tela_ficha.visible:
+	if not tela_ficha.aberta:
 		var area := Rect2(0, _topo_planta(), size.x, size.y - _topo_planta() - ALTURA_BASE)
 		areas_barcos = Planta.desenhar(self, area, estado, selecionado, t, velocidade > 0, fonte, galpao)
 		for id in areas_barcos:
@@ -1221,13 +1245,13 @@ func _retangulo_painel() -> Rect2:
 
 
 func _desenhar_painel() -> void:
-	if painel == PAINEL_BARCO:
+	if painel_desenhado.is_empty():
 		return
 	var r := _retangulo_painel()
-	draw_rect(r, Paleta.FUNDO)
-	draw_rect(r.grow(-0.5), Paleta.ALERTA_ESCURO, false, 1.0)
-	draw_string(fonte_titulo, Vector2(r.position.x + 6, r.position.y + 12), "EQUIPE" if painel == PAINEL_EQUIPE else "FORNECEDORES",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO, Paleta.ALERTA)
+	draw_rect(r, Color(Paleta.FUNDO, alfa_painel))
+	draw_rect(r.grow(-0.5), Color(Paleta.ALERTA_ESCURO, alfa_painel), false, 1.0)
+	draw_string(fonte_titulo, Vector2(r.position.x + 6, r.position.y + 12), "EQUIPE" if painel_desenhado == PAINEL_EQUIPE else "FORNECEDORES",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO, Color(Paleta.ALERTA, alfa_painel))
 
 
 # ---------------------------------------------------------------- lista de saves
@@ -1246,9 +1270,12 @@ func _abrir_saves() -> void:
 	var lista = await Api.saves()
 	if lista == null:
 		return
+	var primeira := tela_saves == null
 	if tela_saves != null:
 		tela_saves.queue_free()
 	tela_saves = _nova_sobreposicao(Paleta.AGUA)
+	if primeira:
+		Movimento.abrir(tela_saves)
 	var itens := VBoxContainer.new()
 	itens.add_theme_constant_override("separation", 2)
 	tela_saves.add_child(itens)
@@ -1315,8 +1342,9 @@ func _carregar_save(id: String) -> void:
 
 func _fechar_saves() -> void:
 	if tela_saves != null:
-		tela_saves.queue_free()
+		var janela := tela_saves
 		tela_saves = null
+		Movimento.fechar(janela, janela.queue_free)
 		_devolver_foco("saves")
 
 
@@ -1333,6 +1361,7 @@ func _abrir_conselho() -> void:
 	var r = estado.get("conselho")
 	if r == null:
 		return
+	var primeira := tela_conselho == null
 	if tela_conselho != null:
 		tela_conselho.queue_free()
 	else:
@@ -1348,6 +1377,8 @@ func _abrir_conselho() -> void:
 	tela_conselho.size = Vector2(size.x - 80, size.y - ALTURA_TOPO - ALTURA_BASE - 12)
 	_veu(tela_conselho, _fechar_conselho)
 	add_child(tela_conselho)
+	if primeira:
+		Movimento.abrir(tela_conselho)
 
 	var rolagem_conselho := ScrollContainer.new()
 	rolagem_conselho.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
@@ -1430,8 +1461,9 @@ func _escolher_decisao(opcao_id: String) -> void:
 
 func _fechar_conselho() -> void:
 	if tela_conselho != null:
-		tela_conselho.queue_free()
+		var janela := tela_conselho
 		tela_conselho = null
+		Movimento.fechar(janela, janela.queue_free)
 		_devolver_foco("conselho")
 
 

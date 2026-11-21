@@ -100,7 +100,7 @@ func abrir(ponto: Vector3, extras: Dictionary, compartimento: String, nome_compa
 	_observacao.text = ""
 	_erro.text = ""
 	_erro.visible = false
-	visible = true
+	Movimento.abrir(self)
 	_ok.call_deferred("grab_focus")   # ação principal do formulário
 
 
