@@ -1,6 +1,7 @@
 class_name Paleta
 extends RefCounted
-## Paleta Endesga 32 com papéis fixos (GDD, Direção de arte).
+## Paleta Endesga 32 com papéis fixos (GDD, Direção de arte): cores do CENÁRIO.
+## As cores da interface ficam em Tokens (design system); nenhuma tela usa o Paleta para interface.
 ## O jogador lê a fábrica pela cor, como na planta do layout.
 
 const PRODUCAO_SUJA := Color("#b86f50")
@@ -19,11 +20,9 @@ const PISO := Color("#c0cbdc")
 const PISO_ESCURO := Color("#8b9bb4")
 const FUNDO := Color("#262b44")
 const FUNDO_ESCURO := Color("#181425")
-const TEXTO := Color("#ead4aa")
-const TEXTO_CLARO := Color("#ffffff")
+const PAPEL := Color("#ead4aa")   ## papel, placas e prancheta do cenário (o texto da interface é Tokens.TEXTO)
 const ALERTA := Color("#feae34")
 const ALERTA_ESCURO := Color("#f77622")
-const CRITICO := Color("#ff0044")
 const PELE := Color("#e8b796")
 const PELE_ESCURA := Color("#c28569")
 const CABELO := Color("#3f2832")
