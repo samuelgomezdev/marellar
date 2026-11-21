@@ -8,6 +8,8 @@ const SEMENTE := 42
 const SEGUNDOS_POR_TICK_X1 := 2.5  # 1 dia útil (8 ticks) ≈ 20 s na velocidade 1 (GDD, Loops de jogo)
 const ALTURA_TOPO := 16
 const ALTURA_BASE := 24
+const ALTURA_ABAS := 18     # faixa das abas G1/G2, logo abaixo da barra de cima
+const SEGUNDOS_PISCAR := 1.2  # barcos clicáveis piscando depois de um clique em botão desativado
 const LARGURA_PAINEL := 200
 const TAMANHO_TEXTO := 16   # VT323 fica nítida em 16
 const TAMANHO_TITULO := 8   # Press Start 2P fica nítida em 8
@@ -31,6 +33,9 @@ const NOMES_SITUACAO := {
 	"ATIVA": "", "A_CAMINHO": "chega em %d d", "EM_TREINAMENTO": "treino %d d",
 	"AFASTADA": "afastado %d d", "DESLIGADA": "saiu",
 }
+const NOMES_GALPAO := {"G1": "Laminação", "G2": "Montagem"}
+const DICA_SEM_BARCO := "Clique num barco"
+const DICA_ENTREGUE := "Barco já entregue"
 const PAINEL_BARCO := "barco"
 const PAINEL_EQUIPE := "equipe"
 const PAINEL_FORNECEDORES := "fornecedores"
@@ -47,7 +52,9 @@ var ultimo_evento := 0
 var avisos: Array[Dictionary] = []  # {texto, quando}
 var area_cartao := Rect2()
 var galpao := "G2"  # galpão na tela: G1 laminação ou G2 montagem
-var areas_abas := {}  # "G1"/"G2" -> Rect2 na barra de cima
+var botoes_abas := {}  # "G1"/"G2" -> Button na faixa das abas
+var barra_abas: HBoxContainer
+var piscar_ate := -1.0  # até quando os barcos clicáveis piscam (segundos de Time.get_ticks_msec)
 var efeitos: Array[Dictionary] = []  # {tipo, texto, cor, barco, inicio}
 var posicao_barcos := {}  # última posição conhecida de cada barco, para os efeitos
 var gate_anterior := {}
@@ -80,11 +87,14 @@ var botao_conselho: Button
 func _ready() -> void:
 	fonte = _fonte_pixel(FONTE_TEXTO)
 	fonte_titulo = _fonte_pixel(FONTE_TITULO)
+	# Estilos vêm do tema do projeto (assets/tema). Até a migração das telas (sprint 1, etapa 4) a fábrica
+	# continua com a fonte antiga: a Pixelify Sans 16 é mais larga e pede o ajuste de layout dessa etapa.
 	theme = Theme.new()
 	theme.default_font = fonte
 	theme.default_font_size = TAMANHO_TEXTO
 	Api.erro.connect(_on_erro_api)
 	_montar_barra_inferior()
+	_montar_abas()
 	_montar_ficha()
 	_montar_ficha_completa()
 	_montar_inspecao_3d()
@@ -340,10 +350,6 @@ func _unhandled_input(event: InputEvent) -> void:
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
-		for aba in areas_abas:
-			if areas_abas[aba].has_point(event.position):
-				_mudar_galpao(aba)
-				return
 		if area_alerta_nc.has_point(event.position) and not barco_alerta_nc.is_empty():
 			selecionado = barco_alerta_nc
 			galpao = Planta.galpao_do_barco(_barco(selecionado))
@@ -391,6 +397,8 @@ func _montar_barra_inferior() -> void:
 	botao_segurar = _botao("Segurar", _alternar_segurar)
 	botao_segurar.tooltip_text = "Segura o barco no gate atual depois de aprovado."
 	barra.add_child(botao_segurar)
+	for b in [botao_ficha, botao_prioridade, botao_segurar]:
+		_depende_de_barco(b)
 	barra.add_child(VSeparator.new())
 	for opcao in [[PAINEL_EQUIPE, "Equipe", "F1"], [PAINEL_FORNECEDORES, "Fornec.", "F2"]]:
 		var b := _botao(opcao[1], _abrir_painel.bind(opcao[0]))
@@ -408,6 +416,35 @@ func _montar_barra_inferior() -> void:
 	var carregar := _botao("Carregar", _abrir_saves)
 	carregar.tooltip_text = "Atalho: F9 (último save)"
 	barra.add_child(carregar)
+
+
+## Abas grandes G1/G2 com o nome do galpão e quantos barcos há em cada um (sempre visíveis na fábrica).
+func _montar_abas() -> void:
+	barra_abas = HBoxContainer.new()
+	barra_abas.position = Vector2(4, ALTURA_TOPO + 1)
+	barra_abas.size = Vector2(0, ALTURA_ABAS - 2)
+	barra_abas.add_theme_constant_override("separation", 3)
+	add_child(barra_abas)
+	for aba in ["G1", "G2"]:
+		var b := _botao(aba, _mudar_galpao.bind(aba))
+		b.toggle_mode = true
+		b.tooltip_text = "Atalho: G troca de galpão"
+		b.custom_minimum_size.x = 150
+		barra_abas.add_child(b)
+		botoes_abas[aba] = b
+	botoes_abas[galpao].set_pressed_no_signal(true)
+
+
+## Botão que depende de um barco selecionado: desativado, mostra a dica e, se clicado, faz os barcos piscarem.
+func _depende_de_barco(b: Button) -> void:
+	b.set_meta("dica", b.tooltip_text)
+	b.gui_input.connect(func(evento: InputEvent):
+		if b.disabled and evento is InputEventMouseButton and evento.pressed and evento.button_index == MOUSE_BUTTON_LEFT:
+			piscar_ate = Time.get_ticks_msec() / 1000.0 + SEGUNDOS_PISCAR)
+
+
+func _atualizar_dica(b: Button, motivo: String) -> void:
+	b.tooltip_text = motivo if b.disabled else str(b.get_meta("dica", ""))
 
 
 func _montar_ficha() -> void:
@@ -481,6 +518,8 @@ func _fechar_inspecao_3d() -> void:
 
 func _mudar_galpao(novo: String) -> void:
 	galpao = novo
+	for aba in botoes_abas:
+		botoes_abas[aba].set_pressed_no_signal(aba == galpao)
 	queue_redraw()
 
 
@@ -518,6 +557,10 @@ func _atualizar_interface() -> void:
 	botao_prioridade.disabled = not ativo
 	botao_segurar.disabled = not ativo
 	botao_segurar.text = "Liberar" if ativo and barco["retido"] else "Segurar"
+	var motivo := DICA_SEM_BARCO if barco.is_empty() else DICA_ENTREGUE
+	for b in [botao_ficha, botao_prioridade, botao_segurar]:
+		_atualizar_dica(b, motivo)
+	_atualizar_abas()
 	botao_conselho.disabled = estado.get("conselho") == null
 	if tela_3d != null and tela_3d.visible:
 		tela_3d.atualizar_ncs(estado.get("ncsInspecao", []))
@@ -539,9 +582,28 @@ func _atualizar_interface() -> void:
 			assinatura_ficha = ""  # o próximo painel aberto se refaz
 
 
+func _atualizar_abas() -> void:
+	# Sempre visíveis na fábrica; a ficha completa e a inspeção 3D ocupam a tela toda e escondem a faixa.
+	barra_abas.visible = not estado.is_empty() and not tela_ficha.visible and not (tela_3d != null and tela_3d.visible)
+	if estado.is_empty():
+		return
+	for aba in botoes_abas:
+		var quantos := 0
+		for b in estado["barcos"]:
+			if Planta.galpao_do_barco(b) == aba and b["status"] != "ENTREGUE":
+				quantos += 1
+		botoes_abas[aba].text = "%s %s · %d %s" % [aba, NOMES_GALPAO[aba], quantos, "barco" if quantos == 1 else "barcos"]
+		botoes_abas[aba].set_pressed_no_signal(aba == galpao)
+
+
+## Topo da planta: abaixo da barra de cima e da faixa das abas.
+func _topo_planta() -> float:
+	return ALTURA_TOPO + ALTURA_ABAS
+
+
 ## Equipe e fornecedores abrem por cima da fábrica, à direita.
 func _posicionar_rolagem() -> void:
-	var topo := ALTURA_TOPO + 22
+	var topo := _topo_planta() + 22
 	rolagem.visible = painel != PAINEL_BARCO
 	rolagem.position = Vector2(size.x - LARGURA_PAINEL, topo)
 	rolagem.size = Vector2(LARGURA_PAINEL - 4, size.y - ALTURA_BASE - 6 - topo)
@@ -635,10 +697,11 @@ func _draw() -> void:
 		return
 	var t := Time.get_ticks_msec() / 1000.0
 	if not tela_ficha.visible:
-		var area := Rect2(0, ALTURA_TOPO, size.x, size.y - ALTURA_TOPO - ALTURA_BASE)
+		var area := Rect2(0, _topo_planta(), size.x, size.y - _topo_planta() - ALTURA_BASE)
 		areas_barcos = Planta.desenhar(self, area, estado, selecionado, t, velocidade > 0, fonte, galpao)
 		for id in areas_barcos:
 			posicao_barcos[id] = areas_barcos[id]
+		_desenhar_piscar(t)
 		_desenhar_inspetora(area)
 		_desenhar_efeitos()
 		_desenhar_luz_do_turno(area)
@@ -809,22 +872,6 @@ func _desenhar_topo() -> void:
 		["Conselho", "%d/%d" % [paciencia, int(fin["pacienciaMaxima"])], Paleta.ALERTA if paciencia <= 2 else Paleta.TEXTO_CLARO],
 	]
 	var x := 2.0
-	areas_abas.clear()
-	for aba in ["G1", "G2"]:
-		var quantos := 0
-		for b in estado["barcos"]:
-			if Planta.galpao_do_barco(b) == aba and b["status"] != "ENTREGUE":
-				quantos += 1
-		var texto := "%s (%d)" % [aba, quantos]
-		var largura_aba := fonte.get_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO).x + 6
-		var r := Rect2(x, 1, largura_aba, ALTURA_TOPO - 2)
-		areas_abas[aba] = r
-		draw_rect(r, Paleta.ALERTA_ESCURO if aba == galpao else Paleta.FUNDO_ESCURO)
-		draw_rect(r.grow(-0.5), Paleta.ALERTA if aba == galpao else Paleta.ARMAZEM_ESCURO, false, 1.0)
-		draw_string(fonte, Vector2(x + 3, 12), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO,
-				Paleta.TEXTO_CLARO if aba == galpao else Paleta.TEXTO)
-		x += largura_aba + 2
-	x += 2
 	for b in blocos:
 		var rotulo: String = b[0]
 		var valor: String = b[1]
@@ -838,6 +885,20 @@ func _desenhar_topo() -> void:
 	var vel := "PAUSA" if velocidade == 0 else "x%d" % velocidade
 	draw_string(fonte, Vector2(x + 2, 12), vel, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO,
 			Paleta.ALERTA if velocidade == 0 else Paleta.MONTAGEM_LIMPA)
+
+
+## Depois de um clique em botão que precisa de barco: os barcos clicáveis piscam com o contorno de foco.
+## Se o galpão na tela não tem barco, pisca a aba do outro galpão.
+func _desenhar_piscar(t: float) -> void:
+	if t > piscar_ate or int(t * 6) % 2 == 1:
+		return
+	var alvos: Array = areas_barcos.values()
+	if alvos.is_empty():
+		for aba in botoes_abas:
+			if aba != galpao:
+				alvos.append(Rect2(barra_abas.position + botoes_abas[aba].position, botoes_abas[aba].size))
+	for r in alvos:
+		draw_rect((r as Rect2).grow(2), Tokens.FOCO, false, 1.0)
 
 
 ## Cartão do barco selecionado no canto de baixo, à esquerda (clique abre a ficha).
@@ -876,7 +937,7 @@ func _desenhar_cartao() -> void:
 func _desenhar_alertas(t: float) -> void:
 	var largura := 176.0
 	var x := size.x - largura - 4
-	var y := ALTURA_TOPO + 4.0
+	var y := _topo_planta() + 4.0
 	area_alerta_nc = Rect2()
 	barco_alerta_nc = ""
 	for barco in estado["barcos"]:
@@ -919,7 +980,7 @@ func _desenhar_alertas(t: float) -> void:
 func _desenhar_painel() -> void:
 	if painel == PAINEL_BARCO:
 		return
-	var r := Rect2(size.x - LARGURA_PAINEL - 2, ALTURA_TOPO + 4, LARGURA_PAINEL, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
+	var r := Rect2(size.x - LARGURA_PAINEL - 2, _topo_planta() + 4, LARGURA_PAINEL, size.y - _topo_planta() - ALTURA_BASE - 8)
 	draw_rect(r, Paleta.FUNDO)
 	draw_rect(r.grow(-0.5), Paleta.ALERTA_ESCURO, false, 1.0)
 	draw_string(fonte_titulo, Vector2(r.position.x + 6, r.position.y + 12), "EQUIPE" if painel == PAINEL_EQUIPE else "FORNECEDORES",
