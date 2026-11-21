@@ -25,6 +25,7 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | M10 | Estrutura de produto (`data/estrutura-produto.json`) e exterior 3D | ✅ linhas 33/47/59 no modelo do SD4 (barco → escopos STD/OPC → itens); cada item vira uma peça 3D clicável; a NC grava o código do item |
 | M11 | Interiores, sistemas e inspeção por compartimento (Aula 6 do 3D) | ✅ estrutura v3 (51/126/135 itens: praça de popa, paiol de popa, antenas, ar-condicionado por ambiente, sistemas pelos checklists FM-CQ013/FM-CQ034, 33 com o básico de um center console); v2 (32/90/98 itens) com `compartimento`, `verificar` e `ref`; casaria oca, vidros curvos, longarinas, anteparas, sala de máquinas (gerador, estabilizadores OPC) e cabines; cortes, raio-X e câmera em primeira pessoa; catálogo ampliado `data/nc-catalogo-inspecao.json` (73 defeitos em 8 categorias). A NC grava o defeito detalhado em campos próprios (`codigoDefeito`, `codigoBase`, `categoria`, `compartimento`). |
 | 3D no jogo | Inspeção 3D refeita dentro do jogo Godot, em pixel art | ✅ **Inspecionar 3D** na ficha abre o barco no gate atual (resolução do jogo, cores do modelo, luz em degraus e contorno); vistas exterior, raio-X, corte, plantas e, por compartimento, De cima e Entrar; clicar numa peça abre a NC (catálogo ampliado), que vira a ordem `RegistrarNcInspecao` do motor, vai no save e aparece como marcador colorido pela gravidade. Por enquanto a NC só registra (não gera retrabalho nem custo) |
+| Design system | Sprint 1 do plano de jogabilidade: fundação visual | ✅ tokens (`tokens.gd`) e tema gerado por script (`marellar_theme.tres`); Pixelify Sans no texto, Jersey 10 nos títulos e números; foco e navegação por mouse, teclado e controle; todo painel fecha por X, Esc/B, clique fora e o mesmo botão; sons por evento, hitstop, tremor e abrir/fechar painel; cena de amostra `scenes/amostra_tema.tscn` |
 
 ---
 
@@ -353,20 +354,23 @@ Base: `/api/v1`. JSON em camelCase. Valores em reais como string decimal (`"3200
 
 - **Resolução base 640×360**, escala inteira ×2 ou ×3, sem suavização (filtro *Nearest*).
 - **Tile 16×16 px = 2×2 m.** Personagens com 10×16 a 16×24 px.
-- **Paleta Endesga 32**, com papéis fixos:
+- **Paleta Endesga 32.** O cenário (zonas, piso, casco, pessoas) usa `scripts/paleta.gd`; a interface usa só o **design system** (`scripts/tokens.gd`), em que cada cor tem um significado fixo:
 
-| Papel | Cor |
-| --- | --- |
-| Produção suja | `#b86f50` |
-| Montagem limpa | `#63c74d` |
-| Água | `#0099db` |
-| Armazém | `#5a6988` |
-| Não conformes | `#e43b44` |
-| Fundo da interface | `#262b44` e `#181425` |
-| Texto | `#ead4aa` |
-| Alerta | `#feae34` |
+| Token | Cor | Uso |
+| --- | --- | --- |
+| `FUNDO` | `#181425` | Fundo das telas |
+| `PAINEL` | `#3a4466` | Painéis, janelas, cartões |
+| `TEXTO` / `TEXTO_CALMO` | `#ffffff` / `#c0cbdc` | Texto principal / rótulos e valores secundários |
+| `MARCA` / `MARCA_CLARA` | `#124e89` / `#0099db` | Identidade Marellar, barra de cima |
+| `ACAO` | `#feae34` | A única ação principal do painel (`BotaoAcao`) |
+| `OK` | `#63c74d` | Aprovado, entregue, meta batida |
+| `ATENCAO` | `#f77622` | Prazo em risco, estoque baixo; NC média |
+| `NC` | `#e43b44` | Não conformidade, multa, perda; NC crítica |
+| `NC_LEVE` | `#fee761` | NC leve (marcador da inspeção) |
+| `FOCO` | `#2ce8f5` | Contorno do item em foco |
 
-- **Fonte:** pixel, com acentos do português (ex.: VT323 para texto e Press Start 2P para títulos, ambas com licença OFL).
+- **Tema:** `client-godot/assets/tema/marellar_theme.tres`, gerado a partir do `Tokens` por `ferramentas/gerar_tema.gd` (cantos chanfrados de 2 px, grade de 8 px). Não edite o `.tres` à mão. No máximo um `BotaoAcao` por painel.
+- **Fontes:** Pixelify Sans 16 px no texto; Jersey 10 a 20 px nos títulos de tela e nos números de valor (a Pixelify sem suavização desenha o "5" parecido com "S"). Ambas OFL, sem antialiasing.
 - **Telas do MVP** (mockups fora do repositório, veja a seção 13):
   1. **Fábrica:** baias da montagem com os barcos de 33 pés, bonequinhos andando e trabalhando, barra de topo (data, velocidade, caixa, valor, moral, NCs) e barra de baixo com os menus.
   2. **Ficha do barco:** gates, HH e material, NCs com botões de decisão, cotas.
@@ -433,6 +437,9 @@ godot --path client-godot -- --dias 40 --painel equipe       # opcional: abre di
 godot --path client-godot -- --dias 12 --salvar              # opcional: salva depois de avançar; --carregar abre o último save
 godot --path client-godot -- --dias 15 --selecionar 33-001 --ficha   # opcional: abre a ficha completa; --saves abre a lista de saves
 godot --path client-godot -- --dias 6 --selecionar 33-002 --inspecao  # opcional: abre a inspeção 3D; --gate PI mostra outro gate (só para capturas); --comp CONS --vista dentro abre uma vista (ext, raiox, corte, inf, pri, cima, dentro)
+godot --path client-godot res://scenes/amostra_tema.tscn   # amostra do design system: componentes, estados, sons e impacto
+godot --headless --path client-godot --script res://ferramentas/gerar_tema.gd   # regera o tema a partir do tokens.gd
+godot --headless --path client-godot --script res://ferramentas/gerar_sons.gd   # regera os sons provisórios
 ```
 
 ### Jogar no navegador (GitHub Pages)
@@ -458,7 +465,7 @@ A CLI tem um jogador automático: NC de material vira RNC, as outras vão para r
 
 Tudo se joga com o mouse pela barra de baixo: velocidade (**Pausa**, **x1**, **x2**, **x4**), **Ficha**, **Prior. 1**, **Segurar**, **Equipe** (contratar, 1:1, treinar), **Fornec.** (scorecard, estoque, pedidos), **Conselho** (última reunião), **Salvar** e **Carregar** (lista de saves). Clique num barco para selecioná-lo; **duplo clique** abre a ficha completa (caminho pelos gates, horas-homem, material, NCs com **Retrabalho**, **Concessão** ou **RNC**, e cotas do cliente). Na ficha, **Inspecionar 3D** abre o barco em 3D no estado do gate atual: arraste para girar, roda ou setas aproximam, Esc volta. Passe o mouse para ver o item; clique numa peça para marcar uma NC (defeito do catálogo ampliado, gravidade a partir da mínima, observação).
 
-Atalhos de teclado: **Espaço** pausa, **1/2/3** velocidade, **Enter** ficha, **F1** Equipe, **F2** Fornecedores, **F5** salva, **F9** carrega o último save, **Esc** volta.
+Também se joga só com teclado ou só com controle: setas ou D-pad movem o foco, Enter ou A confirmam, Esc ou B fecham o painel de cima. Atalhos de teclado: **Espaço** pausa, **1/2/3** velocidade, **Enter** ficha, **F1** Equipe, **F2** Fornecedores, **F5** salva, **F9** carrega o último save, **Esc** volta.
 
 ---
 
@@ -473,4 +480,4 @@ Os documentos de design ficam **fora do repositório**, na pasta local do projet
 
 ## Licença
 
-Código sob [MIT](LICENSE). Fontes [VT323](https://fonts.google.com/specimen/VT323) e [Press Start 2P](https://fonts.google.com/specimen/Press+Start+2P) sob SIL Open Font License 1.1 (licenças em `client-godot/assets/fonts/`).
+Código sob [MIT](LICENSE). Fontes [Pixelify Sans](https://fonts.google.com/specimen/Pixelify+Sans) e [Jersey 10](https://fonts.google.com/specimen/Jersey+10) sob SIL Open Font License 1.1 (licenças em `client-godot/assets/fontes/`).

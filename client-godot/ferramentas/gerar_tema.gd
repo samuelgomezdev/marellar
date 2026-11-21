@@ -16,6 +16,7 @@ static var _texturas := {}   # mesma combinação de cores = mesma textura no .t
 func _init() -> void:
 	_geral()
 	_rotulos()
+	_texto_rico()
 	_paineis()
 	_botoes()
 	_abas()
@@ -66,7 +67,7 @@ static func _textura(miolo: Color, borda = null, vazada := false, borda_interna 
 	return _texturas[chave]
 
 
-static func _caixa(miolo: Color, borda = null, margem_h := 4, margem_v := 1) -> StyleBoxTexture:
+static func _caixa(miolo: Color, borda = null, margem_h := 3, margem_v := 1) -> StyleBoxTexture:
 	var s := StyleBoxTexture.new()
 	s.texture = _textura(miolo, borda)
 	_margens_textura(s, T.CHANFRO + 1)
@@ -141,10 +142,22 @@ func _rotulos() -> void:
 	for v in [["RotuloCalmo", T.TEXTO_CALMO], ["RotuloOk", T.OK], ["RotuloAtencao", T.ATENCAO], ["RotuloNc", T.NC]]:
 		tema.set_type_variation(v[0], "Label")
 		tema.set_color("font_color", v[0], v[1])
+	# Dica sobre a cena (ex.: inspeção 3D): fundo escuro para ler por cima de qualquer imagem.
+	tema.set_type_variation("RotuloDica", "Label")
+	tema.set_stylebox("normal", "RotuloDica", _caixa(T.FUNDO, null, 3, 0))
 	tema.set_type_variation("Titulo", "Label")
 	tema.set_font("font", "Titulo", _fonte(T.FONTE_TITULO))
 	tema.set_font_size("font_size", "Titulo", T.TAMANHO_TITULO)
 	tema.set_color("font_color", "Titulo", T.TEXTO)
+
+
+func _texto_rico() -> void:
+	tema.set_color("default_color", "RichTextLabel", T.TEXTO)
+	tema.set_color("font_shadow_color", "RichTextLabel", Color(0, 0, 0, 0))
+	tema.set_constant("line_separation", "RichTextLabel", 0)
+	tema.set_constant("outline_size", "RichTextLabel", 0)
+	tema.set_stylebox("normal", "RichTextLabel", _vazio())
+	tema.set_stylebox("focus", "RichTextLabel", _vazio())
 
 
 func _paineis() -> void:
@@ -280,4 +293,4 @@ func _separadores() -> void:
 		linha.thickness = 1
 		linha.vertical = v[1]
 		tema.set_stylebox("separator", v[0], linha)
-		tema.set_constant("separation", v[0], 4)
+		tema.set_constant("separation", v[0], 3)
