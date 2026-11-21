@@ -13,6 +13,8 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 [autoload]
 
 Api="*res://scripts/api.gd"
+Sons="*res://scripts/sons.gd"
+Impacto="*res://scripts/impacto.gd"
 
 [display]
 
