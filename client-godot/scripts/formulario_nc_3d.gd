@@ -24,6 +24,7 @@ var _defeito: OptionButton
 var _gravidade: OptionButton
 var _observacao: LineEdit
 var _erro: Label
+var _ok: Button
 var _codigos_categoria: Array[String] = []
 var _codigos_defeito: Array[String] = []
 
@@ -39,7 +40,15 @@ func _ready() -> void:
 	var caixa := VBoxContainer.new()
 	caixa.add_theme_constant_override("separation", 2)
 	add_child(caixa)
-	_titulo = _rotulo(caixa, Paleta.ALERTA)
+	var cabecalho := HBoxContainer.new()
+	caixa.add_child(cabecalho)
+	_titulo = _rotulo(cabecalho, Paleta.ALERTA)
+	_titulo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	var x := Button.new()
+	x.text = "X"
+	x.tooltip_text = "Fechar (Esc)"
+	x.pressed.connect(func(): cancelar.emit())
+	cabecalho.add_child(x)
 	_local = _rotulo(caixa, Paleta.TEXTO)
 	_local.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_local.custom_minimum_size.x = 220   # sem largura, o rótulo com quebra mede uma letra por linha
@@ -58,14 +67,12 @@ func _ready() -> void:
 	var botoes := HBoxContainer.new()
 	botoes.add_theme_constant_override("separation", 4)
 	caixa.add_child(botoes)
-	var ok := Button.new()
-	ok.text = "Registrar NC"
-	ok.focus_mode = Control.FOCUS_NONE
-	ok.pressed.connect(_confirmar)
-	botoes.add_child(ok)
+	_ok = Button.new()
+	_ok.text = "Registrar NC"
+	_ok.pressed.connect(_confirmar)
+	botoes.add_child(_ok)
 	var nao := Button.new()
 	nao.text = "Cancelar"
-	nao.focus_mode = Control.FOCUS_NONE
 	nao.pressed.connect(func(): cancelar.emit())
 	botoes.add_child(nao)
 
@@ -94,6 +101,7 @@ func abrir(ponto: Vector3, extras: Dictionary, compartimento: String, nome_compa
 	_erro.text = ""
 	_erro.visible = false
 	visible = true
+	_ok.call_deferred("grab_focus")   # ação principal do formulário
 
 
 func mostrar_erro(texto: String) -> void:
@@ -165,7 +173,6 @@ func _rotulo(pai: Control, cor: Color) -> Label:
 
 func _opcoes(pai: Control) -> OptionButton:
 	var o := OptionButton.new()
-	o.focus_mode = Control.FOCUS_NONE
 	o.clip_text = true
 	o.fit_to_longest_item = false
 	pai.add_child(o)

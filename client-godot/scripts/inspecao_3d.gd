@@ -76,6 +76,7 @@ var _ncs: Array = []                 # NcInspecao3d do motor, só deste barco
 var _marcas: Control
 var _formulario: FormularioNc3d
 var _texto_item := ""
+var _botao_fechar: Button
 
 
 func _ready() -> void:
@@ -121,7 +122,7 @@ func _ready() -> void:
 	_formulario = FormularioNc3d.new()
 	_formulario.visible = false
 	_formulario.confirmar.connect(_confirmar_nc)
-	_formulario.cancelar.connect(func(): _formulario.visible = false)
+	_formulario.cancelar.connect(_fechar_formulario)
 	add_child(_formulario)
 	resized.connect(_posicionar)
 	_posicionar()
@@ -142,6 +143,8 @@ func _posicionar() -> void:
 	_formulario.position = Vector2(size.x - LARGURA_FORMULARIO - 4, ALTURA_TITULO + 4)
 	_formulario.size = Vector2(LARGURA_FORMULARIO, 0)
 	_formulario.custom_minimum_size.x = LARGURA_FORMULARIO
+	_botao_fechar.position = Vector2(size.x - 18, 0)
+	_botao_fechar.size = Vector2(16, 16)
 
 
 ## Abre a inspeção de um barco do estado (BarcoVisao do motor).
@@ -159,7 +162,7 @@ func abrir(novo: Dictionary) -> void:
 ## Esc: de uma vista qualquer volta ao exterior; no exterior, devolve false (quem chamou fecha a inspeção).
 func voltar() -> bool:
 	if _formulario.visible:
-		_formulario.visible = false
+		_fechar_formulario()
 		return true
 	if vista == "ext":
 		return false
@@ -181,7 +184,6 @@ func _montar_botoes() -> void:
 		_botoes_vista[v[0]] = b
 	barra.add_child(VSeparator.new())
 	_lista_comps = OptionButton.new()
-	_lista_comps.focus_mode = Control.FOCUS_NONE
 	_lista_comps.fit_to_longest_item = false
 	_lista_comps.custom_minimum_size.x = 150
 	_lista_comps.clip_text = true
@@ -195,12 +197,28 @@ func _montar_botoes() -> void:
 	dentro.toggle_mode = true
 	barra.add_child(dentro)
 	_botoes_vista["dentro"] = dentro
+	_botao_fechar = _botao("X", func(): fechar.emit())
+	_botao_fechar.tooltip_text = "Fechar (Esc)"
+	add_child(_botao_fechar)
+
+
+## Ao abrir, o foco vai para a vista em uso (Exterior ao abrir).
+func focar_acao_principal() -> void:
+	var b: Button = _botoes_vista.get(vista, _botoes_vista["ext"])
+	b.call_deferred("grab_focus")
+
+
+## Formulário fechado (Cancelar, X, Esc ou clique fora): o foco volta para a vista se tiver ficado no formulário.
+func _fechar_formulario() -> void:
+	var dono := get_viewport().gui_get_focus_owner()
+	_formulario.visible = false
+	if dono == null or _formulario.is_ancestor_of(dono):
+		focar_acao_principal()
 
 
 func _botao(texto: String, acao: Callable) -> Button:
 	var b := Button.new()
 	b.text = texto
-	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(acao)
 	return b
 
@@ -566,6 +584,11 @@ func _atualizar_camera() -> void:
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton:
 		var b := event as InputEventMouseButton
+		if b.button_index == MOUSE_BUTTON_LEFT and b.pressed and _formulario.visible:
+			_fechar_formulario()   # clique fora do formulário só fecha (M12-8)
+			_toque = Vector2(-1000, -1000)
+			accept_event()
+			return
 		if b.button_index == MOUSE_BUTTON_LEFT:
 			_arrastando = b.pressed
 			if b.pressed:
@@ -640,10 +663,20 @@ func _process(delta: float) -> void:
 		_andar(mov * VELOCIDADE_ANDAR * delta)
 
 
-func _unhandled_input(event: InputEvent) -> void:
-	if not visible or vista == "dentro" or not event is InputEventKey or not event.pressed:
+## As setas do teclado são da câmera (antes da navegação de foco da interface). Tab e o D-pad do controle
+## continuam trocando de botão. Num campo de texto, as setas ficam com o campo.
+func _input(event: InputEvent) -> void:
+	if not visible or not event is InputEventKey:
 		return
-	match (event as InputEventKey).keycode:
+	var tecla := (event as InputEventKey).keycode
+	if not tecla in [KEY_LEFT, KEY_RIGHT, KEY_UP, KEY_DOWN]:
+		return
+	if get_viewport().gui_get_focus_owner() is LineEdit:
+		return
+	get_viewport().set_input_as_handled()
+	if vista == "dentro" or not event.pressed:
+		return   # em primeira pessoa o _process lê as setas direto
+	match tecla:
 		KEY_LEFT:
 			_guinada += 0.1
 		KEY_RIGHT:
@@ -823,4 +856,4 @@ func _draw() -> void:
 	var gate := "%s · %s" % [barco.get("gateAtual", ""), barco.get("nomeGate", "")]
 	if not _ncs.is_empty():
 		gate = "%d NC 3D · %s" % [_ncs.size(), gate]
-	draw_string(fonte, Vector2(0, 12), gate, HORIZONTAL_ALIGNMENT_RIGHT, size.x - 6, tamanho_texto, Paleta.TEXTO_CLARO)
+	draw_string(fonte, Vector2(0, 12), gate, HORIZONTAL_ALIGNMENT_RIGHT, size.x - 24, tamanho_texto, Paleta.TEXTO_CLARO)

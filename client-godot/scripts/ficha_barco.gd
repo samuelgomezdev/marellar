@@ -31,6 +31,9 @@ var _rolagem_ncs: ScrollContainer
 var _assinatura_ncs := ""
 var _botao_prioridade: Button
 var _botao_segurar: Button
+var botao_3d: Button
+var _botao_fechar: Button
+var _primeiro_retrabalho: Button   # ação principal da ficha quando há NC esperando decisão
 
 
 func _ready() -> void:
@@ -47,13 +50,16 @@ func _ready() -> void:
 	botoes.add_theme_constant_override("separation", 4)
 	add_child(botoes)
 	botoes.add_child(_botao("< Fábrica", func(): fechar.emit()))
-	var botao_3d := _botao("Inspecionar 3D", func(): inspecionar.emit())
+	botao_3d = _botao("Inspecionar 3D", func(): inspecionar.emit())
 	botao_3d.tooltip_text = "Abre o barco em 3D, no estado do gate atual."
 	botoes.add_child(botao_3d)
 	_botao_prioridade = _botao("Prioridade 1", func(): priorizar.emit())
 	botoes.add_child(_botao_prioridade)
 	_botao_segurar = _botao("Segurar gate", func(): alternar_segurar.emit())
 	botoes.add_child(_botao_segurar)
+	_botao_fechar = _botao("X", func(): fechar.emit())
+	_botao_fechar.tooltip_text = "Fechar (Esc)"
+	add_child(_botao_fechar)
 	resized.connect(_posicionar)
 	_posicionar()
 
@@ -100,6 +106,8 @@ func _posicionar() -> void:
 	var botoes := get_node("Botoes") as HBoxContainer
 	botoes.position = Vector2(MARGEM, size.y - ALTURA_BOTOES - 2)
 	botoes.size = Vector2(size.x - 2 * MARGEM, ALTURA_BOTOES - 2)
+	_botao_fechar.position = Vector2(size.x - 16 - MARGEM, 0)
+	_botao_fechar.size = Vector2(16, 16)
 
 
 # ---------------------------------------------------------------- NCs (Controls, com botões)
@@ -109,8 +117,14 @@ func _reconstruir_ncs() -> void:
 	if assinatura == _assinatura_ncs:
 		return
 	_assinatura_ncs = assinatura
+	var dono := get_viewport().gui_get_focus_owner()
+	var chave_foco := str(dono.get_meta("chave", "")) if dono != null and _lista_ncs.is_ancestor_of(dono) else ""
+	_primeiro_retrabalho = null
 	for filho in _lista_ncs.get_children():
+		_lista_ncs.remove_child(filho)
 		filho.queue_free()
+	if not chave_foco.is_empty():
+		_refocar.call_deferred(chave_foco)
 	if barco.is_empty():
 		return
 	var ncs: Array = barco["ncs"].duplicate()
@@ -133,16 +147,37 @@ func _reconstruir_ncs() -> void:
 		acoes.add_theme_constant_override("separation", 2)
 		var retrabalho := _botao("Retrabalho", func(): decidir_nc.emit(nc["id"], "RETRABALHO"))
 		retrabalho.tooltip_text = "Conserta agora: %d HH." % int(nc["hhRetrabalho"])
+		retrabalho.set_meta("chave", "%s/RETRABALHO" % nc["id"])
 		acoes.add_child(retrabalho)
+		if _primeiro_retrabalho == null:
+			_primeiro_retrabalho = retrabalho
 		var concessao := _botao("Concessão", func(): decidir_nc.emit(nc["id"], "CONCESSAO"))
+		concessao.set_meta("chave", "%s/CONCESSAO" % nc["id"])
 		concessao.disabled = nc["gravidade"] == "CRITICA"
 		concessao.tooltip_text = "NC crítica não aceita concessão." if concessao.disabled else "Libera sem consertar: risco de garantia."
 		acoes.add_child(concessao)
 		if nc["origem"] == "FORNECEDOR":
 			var rnc := _botao("RNC", func(): decidir_nc.emit(nc["id"], "RNC_FORNECEDOR"))
+			rnc.set_meta("chave", "%s/RNC" % nc["id"])
 			rnc.tooltip_text = "Abre RNC contra o fornecedor (chargeback)."
 			acoes.add_child(rnc)
 		_lista_ncs.add_child(acoes)
+
+
+## Ao abrir a ficha, o foco vai para a ação principal: Retrabalho da primeira NC aberta; sem NC aberta, Inspecionar 3D.
+func focar_acao_principal() -> void:
+	var alvo: Button = _primeiro_retrabalho if _primeiro_retrabalho != null else botao_3d
+	alvo.call_deferred("grab_focus")
+
+
+## A lista foi refeita: o foco volta para o mesmo botão da mesma NC; se a NC foi decidida, para a próxima ação principal.
+func _refocar(chave: String) -> void:
+	for acoes in _lista_ncs.get_children():
+		for b in acoes.get_children():
+			if b is Button and str(b.get_meta("chave", "")) == chave:
+				b.grab_focus()
+				return
+	focar_acao_principal()
 
 
 ## NCs abertas primeiro; dentro do mesmo grupo, as mais recentes.
@@ -312,7 +347,6 @@ func _caixa(r: Rect2, titulo: String) -> void:
 func _botao(texto: String, acao: Callable) -> Button:
 	var b := Button.new()
 	b.text = texto
-	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(acao)
 	return b
 

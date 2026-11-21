@@ -82,6 +82,13 @@ var tela_ficha: FichaBarco
 var tela_3d: Inspecao3D
 var botao_ficha: Button
 var botao_conselho: Button
+var botao_carregar: Button
+var camada_foco: Control   # botões sem fundo por cima do que é desenhado à mão (barcos, cartão, alerta de NC)
+var botoes_barcos := {}    # id do barco -> Button sem fundo na área clicável do barco
+var botao_cartao: Button
+var botao_alerta: Button
+var botao_fechar_painel: Button   # X do painel lateral (Equipe/Fornecedores)
+var foco_ao_fechar := {}   # painel -> Control que tinha o foco antes de abrir (o foco volta para ele ao fechar)
 
 
 func _ready() -> void:
@@ -93,6 +100,8 @@ func _ready() -> void:
 	theme.default_font = fonte
 	theme.default_font_size = TAMANHO_TEXTO
 	Api.erro.connect(_on_erro_api)
+	_ajustar_entrada()
+	_montar_camada_foco()
 	_montar_barra_inferior()
 	_montar_abas()
 	_montar_ficha()
@@ -167,6 +176,7 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 
 func _process(delta: float) -> void:
 	queue_redraw()  # bonequinhos animados
+	_sincronizar_botoes_planta()
 	if velocidade == 0 or ocupado or Api.partida_id.is_empty():
 		return
 	acumulado += delta
@@ -309,9 +319,19 @@ func _on_erro_api(mensagem: String) -> void:
 # ---------------------------------------------------------------- entrada
 
 func _unhandled_input(event: InputEvent) -> void:
+	# Esc ou B (ui_cancel) fecha o que estiver aberto, do mais de cima para o de baixo.
+	if event.is_action_pressed("ui_cancel"):
+		_fechar_o_de_cima()
+		get_viewport().set_input_as_handled()
+		return
+	# Sem nada em foco, a primeira seta, D-pad ou Tab põe o foco no barco selecionado (ou em Pausa).
+	if get_viewport().gui_get_focus_owner() == null:
+		for acao in ["ui_up", "ui_down", "ui_left", "ui_right", "ui_focus_next", "ui_focus_prev"]:
+			if event.is_action_pressed(acao):
+				_focar_padrao()
+				get_viewport().set_input_as_handled()
+				return
 	if tela_conselho != null or tela_saves != null:
-		if event is InputEventKey and event.pressed and event.keycode == KEY_ESCAPE:
-			_fechar_saves()
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		match event.keycode:
@@ -334,22 +354,41 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F9:
 				_carregar_ultimo_save()
 			KEY_ENTER, KEY_KP_ENTER:
-				_abrir_ficha_completa()
-			KEY_ESCAPE:
-				if tela_3d.visible:
-					if not tela_3d.voltar():   # vistas e primeira pessoa voltam ao exterior; do exterior, fecha
-						_fechar_inspecao_3d()
-					return
-				if tela_ficha.visible:
-					_fechar_ficha_completa()
-					return
-				selecionado = ""
-				painel = PAINEL_BARCO
-				_atualizar_interface()
+				# Com um botão em foco, o Enter é do botão (ele age ao soltar a tecla).
+				if get_viewport().gui_get_focus_owner() == null:
+					_abrir_ficha_completa()
+
+
+## Fecha o painel de cima: saves, conselho, formulário/vista do 3D, 3D, ficha, painel lateral;
+## sem nada aberto, tira a seleção.
+func _fechar_o_de_cima() -> void:
+	if tela_saves != null:
+		_fechar_saves()
+		return
+	if tela_conselho != null:
+		_fechar_conselho()
+		return
+	if tela_3d.visible:
+		if not tela_3d.voltar():   # formulário e vistas voltam ao exterior; do exterior, fecha
+			_fechar_inspecao_3d()
+		return
+	if tela_ficha.visible:
+		_fechar_ficha_completa()
+		return
+	if painel != PAINEL_BARCO:
+		_fechar_painel()
+		return
+	selecionado = ""
+	_atualizar_interface()
 
 
 func _gui_input(event: InputEvent) -> void:
 	if event is InputEventMouseButton and event.pressed and event.button_index == MOUSE_BUTTON_LEFT:
+		# Clique fora do painel lateral só fecha o painel (M12-8). Saves e conselho têm o véu.
+		if painel != PAINEL_BARCO and not _retangulo_painel().has_point(event.position):
+			_fechar_painel()
+			accept_event()
+			return
 		if area_alerta_nc.has_point(event.position) and not barco_alerta_nc.is_empty():
 			selecionado = barco_alerta_nc
 			galpao = Planta.galpao_do_barco(_barco(selecionado))
@@ -388,7 +427,7 @@ func _montar_barra_inferior() -> void:
 	botoes_velocidade[0].set_pressed_no_signal(true)
 
 	barra.add_child(VSeparator.new())
-	botao_ficha = _botao("Ficha", _abrir_ficha_completa)
+	botao_ficha = _botao("Ficha", _alternar_ficha_completa)
 	botao_ficha.tooltip_text = "Ficha completa do barco selecionado (ou duplo clique no barco)."
 	barra.add_child(botao_ficha)
 	botao_prioridade = _botao("Prior. 1", _priorizar)
@@ -406,16 +445,16 @@ func _montar_barra_inferior() -> void:
 		b.tooltip_text = "Atalho: %s" % opcao[2]
 		barra.add_child(b)
 		botoes_painel[opcao[0]] = b
-	botao_conselho = _botao("Conselho", _abrir_conselho)
+	botao_conselho = _botao("Conselho", _alternar_conselho)
 	botao_conselho.tooltip_text = "Última reunião do conselho."
 	barra.add_child(botao_conselho)
 	barra.add_child(VSeparator.new())
 	var salvar := _botao("Salvar", _salvar)
 	salvar.tooltip_text = "Atalho: F5"
 	barra.add_child(salvar)
-	var carregar := _botao("Carregar", _abrir_saves)
-	carregar.tooltip_text = "Atalho: F9 (último save)"
-	barra.add_child(carregar)
+	botao_carregar = _botao("Carregar", _alternar_saves)
+	botao_carregar.tooltip_text = "Atalho: F9 (último save)"
+	barra.add_child(botao_carregar)
 
 
 ## Abas grandes G1/G2 com o nome do galpão e quantos barcos há em cada um (sempre visíveis na fábrica).
@@ -455,6 +494,8 @@ func _montar_ficha() -> void:
 	ficha.add_theme_constant_override("separation", 1)
 	ficha.custom_minimum_size.x = LARGURA_PAINEL - 14
 	rolagem.add_child(ficha)
+	botao_fechar_painel = _botao_fechar(_fechar_painel)
+	add_child(botao_fechar_painel)
 
 
 func _montar_ficha_completa() -> void:
@@ -494,8 +535,11 @@ func _abrir_inspecao_3d() -> void:
 	if barco.is_empty():
 		_avisar("Selecione um barco para inspecionar em 3D.")
 		return
+	_guardar_foco("3d", tela_ficha.botao_3d)
 	tela_3d.abrir(barco)
 	tela_3d.atualizar_ncs(estado.get("ncsInspecao", []))
+	_atualizar_interface()
+	tela_3d.focar_acao_principal()
 
 
 ## NC marcada no 3D: vira a ordem RegistrarNcInspecao; o motor valida e devolve o estado com a NC.
@@ -514,6 +558,7 @@ func _registrar_nc_3d(ordem: Dictionary) -> void:
 func _fechar_inspecao_3d() -> void:
 	tela_3d.visible = false
 	_atualizar_interface()
+	_devolver_foco("3d")
 
 
 func _mudar_galpao(novo: String) -> void:
@@ -527,27 +572,197 @@ func _abrir_ficha_completa() -> void:
 	if _barco(selecionado).is_empty():
 		_avisar("Selecione um barco para abrir a ficha.")
 		return
+	if not tela_ficha.visible:
+		_guardar_foco("ficha", botao_ficha)
 	tela_ficha.visible = true
 	_atualizar_interface()
+	tela_ficha.focar_acao_principal()
 
 
 func _fechar_ficha_completa() -> void:
 	tela_ficha.visible = false
 	_atualizar_interface()
+	_devolver_foco("ficha")
+
+
+## O mesmo botão que abre fecha (M12-8).
+func _alternar_ficha_completa() -> void:
+	if tela_ficha.visible:
+		_fechar_ficha_completa()
+	else:
+		_abrir_ficha_completa()
 
 
 func _abrir_painel(qual: String) -> void:
-	tela_ficha.visible = false
-	painel = PAINEL_BARCO if painel == qual else qual
+	if painel == qual:
+		_fechar_painel()
+		return
+	if tela_ficha.visible:
+		_fechar_ficha_completa()
+	if painel == PAINEL_BARCO:
+		_guardar_foco("lateral", botoes_painel[qual])
+	painel = qual
 	_atualizar_interface()
+	# Equipe: a ação principal é Contratar; Fornecedores não tem ação, o foco vai para o X.
+	var botoes := _botoes_em(ficha)
+	_focar_depois(botoes[0] if qual == PAINEL_EQUIPE and not botoes.is_empty() else botao_fechar_painel)
+
+
+func _fechar_painel() -> void:
+	painel = PAINEL_BARCO
+	_atualizar_interface()
+	_devolver_foco("lateral")
 
 
 func _botao(texto: String, acao: Callable) -> Button:
 	var b := Button.new()
 	b.text = texto
-	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(acao)
 	return b
+
+
+## X pequeno no canto de um painel.
+func _botao_fechar(acao: Callable) -> Button:
+	var b := _botao("X", acao)
+	b.tooltip_text = "Fechar (Esc)"
+	return b
+
+
+# ---------------------------------------------------------------- foco (mouse, teclado e controle)
+
+## Espaço só pausa: sai do ui_accept para não apertar o botão em foco. Botão A do controle confirma (ui_accept)
+## e B fecha (ui_cancel); o Godot 4.7 não traz esses dois botões nas ações de interface.
+func _ajustar_entrada() -> void:
+	for e in InputMap.action_get_events("ui_accept"):
+		if e is InputEventKey and (e as InputEventKey).keycode == KEY_SPACE:
+			InputMap.action_erase_event("ui_accept", e)
+	for par in [["ui_accept", JOY_BUTTON_A], ["ui_cancel", JOY_BUTTON_B]]:
+		var tem := false
+		for e in InputMap.action_get_events(par[0]):
+			tem = tem or (e is InputEventJoypadButton and (e as InputEventJoypadButton).button_index == par[1])
+		if not tem:
+			var botao := InputEventJoypadButton.new()
+			botao.button_index = par[1]
+			InputMap.action_add_event(par[0], botao)
+
+
+func _montar_camada_foco() -> void:
+	camada_foco = Control.new()
+	camada_foco.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	camada_foco.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	add_child(camada_foco)
+	botao_cartao = _botao_invisivel(_abrir_ficha_completa)
+	botao_alerta = _botao_invisivel(_abrir_alerta_nc)
+
+
+## Botão sem fundo, só para o teclado e o controle: o mouse continua no _gui_input da fábrica
+## (clique e duplo clique como antes). O contorno de foco vem do tema.
+func _botao_invisivel(acao: Callable) -> Button:
+	var b := Button.new()
+	b.flat = true
+	b.mouse_filter = Control.MOUSE_FILTER_IGNORE
+	b.visible = false
+	b.pressed.connect(acao)
+	camada_foco.add_child(b)
+	return b
+
+
+## Põe os botões invisíveis sobre o que foi desenhado no último quadro. Com a ficha ou o 3D na frente,
+## os botões dos barcos só se escondem (o foco volta para o barco ao fechar).
+func _sincronizar_botoes_planta() -> void:
+	var na_planta := not estado.is_empty() and not tela_ficha.visible and not tela_3d.visible
+	for id in botoes_barcos.keys():
+		if not areas_barcos.has(id):
+			botoes_barcos[id].queue_free()
+			botoes_barcos.erase(id)
+	for id in areas_barcos:
+		var b: Button = botoes_barcos.get(id)
+		if b == null:
+			b = _botao_invisivel(_acionar_barco.bind(id))
+			b.focus_entered.connect(_focar_barco.bind(id))
+			botoes_barcos[id] = b
+		b.visible = na_planta
+		_cobrir(b, areas_barcos[id])
+	_mostrar_invisivel(botao_cartao, area_cartao, na_planta)
+	_mostrar_invisivel(botao_alerta, area_alerta_nc, na_planta and not barco_alerta_nc.is_empty())
+	if na_planta:
+		_vizinhos_dos_barcos()
+
+
+## Ordem do foco nos barcos: esquerda e direita só entre barcos (da esquerda para a direita), para cima
+## as abas, para baixo o cartão do barco (ou a barra de baixo). Sem isso, a busca automática pulava para o cartão.
+func _vizinhos_dos_barcos() -> void:
+	var lista: Array = botoes_barcos.values()
+	lista.sort_custom(func(a: Control, b: Control): return a.position.x < b.position.x or (a.position.x == b.position.x and a.position.y < b.position.y))
+	var abaixo: Control = botao_cartao if botao_cartao.visible else botoes_velocidade[0]
+	for i in lista.size():
+		var b: Control = lista[i]
+		b.focus_neighbor_left = b.get_path_to(lista[maxi(i - 1, 0)])
+		b.focus_neighbor_right = b.get_path_to(lista[mini(i + 1, lista.size() - 1)])
+		b.focus_neighbor_top = b.get_path_to(botoes_abas[galpao])
+		b.focus_neighbor_bottom = b.get_path_to(abaixo)
+	var do_selecionado: Control = botoes_barcos.get(selecionado)
+	if do_selecionado != null:
+		botao_cartao.focus_neighbor_top = botao_cartao.get_path_to(do_selecionado)
+
+
+func _cobrir(b: Control, r: Rect2) -> void:
+	b.position = r.position.floor()
+	b.size = r.size.ceil()
+
+
+func _mostrar_invisivel(b: Button, r: Rect2, mostrar: bool) -> void:
+	b.visible = mostrar and r.size.x > 0
+	if b.visible:
+		_cobrir(b, r)
+
+
+## Foco num barco (teclado ou controle) seleciona o barco; Enter ou A num barco já selecionado abre a ficha.
+func _focar_barco(id: String) -> void:
+	if selecionado != id:
+		selecionado = id
+		_atualizar_interface()
+
+
+func _acionar_barco(id: String) -> void:
+	if selecionado == id:
+		_abrir_ficha_completa()
+	else:
+		_focar_barco(id)
+
+
+func _abrir_alerta_nc() -> void:
+	if barco_alerta_nc.is_empty():
+		return
+	selecionado = barco_alerta_nc
+	galpao = Planta.galpao_do_barco(_barco(selecionado))
+	_abrir_ficha_completa()
+
+
+func _focar_padrao() -> void:
+	var b: Button = botoes_barcos.get(selecionado)
+	_focar_depois(b if b != null else botoes_velocidade[0])
+
+
+## O foco vai depois do quadro: controles recém-criados ainda não estão no lugar.
+func _focar_depois(c: Control) -> void:
+	if c != null:
+		c.call_deferred("grab_focus")
+
+
+func _guardar_foco(nome: String, quem_abriu: Control) -> void:
+	var dono := get_viewport().gui_get_focus_owner()
+	foco_ao_fechar[nome] = dono if dono != null else quem_abriu
+
+
+func _devolver_foco(nome: String) -> void:
+	var c = foco_ao_fechar.get(nome)
+	foco_ao_fechar.erase(nome)
+	await get_tree().process_frame   # os botões da planta reaparecem no próximo quadro
+	if is_instance_valid(c) and (c as Control).is_visible_in_tree():
+		(c as Control).grab_focus()
+	else:
+		_focar_padrao()
 
 
 func _atualizar_interface() -> void:
@@ -605,6 +820,10 @@ func _topo_planta() -> float:
 func _posicionar_rolagem() -> void:
 	var topo := _topo_planta() + 22
 	rolagem.visible = painel != PAINEL_BARCO
+	var r := _retangulo_painel()
+	botao_fechar_painel.visible = rolagem.visible
+	botao_fechar_painel.position = Vector2(r.end.x - 18, r.position.y + 2)
+	botao_fechar_painel.size = Vector2(16, 16)
 	rolagem.position = Vector2(size.x - LARGURA_PAINEL, topo)
 	rolagem.size = Vector2(LARGURA_PAINEL - 4, size.y - ALTURA_BASE - 6 - topo)
 
@@ -613,9 +832,30 @@ func _limpar_ficha(assinatura: String) -> bool:
 	if assinatura == assinatura_ficha:
 		return false
 	assinatura_ficha = assinatura
+	# O painel é refeito quando o estado muda: o foco volta para o botão na mesma posição.
+	var indice := _botoes_em(ficha).find(get_viewport().gui_get_focus_owner())
 	for filho in ficha.get_children():
+		ficha.remove_child(filho)
 		filho.queue_free()
+	if indice >= 0:
+		_focar_indice.call_deferred(ficha, indice)
 	return true
+
+
+func _focar_indice(pai: Node, indice: int) -> void:
+	var botoes := _botoes_em(pai)
+	if not botoes.is_empty():
+		botoes[mini(indice, botoes.size() - 1)].grab_focus()
+
+
+## Botões dentro de um container, na ordem da tela.
+static func _botoes_em(pai: Node) -> Array:
+	var lista := []
+	for filho in pai.get_children():
+		if filho is BaseButton:
+			lista.append(filho)
+		lista.append_array(_botoes_em(filho))
+	return lista
 
 
 func _rotulo(texto: String, cor: Color) -> Label:
@@ -709,7 +949,6 @@ func _draw() -> void:
 		_desenhar_alertas(t)
 		_desenhar_painel()
 	else:
-		areas_barcos = {}
 		area_cartao = Rect2()
 		area_alerta_nc = Rect2()
 	_desenhar_topo()
@@ -977,10 +1216,14 @@ func _desenhar_alertas(t: float) -> void:
 
 
 ## Equipe e fornecedores: painel por cima da fábrica, à direita (o conteúdo são Controls na rolagem).
+func _retangulo_painel() -> Rect2:
+	return Rect2(size.x - LARGURA_PAINEL - 2, _topo_planta() + 4, LARGURA_PAINEL, size.y - _topo_planta() - ALTURA_BASE - 8)
+
+
 func _desenhar_painel() -> void:
 	if painel == PAINEL_BARCO:
 		return
-	var r := Rect2(size.x - LARGURA_PAINEL - 2, _topo_planta() + 4, LARGURA_PAINEL, size.y - _topo_planta() - ALTURA_BASE - 8)
+	var r := _retangulo_painel()
 	draw_rect(r, Paleta.FUNDO)
 	draw_rect(r.grow(-0.5), Paleta.ALERTA_ESCURO, false, 1.0)
 	draw_string(fonte_titulo, Vector2(r.position.x + 6, r.position.y + 12), "EQUIPE" if painel == PAINEL_EQUIPE else "FORNECEDORES",
@@ -989,12 +1232,22 @@ func _desenhar_painel() -> void:
 
 # ---------------------------------------------------------------- lista de saves
 
+func _alternar_saves() -> void:
+	if tela_saves != null:
+		_fechar_saves()
+	else:
+		_abrir_saves()
+
+
 func _abrir_saves() -> void:
+	if tela_saves == null:
+		_guardar_foco("saves", botao_carregar)
 	_mudar_velocidade(0)
 	var lista = await Api.saves()
 	if lista == null:
 		return
-	_fechar_saves()
+	if tela_saves != null:
+		tela_saves.queue_free()
 	tela_saves = _nova_sobreposicao(Paleta.AGUA)
 	var itens := VBoxContainer.new()
 	itens.add_theme_constant_override("separation", 2)
@@ -1004,7 +1257,7 @@ func _abrir_saves() -> void:
 	titulo.add_theme_font_override("font", fonte_titulo)
 	titulo.add_theme_font_size_override("font_size", TAMANHO_TITULO)
 	titulo.add_theme_color_override("font_color", Paleta.AGUA)
-	itens.add_child(titulo)
+	itens.add_child(_cabecalho(titulo, _fechar_saves))
 	if lista.is_empty():
 		itens.add_child(_linha_conselho("Nenhum save ainda. Use Salvar (F5).", Paleta.PISO_ESCURO, 320))
 	for save in lista.slice(0, 8):
@@ -1012,7 +1265,32 @@ func _abrir_saves() -> void:
 		var texto := "%s %02dh · semente %d%s" % [_data_curta(str(save["data"])), int(save["hora"]), int(save["semente"]),
 				" · esta partida" if atual else ""]
 		itens.add_child(_botao(texto, _carregar_save.bind(str(save["id"]))))
-	itens.add_child(_botao("Voltar", _fechar_saves))
+	var voltar := _botao("Voltar", _fechar_saves)
+	itens.add_child(voltar)
+	# ação principal: o save mais recente; sem save, Voltar (o primeiro botão da lista é o X)
+	var botoes := _botoes_em(itens)
+	_focar_depois(botoes[1] if botoes.size() > 2 else voltar)
+
+
+## Camada transparente atrás de uma janela: clicar fora dela fecha a janela (M12-8). Some junto com a janela.
+func _veu(janela: Control, fechar_janela: Callable) -> void:
+	var v := Control.new()
+	v.set_anchors_and_offsets_preset(Control.PRESET_FULL_RECT)
+	v.mouse_filter = Control.MOUSE_FILTER_STOP
+	v.gui_input.connect(func(e: InputEvent):
+		if e is InputEventMouseButton and e.pressed and e.button_index in [MOUSE_BUTTON_LEFT, MOUSE_BUTTON_RIGHT]:
+			fechar_janela.call())
+	add_child(v)
+	janela.tree_exiting.connect(v.queue_free)
+
+
+## Título com o X de fechar à direita.
+func _cabecalho(titulo: Label, fechar_painel: Callable) -> HBoxContainer:
+	var linha := HBoxContainer.new()
+	titulo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
+	linha.add_child(titulo)
+	linha.add_child(_botao_fechar(fechar_painel))
+	return linha
 
 
 func _nova_sobreposicao(borda: Color) -> PanelContainer:
@@ -1025,6 +1303,7 @@ func _nova_sobreposicao(borda: Color) -> PanelContainer:
 	painel_novo.add_theme_stylebox_override("panel", fundo)
 	painel_novo.position = Vector2(size.x / 2 - 170, ALTURA_TOPO + 30)
 	painel_novo.custom_minimum_size = Vector2(340, 0)
+	_veu(painel_novo, _fechar_saves)
 	add_child(painel_novo)
 	return painel_novo
 
@@ -1038,9 +1317,17 @@ func _fechar_saves() -> void:
 	if tela_saves != null:
 		tela_saves.queue_free()
 		tela_saves = null
+		_devolver_foco("saves")
 
 
 # ---------------------------------------------------------------- tela do conselho
+
+func _alternar_conselho() -> void:
+	if tela_conselho != null:
+		_fechar_conselho()
+	else:
+		_abrir_conselho()
+
 
 func _abrir_conselho() -> void:
 	var r = estado.get("conselho")
@@ -1048,6 +1335,8 @@ func _abrir_conselho() -> void:
 		return
 	if tela_conselho != null:
 		tela_conselho.queue_free()
+	else:
+		_guardar_foco("conselho", botao_conselho)
 	tela_conselho = PanelContainer.new()
 	var fundo := StyleBoxFlat.new()
 	fundo.bg_color = Paleta.FUNDO_ESCURO
@@ -1057,6 +1346,7 @@ func _abrir_conselho() -> void:
 	tela_conselho.add_theme_stylebox_override("panel", fundo)
 	tela_conselho.position = Vector2(40, ALTURA_TOPO + 6)
 	tela_conselho.size = Vector2(size.x - 80, size.y - ALTURA_TOPO - ALTURA_BASE - 12)
+	_veu(tela_conselho, _fechar_conselho)
 	add_child(tela_conselho)
 
 	var rolagem_conselho := ScrollContainer.new()
@@ -1071,7 +1361,7 @@ func _abrir_conselho() -> void:
 	var titulo := Label.new()
 	titulo.text = "REUNIÃO DO CONSELHO - %s" % r["mesReferencia"]
 	titulo.add_theme_color_override("font_color", Paleta.ALERTA)  # VT323: a Press Start 2P não tem "Ã"
-	lista.add_child(titulo)
+	lista.add_child(_cabecalho(titulo, _fechar_conselho))
 
 	for m in r["metas"]:
 		var cor := Paleta.MONTAGEM_LIMPA if m["cumprida"] else Paleta.CRITICO
@@ -1098,7 +1388,9 @@ func _abrir_conselho() -> void:
 	if r["derrota"] != null:
 		lista.add_child(_linha_conselho("FIM DE JOGO. %s" % ("Três meses de caixa negativo." if r["derrota"] == "CAIXA"
 				else "O conselho perdeu a paciência."), Paleta.CRITICO, largura))
-		lista.add_child(_botao("Nova partida", func(): get_tree().reload_current_scene()))
+		var nova := _botao("Nova partida", func(): get_tree().reload_current_scene())
+		lista.add_child(nova)
+		_focar_depois(nova)
 		return
 
 	lista.add_child(_linha_conselho("Decisão para o próximo mês (uma):", Paleta.ALERTA, largura))
@@ -1111,7 +1403,15 @@ func _abrir_conselho() -> void:
 		if escolhida == o["id"]:
 			b.text = "> " + b.text
 		lista.add_child(b)
-	lista.add_child(_botao("Continuar", _fechar_conselho))
+	var continuar := _botao("Continuar", _fechar_conselho)
+	lista.add_child(continuar)
+	# ação principal: a primeira decisão ainda livre; já decidido, Continuar (o primeiro botão é o X)
+	var alvo: Control = continuar
+	for b in _botoes_em(lista).slice(1):
+		if b != continuar and not b.disabled:
+			alvo = b
+			break
+	_focar_depois(alvo)
 
 
 func _linha_conselho(texto: String, cor: Color, largura: float) -> Label:
@@ -1132,6 +1432,7 @@ func _fechar_conselho() -> void:
 	if tela_conselho != null:
 		tela_conselho.queue_free()
 		tela_conselho = null
+		_devolver_foco("conselho")
 
 
 ## Só para exibir (as contas ficam no motor, em BigDecimal): "R$ 1.234.567".
