@@ -30,26 +30,21 @@ var _codigos_defeito: Array[String] = []
 
 
 func _ready() -> void:
-	var fundo := StyleBoxFlat.new()
-	fundo.bg_color = Paleta.FUNDO
-	fundo.border_color = Paleta.ALERTA
-	fundo.set_border_width_all(1)
-	fundo.set_content_margin_all(5)
-	add_theme_stylebox_override("panel", fundo)
+	theme_type_variation = "Janela"
 	mouse_filter = Control.MOUSE_FILTER_STOP
 	var caixa := VBoxContainer.new()
 	caixa.add_theme_constant_override("separation", 2)
 	add_child(caixa)
 	var cabecalho := HBoxContainer.new()
 	caixa.add_child(cabecalho)
-	_titulo = _rotulo(cabecalho, Paleta.ALERTA)
+	_titulo = _rotulo(cabecalho, Tokens.TEXTO)
 	_titulo.size_flags_horizontal = Control.SIZE_EXPAND_FILL
 	var x := Button.new()
 	x.text = "X"
 	x.tooltip_text = "Fechar (Esc)"
 	x.pressed.connect(func(): cancelar.emit())
 	cabecalho.add_child(x)
-	_local = _rotulo(caixa, Paleta.TEXTO)
+	_local = _rotulo(caixa, Tokens.TEXTO_CALMO)
 	_local.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_local.custom_minimum_size.x = 220   # sem largura, o rótulo com quebra mede uma letra por linha
 	_categoria = _opcoes(caixa)
@@ -61,7 +56,7 @@ func _ready() -> void:
 	_observacao.placeholder_text = "Observação (opcional)"
 	_observacao.max_length = 300
 	caixa.add_child(_observacao)
-	_erro = _rotulo(caixa, Paleta.CRITICO)
+	_erro = _rotulo(caixa, Tokens.NC)
 	_erro.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	_erro.custom_minimum_size.x = 220
 	var botoes := HBoxContainer.new()
@@ -69,6 +64,7 @@ func _ready() -> void:
 	caixa.add_child(botoes)
 	_ok = Button.new()
 	_ok.text = "Registrar NC"
+	_ok.theme_type_variation = "BotaoAcao"   # a única ação principal do formulário
 	_ok.pressed.connect(_confirmar)
 	botoes.add_child(_ok)
 	var nao := Button.new()
@@ -174,6 +170,7 @@ func _rotulo(pai: Control, cor: Color) -> Label:
 func _opcoes(pai: Control) -> OptionButton:
 	var o := OptionButton.new()
 	o.clip_text = true
+	o.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS   # defeito com nome longo termina em "…"
 	o.fit_to_longest_item = false
 	pai.add_child(o)
 	return o

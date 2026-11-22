@@ -18,6 +18,10 @@ const OK := Color("#63c74d")            ## aprovado, entregue, meta batida
 const ATENCAO := Color("#f77622")       ## prazo em risco, estoque baixo
 const NC := Color("#e43b44")            ## não conformidade, multa, perda
 const FOCO := Color("#2ce8f5")          ## contorno do item em foco (mouse, teclado, controle)
+const NC_LEVE := Color("#fee761")       ## gravidade leve de NC (marcador da inspeção); média = ATENCAO, crítica = NC
+
+## Cor de cada gravidade de NC, na ordem leve, média, crítica.
+const GRAVIDADE := {"LEVE": NC_LEVE, "MEDIA": ATENCAO, "CRITICA": NC}
 
 # ---------------------------------------------------------------- forma
 
@@ -33,8 +37,10 @@ const TELA_BASE := Vector2i(640, 360)   ## resolução base, escala inteira (pro
 
 const FONTE_UI := "res://assets/fontes/PixelifySans-Variavel.ttf"
 const FONTE_TITULO := "res://assets/fontes/Jersey10-Regular.ttf"
+const FONTE_NUMERO := "res://assets/fontes/Jersey10-Regular.ttf"   ## números de valor (a Pixelify desenha 5 ≈ S e 3 ≈ 8)
 const TAMANHO_UI := 16
 const TAMANHO_TITULO := 20
+const TAMANHO_NUMERO := 20   ## Jersey 10 só fica com pixel exato em múltiplos de 10 px
 
 # ---------------------------------------------------------------- movimento
 
