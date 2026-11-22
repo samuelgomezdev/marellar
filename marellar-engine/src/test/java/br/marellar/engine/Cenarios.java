@@ -51,8 +51,14 @@ public final class Cenarios {
         return p.comLinha33(p.linha33().comBarcosIniciais(List.of(barcos)));
     }
 
-    public static ParametrosJogo umBarcoNoRe(ParametrosJogo p) {
-        return comBarcos(p, new BarcoInicial("33-100", "Teste", CodigoGate.RE));
+    /** Um barco no DM, o primeiro gate: faz o caminho inteiro ate a ET. */
+    public static ParametrosJogo umBarcoNoDm(ParametrosJogo p) {
+        return comBarcos(p, new BarcoInicial("33-100", "Teste", CodigoGate.DM));
+    }
+
+    /** Um barco no TR: gate pequeno (1% das HH) e sem material, bom para testar inspecao e NC. */
+    public static ParametrosJogo umBarcoNoTr(ParametrosJogo p) {
+        return comBarcos(p, new BarcoInicial("33-100", "Teste", CodigoGate.TR));
     }
 
     /** Toda a equipe de producao com a mesma moral. */

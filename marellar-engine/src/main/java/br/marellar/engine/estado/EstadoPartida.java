@@ -156,6 +156,7 @@ public record EstadoPartida(
     /** Caixa, cotas a receber, valor da empresa (do ultimo fechamento) e paciencia do conselho. */
     public record FinanceiroVisao(BigDecimal caixa, BigDecimal cotasAReceber, BigDecimal valorEmpresa,
                                   int pacienciaConselho, int pacienciaMaxima, int mesesCaixaNegativo,
+                                  int mesesRuinsSeguidos, int mesesRuinsParaDemissao,
                                   BigDecimal receitaDoMes, List<Lancamento> ultimosLancamentos) {}
 
     /** Indicadores de seguranca (NBR 14280) e de rotatividade. */

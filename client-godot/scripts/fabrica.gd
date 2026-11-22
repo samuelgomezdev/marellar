@@ -1130,7 +1130,7 @@ func _desenhar_topo() -> void:
 		["Valor", _milhoes(fin["valorEmpresa"]), Tokens.MARCA_CLARA],
 		["Moral", "%d%%" % moral, Tokens.OK if moral >= 60 else (Tokens.ATENCAO if moral >= 40 else Tokens.NC)],
 		["NCs", str(ncs), Tokens.NC if ncs > 0 else Tokens.OK],
-		["Conselho", "%d/%d" % [paciencia, int(fin["pacienciaMaxima"])], Tokens.ATENCAO if paciencia <= 2 else Tokens.TEXTO],
+		["Conselho", "%d/%d" % [paciencia, int(fin["pacienciaMaxima"])], _cor_conselho(int(fin["mesesRuinsSeguidos"]), int(fin["mesesRuinsParaDemissao"]))],
 	]
 	var x := 2.0
 	for b in blocos:
@@ -1388,6 +1388,12 @@ func _abrir_conselho() -> void:
 	lista.add_child(_linha_conselho("Paciência do conselho: %d -> %d de %d" % [int(r["pacienciaAntes"]),
 			int(r["pacienciaDepois"]), int(estado["financeiro"]["pacienciaMaxima"])],
 			Tokens.ATENCAO if int(r["pacienciaDepois"]) < int(r["pacienciaAntes"]) else Tokens.TEXTO, largura))
+	var limite := int(estado["financeiro"]["mesesRuinsParaDemissao"])
+	if r["mesRuim"]:
+		lista.add_child(_linha_conselho("MÊS RUIM: %d de %d meses ruins seguidos. No %dº o conselho demite o CEO." % [int(r["mesesRuinsSeguidos"]), limite, limite],
+				Tokens.NC, largura))
+	else:
+		lista.add_child(_linha_conselho("Mês aceitável: a contagem de meses ruins voltou a zero.", Tokens.OK, largura))
 
 	var dre: Dictionary = r["dre"]
 	lista.add_child(_linha_conselho("DRE: receita %s | material %s | pessoal %s | fixas %s" % [_reais(dre["receita"]),
@@ -1407,7 +1413,7 @@ func _abrir_conselho() -> void:
 
 	if r["derrota"] != null:
 		lista.add_child(_linha_conselho("FIM DE JOGO. %s" % ("Três meses de caixa negativo." if r["derrota"] == "CAIXA"
-				else "O conselho perdeu a paciência."), Tokens.NC, largura))
+				else "Três meses ruins seguidos com o conselho."), Tokens.NC, largura))
 		var nova := _botao("Nova partida", func(): get_tree().reload_current_scene())
 		lista.add_child(nova)
 		_focar_depois(nova)
@@ -1505,3 +1511,10 @@ func _motivo_pausa(motivo: String) -> String:
 		"ACIDENTE":
 			return "acidente de trabalho. Veja a equipe (F1)."
 	return motivo
+
+
+## Cor do bloco "Conselho" na barra de cima: segue os meses ruins seguidos (a paciência é só termômetro).
+func _cor_conselho(ruins: int, limite: int) -> Color:
+	if ruins <= 0:
+		return Tokens.TEXTO
+	return Tokens.NC if ruins >= limite - 1 else Tokens.ATENCAO

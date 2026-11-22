@@ -6,6 +6,7 @@ import br.marellar.engine.Simulacao;
 import br.marellar.engine.dados.CatalogoNc;
 import br.marellar.engine.dados.CatalogoNc.TipoNc;
 import br.marellar.engine.dados.ParametrosJogo;
+import br.marellar.engine.dados.ParametrosLinha.BarcoInicial;
 import br.marellar.engine.dominio.CodigoGate;
 import br.marellar.engine.dominio.DecisaoNc;
 import br.marellar.engine.dominio.Fornecedor;
@@ -55,13 +56,14 @@ class FornecedorRegraTest {
 
     @Test
     void semMaterialOBarcoParaERegistraHoraImprodutiva() {
-        ParametrosJogo p = Cenarios.umBarcoNoRe(TRANQUILO);
+        // barco no BF (57 HH): ao terminar, o ST precisa de vidro e o estoque esta zerado
+        ParametrosJogo p = Cenarios.comBarcos(TRANQUILO, new BarcoInicial(BARCO, "Teste", CodigoGate.BF));
         Simulacao sim = Simulacao.novaPartida(1, p.comLinha33(p.linha33().comEstoque(0, 0)));
 
         avancarDias(sim, 3);
 
         var barco = sim.barco(BARCO);
-        assertThat(barco.gateAtual()).isEqualTo(CodigoGate.DM);
+        assertThat(barco.gateAtual()).isEqualTo(CodigoGate.ST);
         assertThat(barco.status()).isEqualTo(StatusBarco.PARADO_MATERIAL);
         assertThat(barco.horasParadoMaterial()).isPositive();
         assertThat(sim.eventosDesde(0)).anyMatch(e -> e.tipo() == TipoEvento.PARADO_MATERIAL);
@@ -69,7 +71,7 @@ class FornecedorRegraTest {
 
     @Test
     void pedidoAutomaticoChegaEOBarcoVoltaATrabalhar() {
-        ParametrosJogo p = Cenarios.umBarcoNoRe(TRANQUILO);
+        ParametrosJogo p = Cenarios.umBarcoNoTr(TRANQUILO);
         Simulacao sim = Simulacao.novaPartida(1, p.comLinha33(p.linha33().comEstoque(0, 1)));
 
         avancarDias(sim, 1);
@@ -103,10 +105,10 @@ class FornecedorRegraTest {
     /** NC critica de material comprado, sempre detectada, no RE. */
     private static Simulacao comNcDeFornecedor(String item) {
         TipoNc tipo = new TipoNc("T-F", "Defeito de material", Gravidade.CRITICA, Origem.FORNECEDOR,
-                List.of(CodigoGate.RE), BigDecimal.ONE, new BigDecimal("10"), item, new BigDecimal("100.00"));
+                List.of(CodigoGate.TR), BigDecimal.ONE, new BigDecimal("10"), item, new BigDecimal("100.00"));
         CatalogoNc c = TRANQUILO.catalogoNc().comTipos(List.of(tipo))
                 .comDeteccaoBase(Map.of(Gravidade.LEVE, BigDecimal.ONE, Gravidade.MEDIA, BigDecimal.ONE, Gravidade.CRITICA, BigDecimal.ONE));
-        return Simulacao.novaPartida(1, Cenarios.umBarcoNoRe(TRANQUILO.comCatalogoNc(c)));
+        return Simulacao.novaPartida(1, Cenarios.umBarcoNoTr(TRANQUILO.comCatalogoNc(c)));
     }
 
     @Test

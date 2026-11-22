@@ -10,7 +10,7 @@ signal alternar_segurar
 signal decidir_nc(nc_id: String, decisao: String)
 signal inspecionar
 
-const GATES := ["RE", "DM", "BA", "BF", "ST", "CT", "PI", "TR", "TM", "ET"]
+const GATES := ["DM", "BA", "BF", "ST", "CT", "PI", "TR", "TM", "ET"]
 const NOMES_STATUS_NC := {"EM_RETRABALHO": "em retrabalho", "RESOLVIDA": "fechada", "CONCEDIDA": "concessão",
 	"PENDENTE_INSPECAO": "pendente"}
 const NOMES_GRAVIDADE := {"LEVE": "leve", "MEDIA": "média", "CRITICA": "CRÍTICA"}
@@ -242,7 +242,7 @@ func _desenhar_baia(area: Rect2, t: float) -> void:
 	draw_rect(Rect2(area.position, Vector2(area.size.x, 20)), Tokens.PAINEL)
 
 	# casco visto de cima em escala 2, com a equipe em volta
-	var tex := PixelArt.casco(etapa, 0.0 if gate == "RE" else float(barco["progressoGate"]))
+	var tex := PixelArt.casco(etapa, float(barco["progressoGate"]))
 	var escala := 2.0
 	var tamanho := tex.get_size() * escala
 	var pos := (area.position + Vector2((area.size.x - tamanho.x) / 2, 24 + (area.size.y - 52 - tamanho.y) / 2)).floor()

@@ -31,7 +31,7 @@ const NOMES_ITEM := {
 
 ## Em que galpão o barco está agora: "G1" (laminação) ou "G2" (montagem, piscina, carreta, marina).
 static func galpao_do_barco(b: Dictionary) -> String:
-	return "G1" if str(b["gateAtual"]) in ["RE", "DM"] and b["status"] != "ENTREGUE" else "G2"
+	return "G1" if str(b["gateAtual"]) == "DM" and b["status"] != "ENTREGUE" else "G2"
 
 
 ## Desenha o galpão pedido em `area` e devolve {id do barco: Rect2 clicável}.
@@ -57,7 +57,7 @@ static func desenhar(c: CanvasItem, area: Rect2, estado: Dictionary, selecionado
 			entregues += 1
 			continue
 		match str(b["gateAtual"]):
-			"RE", "DM":
+			"DM":
 				no_molde.append(b)
 			"PI":
 				na_piscina.append(b)
@@ -288,7 +288,7 @@ static func _desenhar_patio(c: CanvasItem, r: Rect2, estado: Dictionary, fonte: 
 
 static func _etapa(gate: String) -> PixelArt.Etapa:
 	match gate:
-		"RE", "DM":
+		"DM":
 			return PixelArt.Etapa.MOLDE
 		"BA":
 			return PixelArt.Etapa.ABERTO
@@ -301,7 +301,7 @@ static func _barco_na_baia(c: CanvasItem, baia: Rect2, b: Dictionary, estado: Di
 		t: float, animar: bool, fonte: Font) -> Rect2:
 	var gate: String = b["gateAtual"]
 	var etapa := _etapa(gate)
-	var progresso := 0.0 if gate == "RE" else float(b["progressoGate"])
+	var progresso := float(b["progressoGate"])
 	if b["status"] == "PARADO_MATERIAL":
 		# barco parado: a baia pulsa em vermelho (GDD, Luz)
 		var pulso := 0.12 + 0.10 * sin(t * 4.0)

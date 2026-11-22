@@ -747,7 +747,9 @@ public final class CodecGerado {
                 Json.inteiro(m.get("metaCascosDm")),
                 Json.decimal(m.get("metaCaixaMinimo")),
                 Json.inteiro(m.get("metaNcPorBarcoMaxima")),
-                Json.decimal(m.get("fatorMaterialDemais")));
+                Json.decimal(m.get("fatorMaterialDemais")),
+                Json.inteiro(m.get("metasPerdidasParaMesRuim")),
+                Json.inteiro(m.get("mesesRuinsParaDemissao")));
     }
 
     public static void escreverParametrosFinanceiro_Conselho(StringBuilder sb, br.marellar.engine.dados.ParametrosFinanceiro.Conselho v) {
@@ -767,6 +769,10 @@ public final class CodecGerado {
         ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.metaNcPorBarcoMaxima());
         sb.append(",\"fatorMaterialDemais\":");
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.fatorMaterialDemais());
+        sb.append(",\"metasPerdidasParaMesRuim\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.metasPerdidasParaMesRuim());
+        sb.append(",\"mesesRuinsParaDemissao\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.mesesRuinsParaDemissao());
         sb.append("}");
     }
 
@@ -1655,6 +1661,8 @@ public final class CodecGerado {
                 Json.inteiro(m.get("pacienciaConselho")),
                 Json.inteiro(m.get("pacienciaMaxima")),
                 Json.inteiro(m.get("mesesCaixaNegativo")),
+                Json.inteiro(m.get("mesesRuinsSeguidos")),
+                Json.inteiro(m.get("mesesRuinsParaDemissao")),
                 Json.decimal(m.get("receitaDoMes")),
                 Json.lista(m.get("ultimosLancamentos"), o -> lerLancamento(o)));
     }
@@ -1676,6 +1684,10 @@ public final class CodecGerado {
         ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.pacienciaMaxima());
         sb.append(",\"mesesCaixaNegativo\":");
         ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.mesesCaixaNegativo());
+        sb.append(",\"mesesRuinsSeguidos\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.mesesRuinsSeguidos());
+        sb.append(",\"mesesRuinsParaDemissao\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.mesesRuinsParaDemissao());
         sb.append(",\"receitaDoMes\":");
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.receitaDoMes());
         sb.append(",\"ultimosLancamentos\":");
@@ -1742,6 +1754,8 @@ public final class CodecGerado {
                 Json.decimal(m.get("taxaGravidade")),
                 Json.inteiro(m.get("pacienciaAntes")),
                 Json.inteiro(m.get("pacienciaDepois")),
+                Json.logico(m.get("mesRuim")),
+                Json.inteiro(m.get("mesesRuinsSeguidos")),
                 Json.logico(m.get("alertaCaixaNegativo")),
                 Json.lista(m.get("falas"), o -> lerRelatorioConselho_Fala(o)),
                 Json.lista(m.get("opcoes"), o -> lerRelatorioConselho_Opcao(o)),
@@ -1786,6 +1800,10 @@ public final class CodecGerado {
         ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.pacienciaAntes());
         sb.append(",\"pacienciaDepois\":");
         ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.pacienciaDepois());
+        sb.append(",\"mesRuim\":");
+        ((Json.Escritor<Boolean>) Json::numero).escrever(sb, v.mesRuim());
+        sb.append(",\"mesesRuinsSeguidos\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.mesesRuinsSeguidos());
         sb.append(",\"alertaCaixaNegativo\":");
         ((Json.Escritor<Boolean>) Json::numero).escrever(sb, v.alertaCaixaNegativo());
         sb.append(",\"falas\":");

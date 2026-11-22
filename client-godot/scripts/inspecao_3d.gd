@@ -20,7 +20,7 @@ const ALTURA_BOTOES := 26
 const ALTURA_BERCO := 0.6
 const SEM_CORTE := 1000.0
 ## Gate do motor -> etapa de montagem do modelo (gates da página 3D: DM, BA, BF convés, BF casaria, ST/CT, PI).
-const ETAPA_DO_GATE := {"RE": -1, "DM": 0, "BA": 1, "BF": 3, "ST": 4, "CT": 4, "PI": 5, "TR": 5, "TM": 5, "ET": 5}
+const ETAPA_DO_GATE := {"DM": 0, "BA": 1, "BF": 3, "ST": 4, "CT": 4, "PI": 5, "TR": 5, "TM": 5, "ET": 5}
 const VISTAS := [["ext", "Exterior"], ["raiox", "Raio-X"], ["corte", "Corte"], ["inf", "Planta inf."], ["pri", "Planta sup."]]
 const VELOCIDADE_ANDAR := 2.2  # m/s em primeira pessoa
 const LARGURA_FORMULARIO := 236
@@ -710,8 +710,6 @@ func _atualizar_dica() -> void:
 		"dentro": "Dentro: %s · arraste olha · WASD anda · R/F sobe e desce · Esc sai" % compartimento.get("nome", ""),
 	}
 	var texto: String = textos.get(vista, "")
-	if str(barco.get("gateAtual", "")) == "RE":
-		texto = "O casco ainda não saiu do molde (RE: recebimento de materiais) · Esc volta"
 	_dica.text = texto
 
 
@@ -760,8 +758,6 @@ func _passar(pos: Vector2) -> void:
 
 ## Clique sem arrastar: abre o formulário de NC no ponto da peça.
 func clicar(pos: Vector2) -> void:
-	if str(barco.get("gateAtual", "")) == "RE":
-		return
 	var r := _acertar(pos)
 	if r.is_empty():
 		return

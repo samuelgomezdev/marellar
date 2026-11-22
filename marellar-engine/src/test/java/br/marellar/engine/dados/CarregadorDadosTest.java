@@ -18,7 +18,7 @@ class CarregadorDadosTest {
     void carregaOsParametrosDoClasspath() {
         ParametrosJogo p = CarregadorDados.carregarDoClasspath();
 
-        assertThat(p.linha33().gates()).hasSize(10);
+        assertThat(p.linha33().gates()).hasSize(9);
         assertThat(p.linha33().hhPorBarco()).isEqualByComparingTo("1900");
         assertThat(p.linha33().custoHh()).isEqualByComparingTo("57.00");
         assertThat(p.pessoas().equipe()).hasSize(13);
@@ -39,8 +39,8 @@ class CarregadorDadosTest {
     void hhDoGateUsaOPesoDoGate() {
         ParametrosLinha l = CarregadorDados.carregarDoClasspath().linha33();
 
-        assertThat(l.hhDoGate(CodigoGate.DM)).isEqualByComparingTo("532"); // 1900 x 28%
-        assertThat(l.hhDoGate(CodigoGate.RE)).isEqualByComparingTo("38");  // 1900 x 2%
+        assertThat(l.hhDoGate(CodigoGate.DM)).isEqualByComparingTo("152"); // 1900 x 8%
+        assertThat(l.hhDoGate(CodigoGate.TR)).isEqualByComparingTo("19");  // 1900 x 1%
     }
 
     @Test
@@ -83,16 +83,16 @@ class CarregadorDadosTest {
     void pesosQueNaoSomam100SaoRejeitados() {
         ParametrosJogo p = CarregadorDados.carregarDoClasspath();
         List<ParametrosLinha.Gate> gates = new ArrayList<>(p.linha33().gates());
-        ParametrosLinha.Gate re = gates.getFirst();
-        gates.set(0, new ParametrosLinha.Gate(re.codigo(), re.nome(), new BigDecimal("5"), re.cotaPercentual(),
-                re.item(), re.materialPercentual()));
+        ParametrosLinha.Gate dm = gates.getFirst();
+        gates.set(0, new ParametrosLinha.Gate(dm.codigo(), dm.nome(), new BigDecimal("5"), dm.cotaPercentual(),
+                dm.item(), dm.materialPercentual()));
 
         ParametrosJogo invalido = p.comLinha33(p.linha33().comGates(gates));
 
         assertThatThrownBy(() -> ValidadorDados.validar(invalido))
                 .isInstanceOf(DadosInvalidosException.class)
                 .hasMessageContaining("pesoHhPercentual")
-                .hasMessageContaining("103");
+                .hasMessageContaining("97");
     }
 
     @Test

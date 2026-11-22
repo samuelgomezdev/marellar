@@ -33,7 +33,7 @@ static func aberto(c: CanvasItem) -> bool:
 
 
 static func _animar(c: CanvasItem, alvo: float, depois: Callable) -> void:
-	var anterior = c.get_meta("tween_mov", null)
+	var anterior = c.get_meta("tween_mov") if c.has_meta("tween_mov") else null
 	if anterior is Tween and (anterior as Tween).is_valid():
 		(anterior as Tween).kill()
 	if not c.is_inside_tree():
