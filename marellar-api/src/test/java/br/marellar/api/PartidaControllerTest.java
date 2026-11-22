@@ -73,7 +73,7 @@ class PartidaControllerTest {
         mvc.perform(get("/api/v1/partidas/{id}/barcos/{b}", id, "33-004"))
                 .andExpect(status().isOk())
                 .andExpect(jsonPath("$.prioridade").value(1))
-                .andExpect(jsonPath("$.nomeGate").value("Recebimento de materiais"));
+                .andExpect(jsonPath("$.nomeGate").value("Desmolde (casco laminado)"));
     }
 
     @Test

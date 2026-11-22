@@ -25,9 +25,10 @@ import java.util.List;
 import java.util.Map;
 
 /**
- * Reuniao do conselho no fim do mes (README 5.10): metas, falas, paciencia de 0 a 5,
+ * Reuniao do conselho no fim do mes (README 5.10): metas, falas, paciencia de 0 a 5 (so termometro),
  * valor da empresa, alerta de caixa negativo e 4 decisoes para o mes seguinte.
- * Derrota: caixa negativo por 3 meses seguidos ou paciencia zerada.
+ * Derrota: caixa negativo por 3 meses seguidos ou meses ruins seguidos com o conselho
+ * (mes ruim = metasPerdidasParaMesRuim ou mais metas perdidas; DEC-0058 e DEC-0062 da wiki).
  */
 public final class ConselhoRegra {
 
@@ -65,6 +66,11 @@ public final class ConselhoRegra {
         depois = Math.max(0, Math.min(metasConselho.pacienciaMaxima(), depois));
         partida.definirPacienciaConselho(depois);
 
+        // ----- mes ruim (paciencia acima e so termometro)
+        long perdidas = metas.stream().filter(m -> !m.cumprida()).count();
+        boolean mesRuim = perdidas >= metasConselho.metasPerdidasParaMesRuim();
+        partida.definirMesesRuinsSeguidos(mesRuim ? partida.mesesRuinsSeguidos() + 1 : 0);
+
         // ----- caixa negativo
         boolean negativo = partida.caixa().signum() < 0;
         partida.definirMesesCaixaNegativo(negativo ? partida.mesesCaixaNegativo() + 1 : 0);
@@ -77,7 +83,7 @@ public final class ConselhoRegra {
         MotivoDerrota derrota = null;
         if (partida.mesesCaixaNegativo() >= regras.mesesCaixaNegativoParaDerrota()) {
             derrota = MotivoDerrota.CAIXA;
-        } else if (depois == 0) {
+        } else if (partida.mesesRuinsSeguidos() >= metasConselho.mesesRuinsParaDemissao()) {
             derrota = MotivoDerrota.CONSELHO;
         }
 
@@ -89,7 +95,7 @@ public final class ConselhoRegra {
                 mes.barcosEntregues(), mes.ncsDetectadas(), mes.rncs(), mes.concessoes(), mes.acidentes(),
                 EventoRegra.taxaFrequencia(seguranca.acidentes(), seguranca.horasTrabalhadas()),
                 EventoRegra.taxaGravidade(seguranca.diasPerdidos(), seguranca.horasTrabalhadas()),
-                antes, depois, negativo, falas(partida, metas, negativo, dre), derrota == null ? opcoes(partida) : List.of(),
+                antes, depois, mesRuim, partida.mesesRuinsSeguidos(), negativo, falas(partida, metas, negativo, dre), derrota == null ? opcoes(partida) : List.of(),
                 null, derrota);
         partida.conselhos().add(relatorio);
 

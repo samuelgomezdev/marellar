@@ -23,6 +23,8 @@ public record RelatorioConselho(
         BigDecimal taxaGravidade,
         int pacienciaAntes,
         int pacienciaDepois,
+        boolean mesRuim,
+        int mesesRuinsSeguidos,
         boolean alertaCaixaNegativo,
         List<Fala> falas,
         List<Opcao> opcoes,
@@ -38,6 +40,6 @@ public record RelatorioConselho(
     public RelatorioConselho comDecisao(String opcaoId) {
         return new RelatorioConselho(mes, mesReferencia, metas, dre, caixa, valorEmpresa, descontoValuation,
                 barcosEntregues, ncsDetectadas, rncs, concessoes, acidentes, taxaFrequencia, taxaGravidade,
-                pacienciaAntes, pacienciaDepois, alertaCaixaNegativo, falas, opcoes, opcaoId, derrota);
+                pacienciaAntes, pacienciaDepois, mesRuim, mesesRuinsSeguidos, alertaCaixaNegativo, falas, opcoes, opcaoId, derrota);
     }
 }

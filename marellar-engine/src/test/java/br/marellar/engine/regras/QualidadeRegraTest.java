@@ -35,21 +35,21 @@ class QualidadeRegraTest {
     private static final String BARCO = "33-100";
 
     /**
-     * Partida com 1 barco no RE e um catalogo com um unico tipo de NC que sempre acontece no RE.
+     * Partida com 1 barco no TR e um catalogo com um unico tipo de NC que sempre acontece no TR.
      * {@code deteccao} e a deteccao base para todas as gravidades (1 = sempre ve, 0 = nunca ve).
      */
     private static Simulacao partidaCom(Gravidade gravidade, Origem origem, String item, double deteccao) {
-        TipoNc tipo = new TipoNc("T-1", "NC de teste", gravidade, origem, List.of(CodigoGate.RE),
+        TipoNc tipo = new TipoNc("T-1", "NC de teste", gravidade, origem, List.of(CodigoGate.TR),
                 BigDecimal.ONE, new BigDecimal("10"), item, new BigDecimal("100.00"));
         BigDecimal d = BigDecimal.valueOf(deteccao);
         CatalogoNc catalogo = PARAMETROS.catalogoNc().comTipos(List.of(tipo))
                 .comDeteccaoBase(Map.of(Gravidade.LEVE, d, Gravidade.MEDIA, d, Gravidade.CRITICA, d));
         ParametrosJogo p = PARAMETROS.comCatalogoNc(catalogo)
-                .comLinha33(PARAMETROS.linha33().comBarcosIniciais(List.of(new BarcoInicial(BARCO, "Teste", CodigoGate.RE))));
+                .comLinha33(PARAMETROS.linha33().comBarcosIniciais(List.of(new BarcoInicial(BARCO, "Teste", CodigoGate.TR))));
         return Simulacao.novaPartida(7, p);
     }
 
-    /** RE tem 38 HH: com 6 pessoas termina no 1o dia, e a inspecao leva 2 ticks. */
+    /** TR tem 19 HH: com 6 pessoas termina no 1o dia, e a inspecao leva 2 ticks. */
     private static ResultadoAvanco ateAInspecaoTerminar(Simulacao sim) {
         ResultadoAvanco r = null;
         for (int i = 0; i < 3 * Relogio.TICKS_POR_DIA; i++) {
@@ -101,8 +101,8 @@ class QualidadeRegraTest {
         }
         BarcoVisao barco = sim.barco(BARCO);
         assertThat(barco.status()).isEqualTo(StatusBarco.AGUARDANDO_DECISAO);
-        assertThat(barco.gateAtual()).isEqualTo(CodigoGate.RE);
-        assertThat(barco.gatesAprovados()).isEmpty();
+        assertThat(barco.gateAtual()).isEqualTo(CodigoGate.TR);
+        assertThat(barco.gatesAprovados()).doesNotContain(CodigoGate.TR);
         assertThat(unicaNc(sim).status()).isEqualTo(StatusNc.ABERTA);
     }
 
@@ -132,8 +132,8 @@ class QualidadeRegraTest {
         sim.avancar(Relogio.TICKS_POR_DIA);
 
         BarcoVisao depois = sim.barco(BARCO);
-        assertThat(depois.gatesAprovados()).containsExactly(CodigoGate.RE);
-        assertThat(depois.gateAtual()).isEqualTo(CodigoGate.DM);
+        assertThat(depois.gatesAprovados()).endsWith(CodigoGate.TR);
+        assertThat(depois.gateAtual()).isEqualTo(CodigoGate.TM);
         assertThat(depois.hhRetrabalho()).isEqualByComparingTo("10");
         assertThat(unicaNc(sim).status()).isEqualTo(StatusNc.RESOLVIDA);
         assertThat(sim.indicadoresQualidade().custoMaterialRetrabalho()).isEqualByComparingTo("100.00");
@@ -149,7 +149,7 @@ class QualidadeRegraTest {
 
         sim.aplicarOrdem(new Ordem.DecidirNc(nc, DecisaoNc.CONCESSAO));
 
-        assertThat(sim.barco(BARCO).gateAtual()).isEqualTo(CodigoGate.DM);
+        assertThat(sim.barco(BARCO).gateAtual()).isEqualTo(CodigoGate.TM);
         assertThat(unicaNc(sim).status()).isEqualTo(StatusNc.CONCEDIDA);
         assertThat(sim.estado().qualidade().concessoes()).isEqualTo(1);
         // paciencia 40: queda de (100 - 40) x 0,10 = 6
@@ -184,7 +184,7 @@ class QualidadeRegraTest {
         sim.avancar(2 * Relogio.TICKS_POR_DIA);
 
         BarcoVisao barco = sim.barco(BARCO);
-        assertThat(barco.gatesAprovados()).containsExactly(CodigoGate.RE);
+        assertThat(barco.gatesAprovados()).endsWith(CodigoGate.TR);
         assertThat(barco.ncs()).isEmpty();
         assertThat(sim.estado().qualidade().ncsDetectadas()).isZero();
         assertThat(sim.indicadoresQualidade().ncsEscapadas()).isEqualTo(1);
@@ -206,15 +206,15 @@ class QualidadeRegraTest {
 
     @Test
     void duasNcsNoMesmoGateTemIdsDiferentes() {
-        TipoNc a = new TipoNc("T-A", "A", Gravidade.LEVE, Origem.PROCESSO, List.of(CodigoGate.RE),
+        TipoNc a = new TipoNc("T-A", "A", Gravidade.LEVE, Origem.PROCESSO, List.of(CodigoGate.TR),
                 BigDecimal.ONE, BigDecimal.ONE, null, BigDecimal.ONE);
-        TipoNc b = new TipoNc("T-B", "B", Gravidade.LEVE, Origem.PROCESSO, List.of(CodigoGate.RE),
+        TipoNc b = new TipoNc("T-B", "B", Gravidade.LEVE, Origem.PROCESSO, List.of(CodigoGate.TR),
                 BigDecimal.ONE, BigDecimal.ONE, null, BigDecimal.ONE);
         CatalogoNc catalogo = PARAMETROS.catalogoNc().comTipos(List.of(a, b))
                 .comDeteccaoBase(Map.of(Gravidade.LEVE, BigDecimal.ONE, Gravidade.MEDIA, BigDecimal.ONE,
                         Gravidade.CRITICA, BigDecimal.ONE));
         Simulacao sim = Simulacao.novaPartida(7, PARAMETROS.comCatalogoNc(catalogo)
-                .comLinha33(PARAMETROS.linha33().comBarcosIniciais(List.of(new BarcoInicial(BARCO, "T", CodigoGate.RE)))));
+                .comLinha33(PARAMETROS.linha33().comBarcosIniciais(List.of(new BarcoInicial(BARCO, "T", CodigoGate.TR)))));
         ateAInspecaoTerminar(sim);
 
         List<NcVisao> ncs = sim.barco(BARCO).ncs();

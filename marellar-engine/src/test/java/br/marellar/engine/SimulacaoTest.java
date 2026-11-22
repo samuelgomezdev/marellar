@@ -47,8 +47,8 @@ class SimulacaoTest {
     }
 
     @Test
-    void umBarcoSemNcPassaDeREaETcom1900HH() {
-        Simulacao sim = Simulacao.novaPartida(42, semNcs(comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.RE))));
+    void umBarcoSemNcPassaDoDmAEtCom1900HH() {
+        Simulacao sim = Simulacao.novaPartida(42, semNcs(comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.DM))));
 
         avancarAteEntregar(sim, "33-100", 200);
 
@@ -62,7 +62,7 @@ class SimulacaoTest {
 
     @Test
     void barcoPassaPelosGatesNaOrdem() {
-        Simulacao sim = Simulacao.novaPartida(1, semNcs(comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.RE))));
+        Simulacao sim = Simulacao.novaPartida(1, semNcs(comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.DM))));
 
         avancarAteEntregar(sim, "33-100", 200);
 
@@ -123,30 +123,30 @@ class SimulacaoTest {
 
     @Test
     void barcoSeguradoNaoSegueDepoisDeAprovadoAteSerLiberado() {
-        Simulacao sim = Simulacao.novaPartida(42, comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.RE)));
+        Simulacao sim = Simulacao.novaPartida(42, comBarcos(new BarcoInicial("33-100", "Teste", CodigoGate.TR)));
         sim.aplicarOrdem(new Ordem.SegurarGate("33-100"));
 
-        // RE tem 38 HH; com 6 pessoas termina no 1o dia e a inspecao leva 2 ticks
+        // TR tem 19 HH; com 6 pessoas termina no 1o dia e a inspecao leva 2 ticks
         sim.avancar(3 * Relogio.TICKS_POR_DIA);
 
         BarcoVisao segurado = sim.barco("33-100");
         assertThat(segurado.status()).isEqualTo(StatusBarco.APROVADO);
-        assertThat(segurado.gateAtual()).isEqualTo(CodigoGate.RE);
-        assertThat(segurado.gatesAprovados()).containsExactly(CodigoGate.RE);
+        assertThat(segurado.gateAtual()).isEqualTo(CodigoGate.TR);
+        assertThat(segurado.gatesAprovados()).endsWith(CodigoGate.TR).doesNotContain(CodigoGate.TM);
 
         sim.aplicarOrdem(new Ordem.LiberarGate("33-100"));
 
         BarcoVisao liberado = sim.barco("33-100");
         assertThat(liberado.status()).isEqualTo(StatusBarco.EM_PRODUCAO);
-        assertThat(liberado.gateAtual()).isEqualTo(CodigoGate.DM);
-        assertThat(liberado.hhRestantesNoGate()).isEqualByComparingTo("532");
+        assertThat(liberado.gateAtual()).isEqualTo(CodigoGate.TM);
+        assertThat(liberado.hhRestantesNoGate()).isEqualByComparingTo("57"); // TM = 1900 x 3%
     }
 
     @Test
     void inspetorAtendeUmBarcoPorVezNaOrdemDeChegada() {
         ParametrosJogo p = comBarcos(
-                new BarcoInicial("33-A", "A", CodigoGate.RE),
-                new BarcoInicial("33-B", "B", CodigoGate.RE));
+                new BarcoInicial("33-A", "A", CodigoGate.TR),
+                new BarcoInicial("33-B", "B", CodigoGate.TR));
         // inspecao longa, para o segundo barco chegar enquanto o primeiro ainda esta sendo inspecionado
         Simulacao sim = Simulacao.novaPartida(42, p.comLinha33(p.linha33().comTicksInspecao(40)));
 
@@ -226,7 +226,7 @@ class SimulacaoTest {
         assertThat(e.mesReferencia()).isEqualTo("mar/2027");
         BarcoVisao bf = e.barcos().getFirst();
         assertThat(bf.gateAtual()).isEqualTo(CodigoGate.BF);
-        assertThat(bf.gatesAprovados()).containsExactly(CodigoGate.RE, CodigoGate.DM, CodigoGate.BA);
+        assertThat(bf.gatesAprovados()).containsExactly(CodigoGate.DM, CodigoGate.BA);
         assertThat(bf.nomeGate()).isEqualTo("Barco fechado");
     }
 }

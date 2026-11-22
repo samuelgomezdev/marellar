@@ -21,8 +21,13 @@ public record ParametrosFinanceiro(
         decisoes = decisoes == null ? Map.of() : Map.copyOf(decisoes);
     }
 
+    /**
+     * Metas do conselho. A paciencia e so termometro no painel; a demissao vem de mesesRuinsParaDemissao
+     * meses ruins seguidos, e mes ruim e perder metasPerdidasParaMesRuim ou mais metas (DEC-0058 e DEC-0062 da wiki).
+     */
     public record Conselho(int pacienciaInicial, int pacienciaMaxima, int metaCascosDm,
-                           BigDecimal metaCaixaMinimo, int metaNcPorBarcoMaxima, BigDecimal fatorMaterialDemais) {}
+                           BigDecimal metaCaixaMinimo, int metaNcPorBarcoMaxima, BigDecimal fatorMaterialDemais,
+                           int metasPerdidasParaMesRuim, int mesesRuinsParaDemissao) {}
 
     public ParametrosFinanceiro comCaixaInicial(BigDecimal caixa) {
         return new ParametrosFinanceiro(caixa, despesasFixasMensais, encargosSobreSalarios, multiploValuation,

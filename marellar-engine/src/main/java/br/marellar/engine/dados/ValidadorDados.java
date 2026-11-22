@@ -273,6 +273,8 @@ public final class ValidadorDados {
             regra(f.conselho().pacienciaInicial() >= 1 && f.conselho().pacienciaInicial() <= f.conselho().pacienciaMaxima(),
                     arq, "conselho.pacienciaInicial deve estar entre 1 e pacienciaMaxima");
             naoNegativo(arq, "conselho.metaCaixaMinimo", f.conselho().metaCaixaMinimo());
+            regra(f.conselho().metasPerdidasParaMesRuim() >= 1, arq, "conselho.metasPerdidasParaMesRuim deve ser pelo menos 1");
+            regra(f.conselho().mesesRuinsParaDemissao() >= 1, arq, "conselho.mesesRuinsParaDemissao deve ser pelo menos 1");
             positivo(arq, "conselho.fatorMaterialDemais", f.conselho().fatorMaterialDemais());
         }
         regra(f.decisoes().keySet().containsAll(br.marellar.engine.regras.ConselhoRegra.OPCOES), arq,

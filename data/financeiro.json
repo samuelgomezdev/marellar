@@ -12,7 +12,9 @@
     "metaCascosDm": 2,
     "metaCaixaMinimo": 2000000.00,
     "metaNcPorBarcoMaxima": 4,
-    "fatorMaterialDemais": 1.5
+    "fatorMaterialDemais": 1.5,
+    "metasPerdidasParaMesRuim": 3,
+    "mesesRuinsParaDemissao": 3
   },
   "decisoes": {
     "TREINAR_NR": 15000.00,

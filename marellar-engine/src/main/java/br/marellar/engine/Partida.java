@@ -82,6 +82,7 @@ public final class Partida {
     private BigDecimal valorEmpresa = BigDecimal.ZERO;
     private int pacienciaConselho;
     private int mesesCaixaNegativo;
+    private int mesesRuinsSeguidos;
     private MotivoDerrota derrota;
 
     Partida(long semente, ParametrosJogo parametros, LocalDate inicio) {
@@ -232,6 +233,15 @@ public final class Partida {
 
     public void definirPacienciaConselho(int p) {
         pacienciaConselho = p;
+    }
+
+    /** Meses ruins seguidos com o conselho (mes ruim = muitas metas perdidas). */
+    public int mesesRuinsSeguidos() {
+        return mesesRuinsSeguidos;
+    }
+
+    public void definirMesesRuinsSeguidos(int m) {
+        mesesRuinsSeguidos = m;
     }
 
     public int mesesCaixaNegativo() {

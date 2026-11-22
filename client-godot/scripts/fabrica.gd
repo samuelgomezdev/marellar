@@ -1132,7 +1132,7 @@ func _desenhar_topo() -> void:
 		["Valor", _milhoes(fin["valorEmpresa"]), Paleta.AGUA],
 		["Moral", "%d%%" % moral, Paleta.MONTAGEM_LIMPA if moral >= 60 else (Paleta.ALERTA if moral >= 40 else Paleta.CRITICO)],
 		["NCs", str(ncs), Paleta.CRITICO if ncs > 0 else Paleta.MONTAGEM_LIMPA],
-		["Conselho", "%d/%d" % [paciencia, int(fin["pacienciaMaxima"])], Paleta.ALERTA if paciencia <= 2 else Paleta.TEXTO_CLARO],
+		["Conselho", "%d/%d" % [paciencia, int(fin["pacienciaMaxima"])], _cor_conselho(int(fin["mesesRuinsSeguidos"]), int(fin["mesesRuinsParaDemissao"]))],
 	]
 	var x := 2.0
 	for b in blocos:
@@ -1399,6 +1399,12 @@ func _abrir_conselho() -> void:
 		lista.add_child(_linha_conselho("%s %s  (%s)" % ["[OK]" if m["cumprida"] else "[X] ", m["descricao"], m["resultado"]], cor, largura))
 	lista.add_child(_linha_conselho("Paciência do conselho: %d -> %d de %d" % [int(r["pacienciaAntes"]),
 			int(r["pacienciaDepois"]), int(estado["financeiro"]["pacienciaMaxima"])], Paleta.ALERTA, largura))
+	var limite := int(estado["financeiro"]["mesesRuinsParaDemissao"])
+	if r["mesRuim"]:
+		lista.add_child(_linha_conselho("MÊS RUIM: %d de %d meses ruins seguidos. No %dº o conselho demite o CEO." % [int(r["mesesRuinsSeguidos"]), limite, limite],
+				Paleta.CRITICO, largura))
+	else:
+		lista.add_child(_linha_conselho("Mês aceitável: a contagem de meses ruins voltou a zero.", Paleta.MONTAGEM_LIMPA, largura))
 
 	var dre: Dictionary = r["dre"]
 	lista.add_child(_linha_conselho("DRE: receita %s | material %s | pessoal %s | fixas %s" % [_reais(dre["receita"]),
@@ -1418,7 +1424,7 @@ func _abrir_conselho() -> void:
 
 	if r["derrota"] != null:
 		lista.add_child(_linha_conselho("FIM DE JOGO. %s" % ("Três meses de caixa negativo." if r["derrota"] == "CAIXA"
-				else "O conselho perdeu a paciência."), Paleta.CRITICO, largura))
+				else "Três meses ruins seguidos com o conselho."), Paleta.CRITICO, largura))
 		var nova := _botao("Nova partida", func(): get_tree().reload_current_scene())
 		lista.add_child(nova)
 		_focar_depois(nova)
@@ -1519,3 +1525,10 @@ func _motivo_pausa(motivo: String) -> String:
 		"ACIDENTE":
 			return "acidente de trabalho. Veja a equipe (F1)."
 	return motivo
+
+
+## Cor do bloco "Conselho" na barra de cima: segue os meses ruins seguidos (a paciência é só termômetro).
+func _cor_conselho(ruins: int, limite: int) -> Color:
+	if ruins <= 0:
+		return Paleta.TEXTO_CLARO
+	return Paleta.CRITICO if ruins >= limite - 1 else Paleta.ALERTA

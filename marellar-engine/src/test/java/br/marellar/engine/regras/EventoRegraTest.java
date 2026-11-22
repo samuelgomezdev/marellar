@@ -60,7 +60,7 @@ class EventoRegraTest {
 
     @Test
     void quebraDePecaViraRetrabalhoSemMudarAsHhPadraoDoBarco() {
-        ParametrosJogo p = Cenarios.comEventos(Cenarios.umBarcoNoRe(Cenarios.semNcs(Cenarios.PADRAO)),
+        ParametrosJogo p = Cenarios.comEventos(Cenarios.umBarcoNoDm(Cenarios.semNcs(Cenarios.PADRAO)),
                 BigDecimal.ONE, BigDecimal.ZERO, BigDecimal.ZERO, BigDecimal.ZERO);
         Simulacao sim = Simulacao.novaPartida(1, p);
 
@@ -71,8 +71,8 @@ class EventoRegraTest {
         var barco = sim.barco("33-100");
         assertThat(barco.status()).isEqualTo(StatusBarco.ENTREGUE);
         assertThat(barco.hhProduzidas()).isEqualByComparingTo("1900");
-        // quebra em cada um dos 9 gates depois do RE, 12 HH cada
-        assertThat(barco.hhRetrabalho()).isEqualByComparingTo("108");
-        assertThat(sim.eventosDesde(0)).filteredOn(e -> e.tipo() == TipoEvento.QUEBRA_PECA).hasSize(9);
+        // quebra em cada um dos 8 gates depois do DM (o barco ja comeca no DM), 12 HH cada
+        assertThat(barco.hhRetrabalho()).isEqualByComparingTo("96");
+        assertThat(sim.eventosDesde(0)).filteredOn(e -> e.tipo() == TipoEvento.QUEBRA_PECA).hasSize(8);
     }
 }

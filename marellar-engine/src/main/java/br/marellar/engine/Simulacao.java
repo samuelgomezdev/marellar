@@ -421,6 +421,7 @@ public final class Simulacao {
         int n = partida.lancamentos().size();
         return new FinanceiroVisao(partida.caixa(), aReceber, partida.valorEmpresa(), partida.pacienciaConselho(),
                 partida.parametros().financeiro().conselho().pacienciaMaxima(), partida.mesesCaixaNegativo(),
+                partida.mesesRuinsSeguidos(), partida.parametros().financeiro().conselho().mesesRuinsParaDemissao(),
                 partida.mes().receita(), List.copyOf(partida.lancamentos().subList(Math.max(0, n - 10), n)));
     }
 

@@ -41,8 +41,8 @@ class FinanceiroEConselhoTest {
     }
 
     @Test
-    void umBarcoDoReAoEtGeraReceitaDoPrecoInteiroE70PorCentoEmCotas() {
-        Simulacao sim = Simulacao.novaPartida(1, Cenarios.umBarcoNoRe(TRANQUILO));
+    void umBarcoDoDmAoEtGeraReceitaDoPrecoInteiroE70PorCentoEmCotas() {
+        Simulacao sim = Simulacao.novaPartida(1, Cenarios.umBarcoNoDm(TRANQUILO));
         for (int i = 0; i < 200 && sim.barco("33-100").status() != StatusBarco.ENTREGUE; i++) {
             avancarDias(sim, 1);
         }
@@ -59,7 +59,7 @@ class FinanceiroEConselhoTest {
     @Test
     void fichaDoBarcoMostraCotasHhEMaterial() {
         Simulacao sim = Simulacao.novaPartida(1, Cenarios.semNcs(TRANQUILO));
-        var b = sim.barco("33-001"); // comeca no BF: RE, DM e BA aprovados antes do inicio
+        var b = sim.barco("33-001"); // comeca no BF: DM e BA aprovados antes do inicio
 
         assertThat(b.cotas()).extracting(c -> c.gate() == null ? "contrato" : c.gate().name())
                 .containsExactly("contrato", "DM", "BF", "ST", "PI", "ET");
@@ -67,7 +67,7 @@ class FinanceiroEConselhoTest {
                 .containsExactly("PAGA", "PAGA", "PENDENTE", "PENDENTE", "PENDENTE", "PENDENTE");
         assertThat(b.valorRecebido()).isEqualByComparingTo("320000.00"); // 30% + 10% de 800 mil
         assertThat(b.hhPrevistas()).isEqualByComparingTo("1900");
-        assertThat(b.hhConcluidas()).isEqualByComparingTo("950"); // RE 2% + DM 28% + BA 20%
+        assertThat(b.hhConcluidas()).isEqualByComparingTo("627"); // DM 8% + BA 25% de 1.900 HH
         // kits de resina (35%), gelcoat (15%) e eletrica do BF, ja comecado (15%)
         assertThat(b.materialAplicado()).isEqualByComparingTo("260000.00");
 
@@ -151,7 +151,7 @@ class FinanceiroEConselhoTest {
     void tresMesesDeCaixaNegativoEncerramAPartida() {
         // metas faceis, para a paciencia nao acabar antes; despesas fixas enormes derrubam o caixa
         ParametrosJogo p = comConselho(TRANQUILO, new ParametrosFinanceiro.Conselho(5, 5, 0,
-                new BigDecimal("-1000000000"), 100, new BigDecimal("1.5")));
+                new BigDecimal("-1000000000"), 100, new BigDecimal("1.5"), 3, 3));
         p = p.comFinanceiro(p.financeiro().comDespesasFixas(new BigDecimal("5000000")));
         Simulacao sim = Simulacao.novaPartida(1, p);
 
@@ -168,17 +168,60 @@ class FinanceiroEConselhoTest {
         assertThatThrownBy(() -> sim.aplicarOrdem(new Ordem.FazerUmAUm("P01"))).isInstanceOf(OrdemInvalidaException.class);
     }
 
+    /** 3 metas impossiveis (cascos no DM, caixa, NC por barco): todo mes e ruim. */
+    private static ParametrosJogo conselhoImpossivel() {
+        return comConselho(TRANQUILO, new ParametrosFinanceiro.Conselho(1, 5, 99,
+                new BigDecimal("1000000000000"), 0, new BigDecimal("1.5"), 3, 3));
+    }
+
     @Test
-    void conselhoSemPacienciaDemiteOCeo() {
-        ParametrosJogo p = comConselho(TRANQUILO, new ParametrosFinanceiro.Conselho(1, 5, 99,
-                new BigDecimal("1000000000000"), 0, new BigDecimal("1.5")));
-        Simulacao sim = Simulacao.novaPartida(1, p);
+    void pacienciaZeradaNaoDemiteEhSoTermometro() {
+        Simulacao sim = Simulacao.novaPartida(1, conselhoImpossivel());
 
         sim.avancar(Relogio.TICKS_POR_MES);
 
-        assertThat(sim.estado().derrota()).isEqualTo(MotivoDerrota.CONSELHO);
         assertThat(sim.conselho().orElseThrow().pacienciaDepois()).isZero();
+        assertThat(sim.conselho().orElseThrow().mesRuim()).isTrue();
+        assertThat(sim.conselho().orElseThrow().mesesRuinsSeguidos()).isEqualTo(1);
+        assertThat(sim.estado().derrota()).isNull();
+        assertThat(sim.estado().financeiro().mesesRuinsSeguidos()).isEqualTo(1);
+        assertThat(sim.estado().financeiro().mesesRuinsParaDemissao()).isEqualTo(3);
+    }
+
+    @Test
+    void tresMesesRuinsSeguidosDemitemOCeo() {
+        Simulacao sim = Simulacao.novaPartida(1, conselhoImpossivel());
+
+        sim.avancar(Relogio.TICKS_POR_MES);
+        decidir(sim);
+        sim.avancar(Relogio.TICKS_POR_MES);
+        assertThat(sim.estado().derrota()).isNull();
+        decidir(sim);
+        sim.avancar(Relogio.TICKS_POR_MES);
+
+        assertThat(sim.estado().derrota()).isEqualTo(MotivoDerrota.CONSELHO);
+        assertThat(sim.conselho().orElseThrow().mesesRuinsSeguidos()).isEqualTo(3);
         assertThat(sim.conselho().orElseThrow().opcoes()).isEmpty();
+    }
+
+    @Test
+    void mesQueNaoEhRuimZeraAContagem() {
+        // so 2 metas perdidas por mes (cascos no DM e NC por barco): nunca e mes ruim
+        ParametrosJogo p = comConselho(TRANQUILO, new ParametrosFinanceiro.Conselho(1, 5, 99,
+                new BigDecimal("-1000000000"), 0, new BigDecimal("1.5"), 3, 3));
+        Simulacao sim = Simulacao.novaPartida(1, p);
+        for (int i = 0; i < 3; i++) {
+            sim.avancar(Relogio.TICKS_POR_MES);
+            decidir(sim);
+        }
+        assertThat(sim.estado().derrota()).isNull();
+        assertThat(sim.estado().financeiro().mesesRuinsSeguidos()).isZero();
+    }
+
+    private static void decidir(Simulacao sim) {
+        if (sim.conselho().isPresent() && sim.conselho().get().decisaoEscolhida() == null && sim.estado().derrota() == null) {
+            sim.aplicarOrdem(new Ordem.EscolherDecisaoConselho("ENCONTRO_EQUIPE"));
+        }
     }
 
     @Test
