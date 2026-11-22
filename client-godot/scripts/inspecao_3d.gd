@@ -15,15 +15,14 @@ const REDUCAO := 1            # pixels da tela base (640x360) por pixel do 3D: 1
 ## Reduzir para a Endesga 32 troca as cores dos itens (teca vira laranja, cinzas viram azul); fica desligado
 ## e o pixel art vem do pixel nítido, da luz em degraus e do contorno.
 const REDUZIR_PALETA := false
-const ALTURA_TITULO := 16
-const ALTURA_BOTOES := 22
+const ALTURA_TITULO := 24   # Jersey 10 a 20 px
+const ALTURA_BOTOES := 26
 const ALTURA_BERCO := 0.6
 const SEM_CORTE := 1000.0
 ## Gate do motor -> etapa de montagem do modelo (gates da página 3D: DM, BA, BF convés, BF casaria, ST/CT, PI).
 const ETAPA_DO_GATE := {"DM": 0, "BA": 1, "BF": 3, "ST": 4, "CT": 4, "PI": 5, "TR": 5, "TM": 5, "ET": 5}
 const VISTAS := [["ext", "Exterior"], ["raiox", "Raio-X"], ["corte", "Corte"], ["inf", "Planta inf."], ["pri", "Planta sup."]]
 const VELOCIDADE_ANDAR := 2.2  # m/s em primeira pessoa
-const COR_GRAVIDADE := {"LEVE": Color("#fee761"), "MEDIA": Color("#f77622"), "CRITICA": Color("#e43b44")}
 const LARGURA_FORMULARIO := 236
 
 const TOON := preload("res://shaders/toon.gdshader")
@@ -34,7 +33,7 @@ const PALETA := preload("res://shaders/paleta.gdshader")
 var fonte: Font
 var fonte_titulo: Font
 var tamanho_texto := 16
-var tamanho_titulo := 8
+var tamanho_titulo := Tokens.TAMANHO_TITULO
 
 var barco: Dictionary = {}
 var dados: Dictionary = {}           # marellar-<linha>.json
@@ -121,12 +120,7 @@ func _ready() -> void:
 	add_child(_marcas)
 	_montar_botoes()
 	_dica = Label.new()
-	_dica.add_theme_color_override("font_color", Paleta.TEXTO)
-	var fundo_dica := StyleBoxFlat.new()
-	fundo_dica.bg_color = Color(Paleta.FUNDO_ESCURO, 0.85)
-	fundo_dica.content_margin_left = 3
-	fundo_dica.content_margin_right = 3
-	_dica.add_theme_stylebox_override("normal", fundo_dica)
+	_dica.theme_type_variation = "RotuloDica"
 	_dica.size_flags_horizontal = Control.SIZE_SHRINK_BEGIN
 	_dica.mouse_filter = Control.MOUSE_FILTER_IGNORE
 	add_child(_dica)
@@ -154,8 +148,8 @@ func _posicionar() -> void:
 	_formulario.position = Vector2(size.x - LARGURA_FORMULARIO - 4, ALTURA_TITULO + 4)
 	_formulario.size = Vector2(LARGURA_FORMULARIO, 0)
 	_formulario.custom_minimum_size.x = LARGURA_FORMULARIO
-	_botao_fechar.position = Vector2(size.x - 18, 0)
-	_botao_fechar.size = Vector2(16, 16)
+	_botao_fechar.position = Vector2(size.x - 20, 2)
+	_botao_fechar.size = Vector2(18, 20)
 
 
 ## Abre a inspeção de um barco do estado (BarcoVisao do motor).
@@ -196,8 +190,9 @@ func _montar_botoes() -> void:
 	barra.add_child(VSeparator.new())
 	_lista_comps = OptionButton.new()
 	_lista_comps.fit_to_longest_item = false
-	_lista_comps.custom_minimum_size.x = 150
+	_lista_comps.custom_minimum_size.x = 118
 	_lista_comps.clip_text = true
+	_lista_comps.text_overrun_behavior = TextServer.OVERRUN_TRIM_ELLIPSIS   # nome longo termina em "…"
 	_lista_comps.item_selected.connect(func(i): compartimento = (dados.get("compartimentos", []) as Array)[i])
 	barra.add_child(_lista_comps)
 	var cima := _botao("De cima", func(): mudar_vista("cima"))
@@ -841,26 +836,26 @@ func _desenhar_marcas() -> void:
 		if _camera.is_position_behind(mundo) or mundo.y > _corte_y + 0.01 or mundo.z > _corte_z + 0.01:
 			continue
 		var p := (_camera.unproject_position(mundo) * float(REDUCAO)).floor()
-		var cor: Color = COR_GRAVIDADE.get(str(nc["gravidade"]), Paleta.ALERTA)
-		_marcas.draw_rect(Rect2(p - Vector2(4, 4), Vector2(9, 9)), Paleta.FUNDO_ESCURO)
+		var cor: Color = Tokens.GRAVIDADE.get(str(nc["gravidade"]), Tokens.ATENCAO)
+		_marcas.draw_rect(Rect2(p - Vector2(4, 4), Vector2(9, 9)), Tokens.FUNDO)
 		_marcas.draw_rect(Rect2(p - Vector2(3, 3), Vector2(7, 7)), cor)
 		_marcas.draw_string(fonte, p + Vector2(6, -2), str(int(nc["numero"])), HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, cor)
 	if not _texto_item.is_empty() and not Movimento.aberto(_formulario):   # item sob o mouse
 		var largura := fonte.get_string_size(_texto_item, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto).x + 8
-		_marcas.draw_rect(Rect2(4, 4, largura, 15), Color(Paleta.FUNDO_ESCURO, 0.85))
-		_marcas.draw_string(fonte, Vector2(8, 15), _texto_item, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Paleta.TEXTO_CLARO)
+		_marcas.draw_rect(Rect2(4, 4, largura, 20), Color(Tokens.FUNDO, 0.85))
+		_marcas.draw_string(fonte, Vector2(8, 19), _texto_item, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Tokens.TEXTO)
 
 
 # ---------------------------------------------------------------- moldura
 
 func _draw() -> void:
-	draw_rect(Rect2(0, 0, size.x, ALTURA_TITULO), Paleta.FUNDO)
-	draw_rect(Rect2(0, size.y - ALTURA_BOTOES, size.x, ALTURA_BOTOES), Paleta.FUNDO)
+	draw_rect(Rect2(0, 0, size.x, ALTURA_TITULO), Tokens.PAINEL)
+	draw_rect(Rect2(0, size.y - ALTURA_BOTOES, size.x, ALTURA_BOTOES), Tokens.PAINEL)
 	if barco.is_empty():
 		return
-	draw_string(fonte_titulo, Vector2(6, 12), "INSPEÇÃO 3D · CASCO %s" % barco["id"], HORIZONTAL_ALIGNMENT_LEFT, -1,
-			tamanho_titulo, Paleta.ALERTA)
+	draw_string(fonte_titulo, Vector2(6, 19), "INSPEÇÃO 3D · CASCO %s" % barco["id"], HORIZONTAL_ALIGNMENT_LEFT, -1,
+			tamanho_titulo, Tokens.TEXTO)
 	var gate := "%s · %s" % [barco.get("gateAtual", ""), barco.get("nomeGate", "")]
 	if not _ncs.is_empty():
 		gate = "%d NC 3D · %s" % [_ncs.size(), gate]
-	draw_string(fonte, Vector2(0, 12), gate, HORIZONTAL_ALIGNMENT_RIGHT, size.x - 24, tamanho_texto, Paleta.TEXTO_CLARO)
+	draw_string(fonte, Vector2(0, 17), gate, HORIZONTAL_ALIGNMENT_RIGHT, size.x - 26, tamanho_texto, Tokens.TEXTO)

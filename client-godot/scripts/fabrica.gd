@@ -6,17 +6,15 @@ extends Control
 
 const SEMENTE := 42
 const SEGUNDOS_POR_TICK_X1 := 2.5  # 1 dia útil (8 ticks) ≈ 20 s na velocidade 1 (GDD, Loops de jogo)
-const ALTURA_TOPO := 16
-const ALTURA_BASE := 24
-const ALTURA_ABAS := 18     # faixa das abas G1/G2, logo abaixo da barra de cima
+const ALTURA_TOPO := 22     # Pixelify Sans 16 (20 px de linha) e números em Jersey 20
+const ALTURA_BASE := 28     # botões do tema com a Pixelify Sans 16: 22 px
+const ALTURA_ABAS := 24     # faixa das abas G1/G2, logo abaixo da barra de cima
 const SEGUNDOS_PISCAR := 1.2  # barcos clicáveis piscando depois de um clique em botão desativado
 const LARGURA_PAINEL := 200
-const TAMANHO_TEXTO := 16   # VT323 fica nítida em 16
-const TAMANHO_TITULO := 8   # Press Start 2P fica nítida em 8
+const TAMANHO_TEXTO := Tokens.TAMANHO_UI       # Pixelify Sans
+const TAMANHO_TITULO := Tokens.TAMANHO_TITULO   # Jersey 10, só nos títulos de tela
 const MAX_AVISOS := 6
 
-const FONTE_TEXTO := preload("res://assets/fonts/VT323-Regular.ttf")
-const FONTE_TITULO := preload("res://assets/fonts/PressStart2P-Regular.ttf")
 
 const NOMES_STATUS := {
 	"EM_PRODUCAO": "Em produção",
@@ -99,13 +97,9 @@ var foco_ao_fechar := {}   # painel -> Control que tinha o foco antes de abrir (
 
 
 func _ready() -> void:
-	fonte = _fonte_pixel(FONTE_TEXTO)
-	fonte_titulo = _fonte_pixel(FONTE_TITULO)
-	# Estilos vêm do tema do projeto (assets/tema). Até a migração das telas (sprint 1, etapa 4) a fábrica
-	# continua com a fonte antiga: a Pixelify Sans 16 é mais larga e pede o ajuste de layout dessa etapa.
-	theme = Theme.new()
-	theme.default_font = fonte
-	theme.default_font_size = TAMANHO_TEXTO
+	# Fontes e estilos vêm do tema do projeto (assets/tema, gerado do Tokens).
+	fonte = ThemeDB.get_project_theme().default_font
+	fonte_titulo = load(Tokens.FONTE_TITULO)
 	Api.erro.connect(_on_erro_api)
 	_ajustar_entrada()
 	_montar_camada_foco()
@@ -190,14 +184,6 @@ func _process(delta: float) -> void:
 	if acumulado >= SEGUNDOS_POR_TICK_X1 / velocidade:
 		acumulado = 0.0
 		_avancar(1)
-
-
-static func _fonte_pixel(origem: FontFile) -> FontFile:
-	var f := origem.duplicate() as FontFile
-	f.antialiasing = TextServer.FONT_ANTIALIASING_NONE
-	f.hinting = TextServer.HINTING_NONE
-	f.subpixel_positioning = TextServer.SUBPIXEL_POSITIONING_DISABLED
-	return f
 
 
 # ---------------------------------------------------------------- ordens e API
@@ -421,14 +407,15 @@ func _montar_barra_inferior() -> void:
 	barra.set_anchors_and_offsets_preset(Control.PRESET_BOTTOM_WIDE)
 	barra.offset_top = -ALTURA_BASE + 3
 	barra.offset_bottom = -3
-	barra.offset_left = 4
-	barra.offset_right = -4
-	barra.add_theme_constant_override("separation", 3)
+	barra.offset_left = 2
+	barra.offset_right = -2
+	barra.add_theme_constant_override("separation", 2)
 	add_child(barra)
 
-	for opcao in [[0, "Pausa"], [1, "x1"], [2, "x2"], [4, "x4"]]:
+	for opcao in [[0, "II"], [1, "x1"], [2, "x2"], [4, "x4"]]:
 		var botao := _botao(opcao[1], _mudar_velocidade.bind(opcao[0]))
 		botao.toggle_mode = true
+		botao.tooltip_text = "Pausa (Espaço)" if opcao[0] == 0 else "Velocidade %s (tecla %d)" % [opcao[1], 3 if opcao[0] == 4 else opcao[0]]
 		barra.add_child(botao)
 		botoes_velocidade[opcao[0]] = botao
 	botoes_velocidade[0].set_pressed_no_signal(true)
@@ -882,19 +869,30 @@ static func _botoes_em(pai: Node) -> Array:
 	return lista
 
 
-func _rotulo(texto: String, cor: Color) -> Label:
-	var r := Label.new()
-	r.text = texto
-	r.autowrap_mode = TextServer.AUTOWRAP_WORD
-	r.custom_minimum_size.x = LARGURA_PAINEL - 16
-	r.add_theme_color_override("font_color", cor)
+func _rotulo(texto: String, cor: Color) -> RichTextLabel:
+	return _rotulo_rico(texto, cor, LARGURA_PAINEL - 16)
+
+
+## Rótulo com os números em Jersey (Texto.bbcode); quebra linha e cresce com o texto.
+static func _rotulo_rico(texto: String, cor: Color, largura: float) -> RichTextLabel:
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.scroll_active = false
+	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
+	r.custom_minimum_size.x = largura
+	r.mouse_filter = Control.MOUSE_FILTER_PASS
+	r.add_theme_color_override("default_color", cor)
+	r.text = Texto.bbcode(texto)
 	return r
 
 
 func _reconstruir_equipe() -> void:
 	if estado.is_empty() or not _limpar_ficha(JSON.stringify(["equipe", estado["pessoas"]])):
 		return
-	ficha.add_child(_botao("Contratar (chega em 10 dias)", _enviar_ordem.bind({"tipo": "Contratar", "funcao": "PRODUCAO"}, "")))
+	var contratar := _botao("Contratar (10 dias)", _enviar_ordem.bind({"tipo": "Contratar", "funcao": "PRODUCAO"}, ""))
+	contratar.theme_type_variation = "BotaoAcao"   # a única ação principal do painel Equipe
+	ficha.add_child(contratar)
 	for p in estado["pessoas"]:
 		if p["funcao"] != "PRODUCAO" or p["situacao"] == "DESLIGADA":
 			continue
@@ -902,7 +900,7 @@ func _reconstruir_equipe() -> void:
 		if p["situacao"] != "ATIVA":
 			situacao = " " + NOMES_SITUACAO[p["situacao"]] % int(p["diasRestantesSituacao"]) if "%d" in NOMES_SITUACAO[p["situacao"]] else NOMES_SITUACAO[p["situacao"]]
 		var seguranca := "" if p["treinoSegurancaEmDia"] else " NR!"
-		var cor := Paleta.CRITICO if int(p["moral"]) < 40 else (Paleta.TEXTO if p["situacao"] == "ATIVA" else Paleta.PISO_ESCURO)
+		var cor := Tokens.ATENCAO if int(p["moral"]) < 40 else (Tokens.TEXTO if p["situacao"] == "ATIVA" else Tokens.TEXTO_CALMO)
 		ficha.add_child(_rotulo("%s N%d moral %d%s%s" % [p["nome"], int(p["nivel"]), int(p["moral"]), seguranca, situacao], cor))
 		if p["situacao"] == "A_CAMINHO":
 			continue
@@ -926,21 +924,21 @@ func _reconstruir_fornecedores() -> void:
 	if estado.is_empty() or not _limpar_ficha(JSON.stringify(["fornec", estado["fornecedores"], estado["estoque"], estado["pedidosACaminho"]])):
 		return
 	for f in estado["fornecedores"]:
-		var cor := Paleta.MONTAGEM_LIMPA if f["nota"] in ["A", "B"] else (Paleta.ALERTA if f["nota"] in ["C", "D", "-"] else Paleta.CRITICO)
+		var cor := Tokens.OK if f["nota"] in ["A", "B"] else (Tokens.ATENCAO if f["nota"] in ["C", "D", "-"] else Tokens.NC)
 		ficha.add_child(_rotulo("%s  nota %s" % [f["nome"], f["nota"]], cor))
 		ficha.add_child(_rotulo("  PPM %d | prazo %d/%d | 8D %d/%d" % [int(f["ppm"]), int(f["pedidosNoPrazo"]),
-				int(f["pedidosEntregues"]), int(f["oitoDsNoPrazo"]), int(f["oitoDsRespondidos"])], Paleta.TEXTO))
+				int(f["pedidosEntregues"]), int(f["oitoDsNoPrazo"]), int(f["oitoDsRespondidos"])], Tokens.TEXTO))
 		if float(f["totalChargeback"]) > 0:
-			ficha.add_child(_rotulo("  chargeback R$ %s | RNC abertas %d" % [str(f["totalChargeback"]), int(f["rncsAbertas"])], Paleta.ALERTA))
+			ficha.add_child(_rotulo("  chargeback R$ %s | RNC abertas %d" % [str(f["totalChargeback"]), int(f["rncsAbertas"])], Tokens.ATENCAO))
 	var itens: Array = estado["estoque"].keys()
 	itens.sort()
 	var linha_estoque := "Estoque (kits):"
 	for item in itens:
 		linha_estoque += " %s %d" % [item, int(estado["estoque"][item])]
-	ficha.add_child(_rotulo(linha_estoque, Paleta.TEXTO_CLARO))
+	ficha.add_child(_rotulo(linha_estoque, Tokens.TEXTO))
 	for pedido in estado["pedidosACaminho"]:
 		var partes := str(pedido["dataPrevista"]).split("-")
-		ficha.add_child(_rotulo("  a caminho: %d %s, prev. %s/%s" % [int(pedido["kits"]), pedido["item"], partes[2], partes[1]], Paleta.PISO_ESCURO))
+		ficha.add_child(_rotulo("  a caminho: %d %s, prev. %s/%s" % [int(pedido["kits"]), pedido["item"], partes[2], partes[1]], Tokens.TEXTO_CALMO))
 
 
 func _avisar(texto: String) -> void:
@@ -952,12 +950,12 @@ func _avisar(texto: String) -> void:
 # ---------------------------------------------------------------- desenho
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Paleta.FUNDO_ESCURO)
+	draw_rect(Rect2(Vector2.ZERO, size), Tokens.FUNDO)
 	if estado.is_empty():
 		var texto := erro_api if not erro_api.is_empty() else "Conectando à API..."
-		draw_string(fonte_titulo, Vector2(16, 40), "MARELLAR", HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO, Paleta.TEXTO_CLARO)
+		draw_string(fonte_titulo, Vector2(16, 44), "MARELLAR", HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO, Tokens.TEXTO)
 		draw_multiline_string(fonte, Vector2(16, 64), texto, HORIZONTAL_ALIGNMENT_LEFT, size.x - 32,
-				TAMANHO_TEXTO, -1, Paleta.ALERTA)
+				TAMANHO_TEXTO, -1, Tokens.ATENCAO)
 		return
 	var t := Time.get_ticks_msec() / 1000.0
 	if not tela_ficha.aberta:
@@ -976,7 +974,7 @@ func _draw() -> void:
 		area_cartao = Rect2()
 		area_alerta_nc = Rect2()
 	_desenhar_topo()
-	draw_rect(Rect2(0, size.y - ALTURA_BASE, size.x, ALTURA_BASE), Paleta.FUNDO)
+	draw_rect(Rect2(0, size.y - ALTURA_BASE, size.x, ALTURA_BASE), Tokens.PAINEL)
 
 
 # ---------------------------------------------------------------- game feel (GDD, Áudio e sensação)
@@ -987,37 +985,37 @@ func _efeito_do_evento(evento: Dictionary) -> void:
 	if barco == null:
 		return
 	var texto := ""
-	var cor := Paleta.TEXTO_CLARO
+	var cor := Tokens.TEXTO
 	var tipo := "texto"
 	match str(evento["tipo"]):
 		"GATE_APROVADO":
 			texto = "gate OK!"
-			cor = Paleta.MONTAGEM_LIMPA
+			cor = Tokens.OK
 		"NC_DETECTADA", "NC_CRITICA":
 			texto = "NC!"
-			cor = Paleta.CRITICO
+			cor = Tokens.NC
 		"RETRABALHO_CONCLUIDO":
 			texto = "retrabalho OK"
-			cor = Paleta.MONTAGEM_LIMPA
+			cor = Tokens.OK
 		"QUEBRA_PECA":
 			texto = "quebrou! -HH"
-			cor = Paleta.ALERTA
+			cor = Tokens.NC
 		"ACIDENTE":
 			texto = "ACIDENTE"
-			cor = Paleta.CRITICO
+			cor = Tokens.NC
 		"PARADO_MATERIAL":
 			texto = "sem material"
-			cor = Paleta.ALERTA
+			cor = Tokens.ATENCAO
 		"BARCO_ENTREGUE":
 			texto = "ENTREGUE!"
-			cor = Paleta.FAIXA
+			cor = Tokens.OK
 			tipo = "confete"
 		"FINANCEIRO":
 			var achado := RegEx.create_from_string("R\\$ ?([0-9.]+)").search(str(evento["mensagem"]))
 			if achado == null:
 				return
 			texto = "+R$ %s mil" % str(int(achado.get_string(1).replace(".", "")) / 1000)
-			cor = Paleta.MONTAGEM_LIMPA
+			cor = Tokens.OK
 		_:
 			return
 	efeitos.append({"tipo": tipo, "texto": texto, "cor": cor, "barco": str(barco), "inicio": Time.get_ticks_msec() / 1000.0})
@@ -1064,7 +1062,7 @@ func _desenhar_efeitos() -> void:
 					var x0 := r.get_center().x + (semente - 0.5) * 80
 					var vel := Vector2((semente - 0.5) * 40, -60 - semente * 40)
 					var p := Vector2(x0, r.position.y) + vel * idade + Vector2(0, 70 * idade * idade)
-					var cores := [Paleta.CRITICO, Paleta.FAIXA, Paleta.MONTAGEM_LIMPA, Paleta.AGUA, Paleta.ALERTA]
+					var cores := [Paleta.NAO_CONFORME, Paleta.FAIXA, Paleta.MONTAGEM_LIMPA, Paleta.AGUA, Paleta.ALERTA]
 					draw_rect(Rect2(p.floor(), Vector2(2, 1 + k % 2)), Color(cores[k % cores.size()], alfa))
 				_texto_flutuante(e, r, idade, alfa, fila)
 			_:
@@ -1076,7 +1074,7 @@ func _texto_flutuante(e: Dictionary, r: Rect2, idade: float, alfa: float, fila: 
 	var texto: String = e["texto"]
 	var largura := fonte.get_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO).x
 	var pos := Vector2(r.get_center().x - largura / 2, r.position.y + 6 - idade * 14 - fila * 12).floor()
-	draw_string(fonte, pos + Vector2(1, 1), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Color(Paleta.FUNDO_ESCURO, alfa))
+	draw_string(fonte, pos + Vector2(1, 1), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Color(Tokens.FUNDO, alfa))
 	draw_string(fonte, pos, texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Color(e["cor"], alfa))
 
 
@@ -1096,7 +1094,7 @@ func _desenhar_inspetora(area: Rect2) -> void:
 	var tex := PixelArt.pessoa(Paleta.AGUA, quadro)
 	var canto := (pos_inspetora - Vector2(tex.get_width() / 2.0, tex.get_height())).floor()
 	draw_texture(tex, canto)
-	draw_rect(Rect2(canto + Vector2(tex.get_width() - 3, 6), Vector2(3, 4)), Paleta.TEXTO)  # prancheta
+	draw_rect(Rect2(canto + Vector2(tex.get_width() - 3, 6), Vector2(3, 4)), Paleta.PAPEL)  # prancheta
 
 
 ## Luz do turno: manhã levemente fria, fim da tarde alaranjado (GDD, Luz).
@@ -1116,7 +1114,7 @@ func _desenhar_luz_do_turno(area: Rect2) -> void:
 ## Barra de cima em blocos, como no mockup: data, caixa, valor, moral, NCs abertas e conselho.
 func _desenhar_topo() -> void:
 	var fin: Dictionary = estado["financeiro"]
-	draw_rect(Rect2(0, 0, size.x, ALTURA_TOPO), Paleta.NAO_CONFORME_ESCURO if float(fin["caixa"]) < 0 else Paleta.FUNDO)
+	draw_rect(Rect2(0, 0, size.x, ALTURA_TOPO), Tokens.NC if float(fin["caixa"]) < 0 else Tokens.MARCA)
 	var soma := 0
 	var quantas := 0
 	for p in estado["pessoas"]:
@@ -1127,11 +1125,11 @@ func _desenhar_topo() -> void:
 	var ncs := int(estado["qualidade"]["ncsAbertas"])
 	var paciencia := int(fin["pacienciaConselho"])
 	var blocos := [
-		["", "%s d%d %02dh" % [estado["mesReferencia"], int(estado["diaUtilDoMes"]), int(estado["hora"])], Paleta.TEXTO_CLARO],
-		["Caixa", _milhoes(fin["caixa"]), Paleta.MONTAGEM_LIMPA if float(fin["caixa"]) >= 0 else Paleta.CRITICO],
-		["Valor", _milhoes(fin["valorEmpresa"]), Paleta.AGUA],
-		["Moral", "%d%%" % moral, Paleta.MONTAGEM_LIMPA if moral >= 60 else (Paleta.ALERTA if moral >= 40 else Paleta.CRITICO)],
-		["NCs", str(ncs), Paleta.CRITICO if ncs > 0 else Paleta.MONTAGEM_LIMPA],
+		["", "%s d%d %02dh" % [_mes_curto(str(estado["mesReferencia"])), int(estado["diaUtilDoMes"]), int(estado["hora"])], Tokens.TEXTO],
+		["Caixa", _milhoes(fin["caixa"]), Tokens.OK if float(fin["caixa"]) >= 0 else Tokens.NC],
+		["Valor", _milhoes(fin["valorEmpresa"]), Tokens.MARCA_CLARA],
+		["Moral", "%d%%" % moral, Tokens.OK if moral >= 60 else (Tokens.ATENCAO if moral >= 40 else Tokens.NC)],
+		["NCs", str(ncs), Tokens.NC if ncs > 0 else Tokens.OK],
 		["Conselho", "%d/%d" % [paciencia, int(fin["pacienciaMaxima"])], _cor_conselho(int(fin["mesesRuinsSeguidos"]), int(fin["mesesRuinsParaDemissao"]))],
 	]
 	var x := 2.0
@@ -1139,15 +1137,14 @@ func _desenhar_topo() -> void:
 		var rotulo: String = b[0]
 		var valor: String = b[1]
 		var largura_rotulo := 0.0 if rotulo.is_empty() else fonte.get_string_size(rotulo + " ", HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO).x
-		var largura := largura_rotulo + fonte.get_string_size(valor, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO).x + 6
-		draw_rect(Rect2(x, 1, largura, ALTURA_TOPO - 2), Paleta.FUNDO_ESCURO)
-		draw_rect(Rect2(x, 1, largura, ALTURA_TOPO - 2).grow(-0.5), Paleta.ARMAZEM_ESCURO, false, 1.0)
-		draw_string(fonte, Vector2(x + 3, 12), rotulo, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.TEXTO)
-		draw_string(fonte, Vector2(x + 3 + largura_rotulo, 12), valor, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, b[2])
-		x += largura + 2
+		var largura := largura_rotulo + Texto.largura(valor) + 6
+		draw_rect(Rect2(x, 1, largura, ALTURA_TOPO - 2), Tokens.FUNDO)
+		draw_rect(Rect2(x, 1, largura, ALTURA_TOPO - 2).grow(-0.5), Tokens.PAINEL, false, 1.0)
+		draw_string(fonte, Vector2(x + 3, 16), rotulo, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Tokens.TEXTO_CALMO)
+		Texto.desenhar(self, Vector2(x + 3 + largura_rotulo, 16), valor, b[2])
+		x += largura + 1
 	var vel := "PAUSA" if velocidade == 0 else "x%d" % velocidade
-	draw_string(fonte, Vector2(x + 2, 12), vel, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO,
-			Paleta.ALERTA if velocidade == 0 else Paleta.MONTAGEM_LIMPA)
+	Texto.desenhar(self, Vector2(x + 1, 16), vel, Tokens.ATENCAO if velocidade == 0 else Tokens.OK)
 
 
 ## Depois de um clique em botão que precisa de barco: os barcos clicáveis piscam com o contorno de foco.
@@ -1164,36 +1161,38 @@ func _desenhar_piscar(t: float) -> void:
 		draw_rect((r as Rect2).grow(2), Tokens.FOCO, false, 1.0)
 
 
+## "mar/2027" -> "mar/27" (a barra de cima não tem espaço para o ano inteiro).
+static func _mes_curto(mes: String) -> String:
+	var p := mes.split("/")
+	return mes if p.size() != 2 or p[1].length() != 4 else "%s/%s" % [p[0], p[1].substr(2)]
+
+
 ## Cartão do barco selecionado no canto de baixo, à esquerda (clique abre a ficha).
 func _desenhar_cartao() -> void:
 	var barco := _barco(selecionado)
 	area_cartao = Rect2()
 	if barco.is_empty():
 		return
-	var r := Rect2(6, size.y - ALTURA_BASE - 70, 178, 66)
+	var r := Rect2(6, size.y - ALTURA_BASE - 86, 182, 82)
 	area_cartao = r
-	draw_rect(r, Paleta.FUNDO)
-	draw_rect(r.grow(-0.5), Paleta.ARMAZEM, false, 1.0)
+	draw_rect(r, Tokens.PAINEL)
+	draw_rect(r.grow(-0.5), Tokens.FUNDO, false, 1.0)
 	var x := r.position.x + 6
-	draw_string(fonte_titulo, Vector2(x, r.position.y + 12), "CASCO %s" % barco["id"], HORIZONTAL_ALIGNMENT_LEFT, -1,
-			TAMANHO_TITULO, Paleta.ALERTA)
-	draw_string(fonte, Vector2(x, r.position.y + 26), "Gate", HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.PISO_ESCURO)
-	draw_string(fonte, Vector2(x, r.position.y + 26), "%s · %s" % [barco["gateAtual"], barco["nomeGate"]],
-			HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 12, TAMANHO_TEXTO, Paleta.TEXTO_CLARO)
+	Texto.desenhar(self, Vector2(x, r.position.y + 17), "CASCO %s" % barco["id"], Tokens.TEXTO)
+	draw_string(fonte, Vector2(x, r.position.y + 34), "%s · %s" % [barco["gateAtual"], barco["nomeGate"]],
+			HORIZONTAL_ALIGNMENT_LEFT, r.size.x - 12, TAMANHO_TEXTO, Tokens.TEXTO)
 	var progresso := float(barco["progressoGate"])
-	draw_rect(Rect2(x, r.position.y + 31, r.size.x - 12, 3), Paleta.FUNDO_ESCURO)
-	draw_rect(Rect2(x, r.position.y + 31, (r.size.x - 12) * progresso, 3), Paleta.MONTAGEM_LIMPA)
+	draw_rect(Rect2(x, r.position.y + 39, r.size.x - 12, 3), Tokens.FUNDO)
+	draw_rect(Rect2(x, r.position.y + 39, (r.size.x - 12) * progresso, 3), Tokens.MARCA_CLARA)
 	var abertas := 0
 	for nc in barco["ncs"]:
 		if nc["status"] == "ABERTA":
 			abertas += 1
 	var status: String = NOMES_STATUS.get(str(barco["status"]), str(barco["status"]))
-	draw_string(fonte, Vector2(x, r.position.y + 46), "%s · %d%%" % [status, int(progresso * 100)], HORIZONTAL_ALIGNMENT_LEFT,
-			r.size.x - 12, TAMANHO_TEXTO, _cor_status(str(barco["status"])))
-	draw_string(fonte, Vector2(x, r.position.y + 60), "Equipe %d" % (barco["pessoasAlocadas"] as Array).size(),
-			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Paleta.TEXTO)
-	draw_string(fonte, Vector2(x, r.position.y + 60), "%d NC  ·  ficha >" % abertas, HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 12,
-			TAMANHO_TEXTO, Paleta.CRITICO if abertas > 0 else Paleta.PISO_ESCURO)
+	Texto.desenhar(self, Vector2(x, r.position.y + 58), "%s · %d%%" % [status, int(progresso * 100)], _cor_status(str(barco["status"])))
+	Texto.desenhar(self, Vector2(x, r.position.y + 76), "Equipe %d" % (barco["pessoasAlocadas"] as Array).size(), Tokens.TEXTO)
+	Texto.desenhar(self, Vector2(x, r.position.y + 76), "%d NC · ficha >" % abertas, Tokens.NC if abertas > 0 else Tokens.TEXTO_CALMO,
+			HORIZONTAL_ALIGNMENT_RIGHT, r.size.x - 12)
 
 
 ## Alertas no canto de cima, à direita: NC esperando decisão (clicável) e os avisos recentes.
@@ -1211,13 +1210,13 @@ func _desenhar_alertas(t: float) -> void:
 			var texto := "%s · %s. Decidir?" % [barco["id"], str(nc["descricao"]).to_lower()]
 			var altura := fonte.get_multiline_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10, TAMANHO_TEXTO).y + 22
 			area_alerta_nc = Rect2(x, y, largura, altura)
-			draw_rect(area_alerta_nc, Paleta.NAO_CONFORME_ESCURO)
-			draw_rect(area_alerta_nc.grow(-0.5), Paleta.CRITICO if int(t * 2) % 2 == 0 else Paleta.NAO_CONFORME, false, 1.0)
+			draw_rect(area_alerta_nc, Tokens.FUNDO)
+			draw_rect(area_alerta_nc.grow(-0.5), Tokens.NC if int(t * 2) % 2 == 0 else Color(Tokens.NC, 0.45), false, 1.0)
 			Sprites.selo_nc(self, Vector2(x + 10, y + 9), fonte, 1, true)
-			draw_string(fonte, Vector2(x + 20, y + 14), "NC no gate %s" % nc["gate"], HORIZONTAL_ALIGNMENT_LEFT, -1,
-					TAMANHO_TEXTO, Paleta.TEXTO_CLARO)
-			draw_multiline_string(fonte, Vector2(x + 5, y + 28), texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10,
-					TAMANHO_TEXTO, -1, Paleta.TEXTO)
+			draw_string(fonte, Vector2(x + 20, y + 15), "NC no gate %s" % nc["gate"], HORIZONTAL_ALIGNMENT_LEFT, -1,
+					TAMANHO_TEXTO, Tokens.TEXTO)
+			draw_multiline_string(fonte, Vector2(x + 5, y + 32), texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10,
+					TAMANHO_TEXTO, -1, Tokens.TEXTO)
 			y += altura + 3
 	var agora := Time.get_ticks_msec() / 1000.0
 	var mostrados := 0
@@ -1228,15 +1227,15 @@ func _desenhar_alertas(t: float) -> void:
 		var texto: String = aviso["texto"]
 		var altura := fonte.get_multiline_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10, TAMANHO_TEXTO).y + 6
 		var opaco := clampf((8.0 - idade) / 1.5, 0.0, 1.0)
-		draw_rect(Rect2(x, y, largura, altura), Color(Paleta.FUNDO, 0.92 * opaco))
-		draw_rect(Rect2(x, y, 2, altura), Color(Paleta.ALERTA, opaco))
+		draw_rect(Rect2(x, y, largura, altura), Color(Tokens.PAINEL, 0.92 * opaco))
+		draw_rect(Rect2(x, y, 2, altura), Color(Tokens.MARCA_CLARA, opaco))
 		draw_multiline_string(fonte, Vector2(x + 6, y + 13), texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10,
-				TAMANHO_TEXTO, -1, Color(Paleta.TEXTO, opaco))
+				TAMANHO_TEXTO, -1, Color(Tokens.TEXTO, opaco))
 		y += altura + 3
 		mostrados += 1
 	if not erro_api.is_empty():
 		draw_multiline_string(fonte, Vector2(x, y + 12), erro_api, HORIZONTAL_ALIGNMENT_LEFT, largura, TAMANHO_TEXTO, 3,
-				Paleta.CRITICO)
+				Tokens.NC)
 
 
 ## Equipe e fornecedores: painel por cima da fábrica, à direita (o conteúdo são Controls na rolagem).
@@ -1248,10 +1247,10 @@ func _desenhar_painel() -> void:
 	if painel_desenhado.is_empty():
 		return
 	var r := _retangulo_painel()
-	draw_rect(r, Color(Paleta.FUNDO, alfa_painel))
-	draw_rect(r.grow(-0.5), Color(Paleta.ALERTA_ESCURO, alfa_painel), false, 1.0)
-	draw_string(fonte_titulo, Vector2(r.position.x + 6, r.position.y + 12), "EQUIPE" if painel_desenhado == PAINEL_EQUIPE else "FORNECEDORES",
-			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TITULO, Color(Paleta.ALERTA, alfa_painel))
+	draw_rect(r, Color(Tokens.PAINEL, alfa_painel))
+	draw_rect(r.grow(-0.5), Color(Tokens.FUNDO, alfa_painel), false, 1.0)
+	draw_string(fonte, Vector2(r.position.x + 6, r.position.y + 15), "EQUIPE" if painel_desenhado == PAINEL_EQUIPE else "FORNECEDORES",
+			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Color(Tokens.TEXTO, alfa_painel))
 
 
 # ---------------------------------------------------------------- lista de saves
@@ -1273,7 +1272,7 @@ func _abrir_saves() -> void:
 	var primeira := tela_saves == null
 	if tela_saves != null:
 		tela_saves.queue_free()
-	tela_saves = _nova_sobreposicao(Paleta.AGUA)
+	tela_saves = _nova_sobreposicao()
 	if primeira:
 		Movimento.abrir(tela_saves)
 	var itens := VBoxContainer.new()
@@ -1281,12 +1280,11 @@ func _abrir_saves() -> void:
 	tela_saves.add_child(itens)
 	var titulo := Label.new()
 	titulo.text = "CARREGAR PARTIDA"
-	titulo.add_theme_font_override("font", fonte_titulo)
-	titulo.add_theme_font_size_override("font_size", TAMANHO_TITULO)
-	titulo.add_theme_color_override("font_color", Paleta.AGUA)
+	titulo.theme_type_variation = "Titulo"
+	titulo.add_theme_color_override("font_color", Tokens.MARCA_CLARA)
 	itens.add_child(_cabecalho(titulo, _fechar_saves))
 	if lista.is_empty():
-		itens.add_child(_linha_conselho("Nenhum save ainda. Use Salvar (F5).", Paleta.PISO_ESCURO, 320))
+		itens.add_child(_linha_conselho("Nenhum save ainda. Use Salvar (F5).", Tokens.TEXTO_CALMO, 320))
 	for save in lista.slice(0, 8):
 		var atual: bool = save["id"] == Api.partida_id
 		var texto := "%s %02dh · semente %d%s" % [_data_curta(str(save["data"])), int(save["hora"]), int(save["semente"]),
@@ -1320,14 +1318,9 @@ func _cabecalho(titulo: Label, fechar_painel: Callable) -> HBoxContainer:
 	return linha
 
 
-func _nova_sobreposicao(borda: Color) -> PanelContainer:
+func _nova_sobreposicao() -> PanelContainer:
 	var painel_novo := PanelContainer.new()
-	var fundo := StyleBoxFlat.new()
-	fundo.bg_color = Paleta.FUNDO_ESCURO
-	fundo.border_color = borda
-	fundo.set_border_width_all(1)
-	fundo.set_content_margin_all(8)
-	painel_novo.add_theme_stylebox_override("panel", fundo)
+	painel_novo.theme_type_variation = "Janela"
 	painel_novo.position = Vector2(size.x / 2 - 170, ALTURA_TOPO + 30)
 	painel_novo.custom_minimum_size = Vector2(340, 0)
 	_veu(painel_novo, _fechar_saves)
@@ -1367,12 +1360,7 @@ func _abrir_conselho() -> void:
 	else:
 		_guardar_foco("conselho", botao_conselho)
 	tela_conselho = PanelContainer.new()
-	var fundo := StyleBoxFlat.new()
-	fundo.bg_color = Paleta.FUNDO_ESCURO
-	fundo.border_color = Paleta.ALERTA
-	fundo.set_border_width_all(1)
-	fundo.set_content_margin_all(6)
-	tela_conselho.add_theme_stylebox_override("panel", fundo)
+	tela_conselho.theme_type_variation = "Janela"
 	tela_conselho.position = Vector2(40, ALTURA_TOPO + 6)
 	tela_conselho.size = Vector2(size.x - 80, size.y - ALTURA_TOPO - ALTURA_BASE - 12)
 	_veu(tela_conselho, _fechar_conselho)
@@ -1391,46 +1379,47 @@ func _abrir_conselho() -> void:
 
 	var titulo := Label.new()
 	titulo.text = "REUNIÃO DO CONSELHO - %s" % r["mesReferencia"]
-	titulo.add_theme_color_override("font_color", Paleta.ALERTA)  # VT323: a Press Start 2P não tem "Ã"
+	titulo.theme_type_variation = "Titulo"
 	lista.add_child(_cabecalho(titulo, _fechar_conselho))
 
 	for m in r["metas"]:
-		var cor := Paleta.MONTAGEM_LIMPA if m["cumprida"] else Paleta.CRITICO
+		var cor := Tokens.OK if m["cumprida"] else Tokens.NC
 		lista.add_child(_linha_conselho("%s %s  (%s)" % ["[OK]" if m["cumprida"] else "[X] ", m["descricao"], m["resultado"]], cor, largura))
 	lista.add_child(_linha_conselho("Paciência do conselho: %d -> %d de %d" % [int(r["pacienciaAntes"]),
-			int(r["pacienciaDepois"]), int(estado["financeiro"]["pacienciaMaxima"])], Paleta.ALERTA, largura))
+			int(r["pacienciaDepois"]), int(estado["financeiro"]["pacienciaMaxima"])],
+			Tokens.ATENCAO if int(r["pacienciaDepois"]) < int(r["pacienciaAntes"]) else Tokens.TEXTO, largura))
 	var limite := int(estado["financeiro"]["mesesRuinsParaDemissao"])
 	if r["mesRuim"]:
 		lista.add_child(_linha_conselho("MÊS RUIM: %d de %d meses ruins seguidos. No %dº o conselho demite o CEO." % [int(r["mesesRuinsSeguidos"]), limite, limite],
-				Paleta.CRITICO, largura))
+				Tokens.NC, largura))
 	else:
-		lista.add_child(_linha_conselho("Mês aceitável: a contagem de meses ruins voltou a zero.", Paleta.MONTAGEM_LIMPA, largura))
+		lista.add_child(_linha_conselho("Mês aceitável: a contagem de meses ruins voltou a zero.", Tokens.OK, largura))
 
 	var dre: Dictionary = r["dre"]
 	lista.add_child(_linha_conselho("DRE: receita %s | material %s | pessoal %s | fixas %s" % [_reais(dre["receita"]),
 			_reais(float(dre["custoMaterial"]) + float(dre["consumiveis"]) + float(dre["materialRetrabalho"])),
-			_reais(dre["pessoal"]), _reais(dre["despesasFixas"])], Paleta.TEXTO, largura))
-	var cor_ebitda := Paleta.MONTAGEM_LIMPA if float(dre["ebitda"]) >= 0 else Paleta.CRITICO
+			_reais(dre["pessoal"]), _reais(dre["despesasFixas"])], Tokens.TEXTO, largura))
+	var cor_ebitda := Tokens.OK if float(dre["ebitda"]) >= 0 else Tokens.NC
 	lista.add_child(_linha_conselho("EBITDA %s | Caixa %s | Valor da empresa %s" % [_reais(dre["ebitda"]),
 			_reais(r["caixa"]), _reais(r["valorEmpresa"])], cor_ebitda, largura))
 	lista.add_child(_linha_conselho("Entregas %d | NCs %d | RNCs %d | concessões %d | acidentes %d" % [int(r["barcosEntregues"]),
-			int(r["ncsDetectadas"]), int(r["rncs"]), int(r["concessoes"]), int(r["acidentes"])], Paleta.PISO_ESCURO, largura))
+			int(r["ncsDetectadas"]), int(r["rncs"]), int(r["concessoes"]), int(r["acidentes"])], Tokens.TEXTO_CALMO, largura))
 	if r["alertaCaixaNegativo"]:
-		lista.add_child(_linha_conselho("ALERTA: caixa negativo. 3 meses seguidos encerram a empresa.", Paleta.CRITICO, largura))
+		lista.add_child(_linha_conselho("ALERTA: caixa negativo. 3 meses seguidos encerram a empresa.", Tokens.NC, largura))
 
 	for f in r["falas"]:
 		lista.add_child(_linha_conselho("%s: \"%s\"" % [f["conselheiro"], f["texto"]],
-				Paleta.TEXTO_CLARO if f["seria"] else Paleta.AGUA, largura))
+				Tokens.TEXTO if f["seria"] else Tokens.MARCA_CLARA, largura))
 
 	if r["derrota"] != null:
 		lista.add_child(_linha_conselho("FIM DE JOGO. %s" % ("Três meses de caixa negativo." if r["derrota"] == "CAIXA"
-				else "Três meses ruins seguidos com o conselho."), Paleta.CRITICO, largura))
+				else "Três meses ruins seguidos com o conselho."), Tokens.NC, largura))
 		var nova := _botao("Nova partida", func(): get_tree().reload_current_scene())
 		lista.add_child(nova)
 		_focar_depois(nova)
 		return
 
-	lista.add_child(_linha_conselho("Decisão para o próximo mês (uma):", Paleta.ALERTA, largura))
+	lista.add_child(_linha_conselho("Decisão para o próximo mês (uma):", Tokens.TEXTO, largura))
 	var escolhida = r["decisaoEscolhida"]
 	for o in r["opcoes"]:
 		var custo := "" if float(o["custo"]) == 0 else " (%s)" % _reais(o["custo"])
@@ -1441,6 +1430,8 @@ func _abrir_conselho() -> void:
 			b.text = "> " + b.text
 		lista.add_child(b)
 	var continuar := _botao("Continuar", _fechar_conselho)
+	if escolhida != null:
+		continuar.theme_type_variation = "BotaoAcao"   # decidido: a ação principal passa a ser seguir o jogo
 	lista.add_child(continuar)
 	# ação principal: a primeira decisão ainda livre; já decidido, Continuar (o primeiro botão é o X)
 	var alvo: Control = continuar
@@ -1451,13 +1442,8 @@ func _abrir_conselho() -> void:
 	_focar_depois(alvo)
 
 
-func _linha_conselho(texto: String, cor: Color, largura: float) -> Label:
-	var r := Label.new()
-	r.text = texto
-	r.autowrap_mode = TextServer.AUTOWRAP_WORD
-	r.custom_minimum_size.x = largura
-	r.add_theme_color_override("font_color", cor)
-	return r
+func _linha_conselho(texto: String, cor: Color, largura: float) -> RichTextLabel:
+	return _rotulo_rico(texto, cor, largura)
 
 
 func _escolher_decisao(opcao_id: String) -> void:
@@ -1503,15 +1489,15 @@ func _barco(id: String) -> Dictionary:
 
 func _cor_status(status: String) -> Color:
 	match status:
-		"AGUARDANDO_INSPECAO", "EM_RETRABALHO":
-			return Paleta.ALERTA
+		"AGUARDANDO_INSPECAO", "EM_RETRABALHO", "APROVADO", "PARADO_MATERIAL":
+			return Tokens.ATENCAO
 		"EM_INSPECAO":
-			return Paleta.AGUA
-		"AGUARDANDO_DECISAO", "APROVADO", "PARADO_MATERIAL":
-			return Paleta.CRITICO
+			return Tokens.MARCA_CLARA
+		"AGUARDANDO_DECISAO":
+			return Tokens.NC
 		"ENTREGUE":
-			return Paleta.MONTAGEM_LIMPA
-	return Paleta.TEXTO
+			return Tokens.OK
+	return Tokens.TEXTO
 
 
 func _motivo_pausa(motivo: String) -> String:
@@ -1530,5 +1516,5 @@ func _motivo_pausa(motivo: String) -> String:
 ## Cor do bloco "Conselho" na barra de cima: segue os meses ruins seguidos (a paciência é só termômetro).
 func _cor_conselho(ruins: int, limite: int) -> Color:
 	if ruins <= 0:
-		return Paleta.TEXTO_CLARO
-	return Paleta.CRITICO if ruins >= limite - 1 else Paleta.ALERTA
+		return Tokens.TEXTO
+	return Tokens.NC if ruins >= limite - 1 else Tokens.ATENCAO

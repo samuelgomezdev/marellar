@@ -222,7 +222,7 @@ static func balao(icone: String) -> ImageTexture:
 	if _cache.has(chave):
 		return _cache[chave]
 	var img := _de_texto(_BALAO, {"W": Paleta.CASCO})
-	var cor_icone: Color = {"alerta": Paleta.CRITICO, "ok": Paleta.MONTAGEM_LIMPA_ESCURA, "espera": Paleta.AGUA_ESCURA,
+	var cor_icone: Color = {"alerta": Tokens.NC, "ok": Paleta.MONTAGEM_LIMPA_ESCURA, "espera": Paleta.AGUA_ESCURA,
 		"material": Paleta.PRODUCAO_SUJA_ESCURA}[icone]
 	var linhas: Array = _ICONES[icone]
 	for y in linhas.size():
