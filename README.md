@@ -1,12 +1,12 @@
 # Marellar — MVP do simulador de estaleiro
 
-Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pixel art. Este README define o **MVP**: a menor partida jogável. Ele é a especificação para programar o projeto.
+Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pixel art. Este README define o **MVP**: a menor partida jogável.
 
-> Projeto de portfólio do Samuel Gomez da Silva. As regras completas estão no **Documento de Visão** e o jogo no **GDD**; esses documentos ficam fora do repositório (veja a seção 13). Quando este README e o Documento de Visão discordarem, vale o Documento de Visão. Decisões tomadas durante a programação ficam em [`docs/decisoes.md`](docs/decisoes.md).
+> Projeto de portfólio do Samuel Gomez da Silva. As regras completas estão no **Documento de Visão** e o jogo no **GDD**; esses documentos ficam fora do repositório (veja a seção 12). Quando este README e o Documento de Visão discordarem, vale o Documento de Visão. Decisões tomadas durante a programação ficam em [`docs/decisoes.md`](docs/decisoes.md).
 
 **Plataforma:** PC (Windows) primeiro; celular depois.
 
-**Jogar no navegador:** https://samuelgomezdev.github.io/marellar/ — sem instalar nada e sem servidor: o motor Java roda compilado para JavaScript dentro da página (veja a seção 12). **Inspeção 3D:** https://samuelgomezdev.github.io/marellar/inspecao/ (modo demonstração: as NCs ficam no navegador).
+**Jogar no navegador:** https://samuelgomezdev.github.io/marellar/ — sem instalar nada e sem servidor: o motor Java roda compilado para JavaScript dentro da página (veja a seção 11). **Inspeção 3D:** https://samuelgomezdev.github.io/marellar/inspecao/ (modo demonstração: as NCs ficam no navegador).
 
 ## Status
 
@@ -161,7 +161,7 @@ marellar/
 
 ### 5.1 Gates da linha de 33 pés
 
-Os barcos passam pelos gates abaixo, em ordem. A lista completa de 15 gates está no Documento de Visão; o MVP usa estes 9. Não há gate RE: recebimento e inspeção de material comprado não são etapa do barco (DEC-0054 da wiki). Pesos de HH pela equipe por fase (DEC-0057).
+Os barcos passam pelos gates abaixo, em ordem. A lista completa de 15 gates está no Documento de Visão; o MVP usa estes 9. Recebimento e inspeção de material comprado não são etapa do barco.
 
 | Ordem | Código | Gate | Peso de HH | Cota do cliente ao aprovar |
 | --- | --- | --- | --- | --- |
@@ -269,8 +269,8 @@ Indicadores de acidente (NBR 14280):
   - zero acidente com afastamento;
   - RNC por barco abaixo de 4.
 - **Falas** de 2 conselheiros fictícios. A fala escolhida depende do resultado: sério quando há acidente ou caixa ruim, humor leve quando há algo estranho (ex.: compra de material muito acima do uso).
-- **Paciência do conselho:** de 0 a 5. Cada meta perdida tira 1; cada meta cumprida devolve 1, até o máximo. Aparece no painel como termômetro e não causa derrota (DEC-0062 da wiki).
-- **Demissão do CEO (derrota):** mês ruim é aquele com 3 ou mais das 4 metas perdidas. No 3º mês ruim seguido o conselho demite o CEO; um mês que não é ruim zera a contagem (`mesesRuinsParaDemissao` em `data/financeiro.json`; DEC-0058 e DEC-0062).
+- **Paciência do conselho:** de 0 a 5. Cada meta perdida tira 1; cada meta cumprida devolve 1, até o máximo. Aparece no painel como termômetro e não causa derrota.
+- **Demissão do CEO (derrota):** mês ruim é aquele com 3 ou mais das 4 metas perdidas. No 3º mês ruim seguido o conselho demite o CEO; um mês que não é ruim zera a contagem (`mesesRuinsParaDemissao` em `data/financeiro.json`).
 - **Decisões para o mês seguinte:** 3 a 4 opções com custo e efeito (treinar NR-35, contratar, antecipar compra, negociar com fornecedor). A escolha vira uma ordem aplicada no início do mês seguinte.
 
 ---
@@ -371,7 +371,7 @@ Base: `/api/v1`. JSON em camelCase. Valores em reais como string decimal (`"3200
 
 - **Tema:** `client-godot/assets/tema/marellar_theme.tres`, gerado a partir do `Tokens` por `ferramentas/gerar_tema.gd` (cantos chanfrados de 2 px, grade de 8 px). Não edite o `.tres` à mão. No máximo um `BotaoAcao` por painel.
 - **Fontes:** Pixelify Sans 16 px no texto; Jersey 10 a 20 px nos títulos de tela e nos números de valor (a Pixelify sem suavização desenha o "5" parecido com "S"). Ambas OFL, sem antialiasing.
-- **Telas do MVP** (mockups fora do repositório, veja a seção 13):
+- **Telas do MVP** (mockups fora do repositório, veja a seção 12):
   1. **Fábrica:** baias da montagem com os barcos de 33 pés, bonequinhos andando e trabalhando, barra de topo (data, velocidade, caixa, valor, moral, NCs) e barra de baixo com os menus.
   2. **Ficha do barco:** gates, HH e material, NCs com botões de decisão, cotas.
   3. **Conselho:** metas, falas, decisões.
@@ -408,19 +408,7 @@ Base: `/api/v1`. JSON em camelCase. Valores em reais como string decimal (`"3200
 
 ---
 
-## 11. Regras para quem programa (Claude Code)
-
-1. **Java 21** em todos os módulos Java; Maven; JUnit 5 + AssertJ; Spring Boot 3 só no `marellar-api`.
-2. O `marellar-engine` **não depende** de Spring, banco ou Godot.
-3. Código, nomes de classes e comentários **em português**, sem acentos nos identificadores. Mensagens para o jogador em `textos-ptbr.json`.
-4. **Nenhum dado real** de empresa (planilhas, custos, nomes, fornecedores) entra no repositório. Só parâmetros agregados e dados sintéticos. Documentos de referência ficam fora do repo (`.gitignore`).
-5. Cada milestone em um branch e um PR pequeno, com testes.
-6. **Commits e PRs sem coautoria de IA:** não adicionar "Co-Authored-By: Claude", "Generated with Claude Code" nem link de sessão em mensagens de commit ou descrições de PR.
-7. Quando uma regra estiver ambígua, seguir o Documento de Visão. Se ainda faltar informação, criar um parâmetro em `data/` com um valor razoável e anotar em `docs/decisoes.md`.
-
----
-
-## 12. Como rodar (meta)
+## 11. Como rodar
 
 Pré-requisitos: **JDK 21** e **Godot 4** (o Maven vem pelo wrapper).
 
@@ -469,7 +457,7 @@ Também se joga só com teclado ou só com controle: setas ou D-pad movem o foco
 
 ---
 
-## 13. Documentos de referência
+## 12. Documentos de referência
 
 Os documentos de design ficam **fora do repositório**, na pasta local do projeto, porque o Documento de Visão cita dados reais:
 
