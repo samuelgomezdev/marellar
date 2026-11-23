@@ -167,7 +167,7 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 		await _abrir_saves()
 	i = args.find("--painel")
 	if i >= 0 and i + 1 < args.size():
-		painel = args[i + 1]
+		_abrir_painel(args[i + 1])   # abre com a animação; só trocar `painel` deixava o painel transparente
 	if estado.get("motivoPausa") in ["FIM_DO_MES", "DERROTA"] and estado.get("conselho") != null:
 		_abrir_conselho()
 	_atualizar_interface()
@@ -893,6 +893,8 @@ func _reconstruir_equipe() -> void:
 	var contratar := _botao("Contratar (10 dias)", _enviar_ordem.bind({"tipo": "Contratar", "funcao": "PRODUCAO"}, ""))
 	contratar.theme_type_variation = "BotaoAcao"   # a única ação principal do painel Equipe
 	ficha.add_child(contratar)
+	var treinos: Dictionary = estado.get("treinamentos", {})
+	ficha.add_child(_rotulo("Téc -NC +veloc · NR -acid.", Tokens.TEXTO_CALMO))
 	for p in estado["pessoas"]:
 		if p["funcao"] != "PRODUCAO" or p["situacao"] == "DESLIGADA":
 			continue
@@ -912,12 +914,45 @@ func _reconstruir_equipe() -> void:
 		var disponivel: bool = p["situacao"] == "ATIVA"
 		var tecnico := _botao("Treino téc.", _enviar_ordem.bind({"tipo": "Treinar", "pessoaId": p["id"], "treinamento": "TECNICO"}, ""))
 		tecnico.disabled = not disponivel or int(p["nivel"]) >= 5
+		tecnico.tooltip_text = _dica_treino_tecnico(treinos, int(p["nivel"]))
 		acoes.add_child(tecnico)
 		var nr := _botao("NR", _enviar_ordem.bind({"tipo": "Treinar", "pessoaId": p["id"], "treinamento": "SEGURANCA"}, ""))
 		nr.disabled = not disponivel
-		nr.tooltip_text = "Treinamento de segurança: põe o treino em dia e reduz a chance de acidente."
+		nr.tooltip_text = _dica_treino_nr(treinos, bool(p["treinoSegurancaEmDia"]))
 		acoes.add_child(nr)
 		ficha.add_child(acoes)
+
+
+## Variação de "antes" para "depois" em %, com sinal (+20%, -17%); mesma conta do motor (PessoasRegra.variacao).
+static func _variacao(depois: float, antes: float) -> String:
+	var pct := roundi((depois / antes - 1.0) * 100.0)
+	return ("+" if pct > 0 else "") + str(pct) + "%"
+
+
+## Dica de uma linha do treino técnico com os números do motor (estado.treinamentos).
+static func _dica_treino_tecnico(treinos: Dictionary, nivel: int) -> String:
+	if nivel >= 5:
+		return "Nível máximo."
+	if treinos.is_empty():
+		return "Treino técnico: sobe 1 nível; menos NC e mais velocidade."
+	var antes: Dictionary = treinos["niveis"][nivel - 1]
+	var depois: Dictionary = treinos["niveis"][nivel]
+	return "%d dias fora da linha. N%d→N%d: velocidade %s, NC %s, salário R$ %s→%s." % [
+		int(treinos["diasTreinamento"]), nivel, nivel + 1,
+		_variacao(float(depois["fatorVelocidade"]), float(antes["fatorVelocidade"])),
+		_variacao(float(depois["fatorNc"]), float(antes["fatorNc"])),
+		str(int(antes["salario"])), str(int(depois["salario"]))]
+
+
+## Dica de uma linha do treino de NR com o multiplicador do motor.
+static func _dica_treino_nr(treinos: Dictionary, em_dia: bool) -> String:
+	if treinos.is_empty():
+		return "Treino de NR: menos chance de acidente."
+	var dias := int(treinos["diasTreinamento"])
+	if em_dia:
+		return "NR já em dia: treinar de novo só tira %d dias da linha." % dias
+	return "%d dias fora da linha. NR em dia: chance de acidente %s." % [
+		dias, _variacao(1.0, float(treinos["multiplicadorAcidenteSemNr"]))]
 
 
 func _reconstruir_fornecedores() -> void:
