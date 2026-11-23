@@ -2,30 +2,41 @@
 
 Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pixel art. Este README define o **MVP**: a menor partida jogável.
 
-> Projeto de portfólio do Samuel Gomez da Silva. As regras completas estão no **Documento de Visão** e o jogo no **GDD**; esses documentos ficam fora do repositório (veja a seção 12). Quando este README e o Documento de Visão discordarem, vale o Documento de Visão. Decisões tomadas durante a programação ficam em [`docs/decisoes.md`](docs/decisoes.md).
+> Projeto de portfólio do Samuel Gomez da Silva. As regras completas estão no **Documento de Visão** e o jogo no **GDD**; esses documentos ficam fora do repositório (veja a seção 11). Quando este README e o Documento de Visão discordarem, vale o Documento de Visão. Decisões tomadas durante a programação ficam em [`docs/decisoes.md`](docs/decisoes.md).
 
 **Plataforma:** PC (Windows) primeiro; celular depois.
 
-**Jogar no navegador:** https://samuelgomezdev.github.io/marellar/ — sem instalar nada e sem servidor: o motor Java roda compilado para JavaScript dentro da página (veja a seção 11). **Inspeção 3D:** https://samuelgomezdev.github.io/marellar/inspecao/ (modo demonstração: as NCs ficam no navegador).
+**Jogar no navegador:** https://samuelgomezdev.github.io/marellar/ — sem instalar nada e sem servidor: o motor Java roda compilado para JavaScript dentro da página (veja a seção 10). **Inspeção 3D:** https://samuelgomezdev.github.io/marellar/inspecao/ (modo demonstração: as NCs ficam no navegador).
 
-## Status
+## Status e roadmap
 
-| # | Entrega | Status |
+### Feito
+
+| # | Entrega | O que tem |
 | --- | --- | --- |
-| M1 | Maven multi-módulo, `data/*.json`, carregamento e validação | ✅ |
-| M2 | Motor: relógio, barcos, gates e produção | ✅ |
-| M3 | Qualidade e inspetor | ✅ |
-| M4 | Pessoas, fornecedores e eventos | ✅ |
-| M5 | Finanças, DRE, valor da empresa, conselho | ✅ |
-| M6 | `marellar-cli` | ✅ roda N meses com jogador automático e imprime o relatório do conselho |
-| M7 | `marellar-api` | ✅ criar, estado, avançar, ordens, barco, eventos, conselho, salvar/carregar |
-| M8 | `client-godot`: telas Fábrica, Barco, Conselho | ✅ Fábrica, ficha completa do barco, Equipe, Fornecedores, Conselho e saves, tudo pelo mouse; arte v1 da planta vista de cima |
-| Web | `marellar-web` + GitHub Pages | ✅ motor compilado para JavaScript (TeaVM), cliente Godot exportado para Web, saves no navegador |
-| M9 | Inspeção 3D (three.js) na `marellar-api` | ✅ página `/inspecao/` com os 3 moldes montados pelos gates; NC no ponto clicado gravada em `inspecao/ncs.json` |
-| M10 | Estrutura de produto (`data/estrutura-produto.json`) e exterior 3D | ✅ linhas 33/47/59 no modelo do SD4 (barco → escopos STD/OPC → itens); cada item vira uma peça 3D clicável; a NC grava o código do item |
-| M11 | Interiores, sistemas e inspeção por compartimento (Aula 6 do 3D) | ✅ estrutura v3 (51/126/135 itens: praça de popa, paiol de popa, antenas, ar-condicionado por ambiente, sistemas pelos checklists FM-CQ013/FM-CQ034, 33 com o básico de um center console); v2 (32/90/98 itens) com `compartimento`, `verificar` e `ref`; casaria oca, vidros curvos, longarinas, anteparas, sala de máquinas (gerador, estabilizadores OPC) e cabines; cortes, raio-X e câmera em primeira pessoa; catálogo ampliado `data/nc-catalogo-inspecao.json` (73 defeitos em 8 categorias). A NC grava o defeito detalhado em campos próprios (`codigoDefeito`, `codigoBase`, `categoria`, `compartimento`). |
-| 3D no jogo | Inspeção 3D refeita dentro do jogo Godot, em pixel art | ✅ **Inspecionar 3D** na ficha abre o barco no gate atual (resolução do jogo, cores do modelo, luz em degraus e contorno); vistas exterior, raio-X, corte, plantas e, por compartimento, De cima e Entrar; clicar numa peça abre a NC (catálogo ampliado), que vira a ordem `RegistrarNcInspecao` do motor, vai no save e aparece como marcador colorido pela gravidade. Por enquanto a NC só registra (não gera retrabalho nem custo) |
-| Design system | Sprint 1 do plano de jogabilidade: fundação visual | ✅ tokens (`tokens.gd`) e tema gerado por script (`marellar_theme.tres`); Pixelify Sans no texto, Jersey 10 nos títulos e números; foco e navegação por mouse, teclado e controle; todo painel fecha por X, Esc/B, clique fora e o mesmo botão; sons por evento, hitstop, tremor e abrir/fechar painel; cena de amostra `scenes/amostra_tema.tscn` |
+| M1–M5 | Motor (`marellar-engine`) | Relógio, barcos, gates e produção; qualidade e inspetor; pessoas, fornecedores e eventos; finanças, DRE, valor da empresa e conselho |
+| M6 | `marellar-cli` | Roda N meses com jogador automático e imprime o relatório do conselho |
+| M7 | `marellar-api` | Criar, estado, avançar, ordens, barco, eventos, conselho, salvar/carregar |
+| M8 | `client-godot` | Fábrica, ficha completa do barco, Equipe, Fornecedores, Conselho e saves, tudo pelo mouse; arte v1 da planta vista de cima |
+| Web | `marellar-web` + GitHub Pages | Motor compilado para JavaScript (TeaVM), cliente Godot exportado para Web, saves no navegador |
+| M9 | Inspeção 3D (three.js) na `marellar-api` | Página `/inspecao/` com os 3 moldes montados pelos gates; NC no ponto clicado gravada em `inspecao/ncs.json` |
+| M10 | Estrutura de produto e exterior 3D | `data/estrutura-produto.json` com as linhas 33/47/59 (barco → escopos STD/OPC → itens); cada item vira uma peça 3D clicável; a NC grava o código do item |
+| M11 | Interiores, sistemas e inspeção por compartimento | Estrutura v3 (51/126/135 itens) com `compartimento`, `verificar` e `ref`; casaria, vidros, longarinas, anteparas, sala de máquinas e cabines; cortes, raio-X e primeira pessoa; catálogo ampliado `data/nc-catalogo-inspecao.json` (73 defeitos em 8 categorias) |
+| 3D no jogo | Inspeção 3D dentro do Godot, em pixel art | **Inspecionar 3D** na ficha abre o barco no gate atual; vistas exterior, raio-X, corte, plantas e, por compartimento, De cima e Entrar; clicar numa peça abre a NC, que vira a ordem `RegistrarNcInspecao`, vai no save e aparece como marcador pela gravidade. Por enquanto a NC só registra (não gera retrabalho nem custo) |
+| Sprint 1 | Fundação visual (design system) | Tokens (`tokens.gd`) e tema gerado por script; Pixelify Sans e Jersey 10; foco e navegação por mouse, teclado e controle; todo painel fecha por X, Esc/B, clique fora e o mesmo botão; abas G1/G2; botões desativados com dica; nenhum rótulo cortado; sons por evento, hitstop e tremor; cena de amostra `scenes/amostra_tema.tscn` |
+| Gates | Gates e conselho revistos | 9 gates (DM a ET) com pesos de HH pela equipe por fase; demissão do CEO após 3 meses ruins seguidos (seção 5) |
+| M12a | Treinamento explicado | O estado traz o efeito de cada nível e dos treinos; o painel Equipe mostra o efeito em números na dica de cada botão e no fim do treino |
+
+### Próximo
+
+O que falta das milestones M12 a M15 foi encaixado em sprints. A M16 (inspeção 3D em pixel art fora do jogo) foi substituída pelo **3D no jogo**.
+
+| Sprint | Tema | Entregas | Pronto quando |
+| --- | --- | --- | --- |
+| 2 | Achar a diversão | Aviso de pausa (M12-1); travadinhas (M12-3); cascos novos (M12-9); vendedor, propostas, prazo e multa (M14); painel de gestão (M15); rodada curta de inspeção 2D | 3 de 5 jogadores pedem mais um mês |
+| 3 | O mês 1 ensina jogando | Cenário enxuto do mês 1; mecânicas que chegam em 4 atos; dicas que apontam (M12-4); cartão de causa → custo em toda perda. O treinamento explicado (M12-7) já foi feito | 4 de 5 jogadores fecham o mês 1 sem ajuda |
+| 4 | Impacto e charme | Equipe junto do barco (M12-5); barco na piscina (M12-6); arte pendente: popa, empilhadeira e sombra (M13); mesa do conselho (M15) | — |
+| 5 | Profundidade | Barra de risco nas propostas; álbum ISO; NC do 3D gerando retrabalho e custo | Passa nas 6 métricas de diversão |
 
 ---
 
@@ -42,7 +53,7 @@ Jogar **1 mês** de fábrica com a **linha de 33 pés**:
 O MVP está pronto quando uma partida de 1 mês roda do começo ao fim:
 - primeiro pela linha de comando;
 - depois pela API;
-- por fim nas 3 telas do cliente.
+- por fim no cliente Godot (PC e navegador).
 
 O resultado tem de ser o mesmo para a mesma semente.
 
@@ -54,12 +65,13 @@ O resultado tem de ser o mesmo para a mesma semente.
 ┌──────────────────────────┐      HTTP/JSON      ┌─────────────────────────┐
 │  client-godot (Godot 4)  │  ─────────────────▶ │  marellar-api (Java 21) │
 │  telas em pixel art      │  ◀───────────────── │  Spring Boot 3, REST    │
-└──────────────────────────┘                     └────────────┬────────────┘
-                                                              │ usa
-                                                 ┌────────────▼────────────┐
-                                                 │ marellar-engine (Java)  │
-                                                 │ simulação pura, sem     │
-                                                 │ framework, 100% testável│
+└────────────┬─────────────┘                     └────────────┬────────────┘
+             │ no navegador: a mesma API                      │ usa
+             │ via JavaScriptBridge                           │
+┌────────────▼─────────────┐                     ┌────────────▼────────────┐
+│ marellar-web (TeaVM)     │ ──── compila ─────▶ │ marellar-engine (Java)  │
+│ motor em JavaScript      │                     │ simulação pura, sem     │
+└──────────────────────────┘                     │ framework, 100% testável│
                                                  └────────────┬────────────┘
                                                               │ lê
                                                  ┌────────────▼────────────┐
@@ -70,10 +82,11 @@ O resultado tem de ser o mesmo para a mesma semente.
 
 | Camada | Tecnologia | Responsabilidade |
 | --- | --- | --- |
-| `marellar-engine` | **Java 21**, sem dependências além de Jackson | Regras: tempo, gates, NC, pessoas, caixa, eventos, conselho, valuation |
+| `marellar-engine` | **Java 21**, sem dependências além de Jackson | Regras: tempo, gates, NC, pessoas, caixa, eventos, conselho, valuation, saves |
 | `marellar-cli` | **Java 21** | Roda uma partida pelo terminal e imprime o relatório do conselho |
 | `marellar-api` | **Java 21 + Spring Boot 3** | Expõe a partida por REST; guarda partidas em memória e salva em JSON |
-| `client-godot` | **Godot 4** (GDScript) | Telas em pixel art que chamam a API |
+| `marellar-web` | **Java 21 → JavaScript** (TeaVM) | O motor e a API dentro do navegador, para o jogo rodar no GitHub Pages sem servidor |
+| `client-godot` | **Godot 4** (GDScript) | Telas em pixel art e inspeção 3D; chamam a API (no navegador, o `marellar-web`) |
 | `data/` | JSON | Parâmetros de custo, tempo, probabilidades e textos |
 
 Decisões técnicas:
@@ -93,39 +106,48 @@ marellar/
 ├── README.md
 ├── pom.xml                         # Maven multi-módulo (Java 21)
 ├── mvnw, mvnw.cmd                  # Maven Wrapper (não precisa instalar Maven)
-├── docs/decisoes.md                # decisões tomadas na programação
+├── docs/
+│   ├── decisoes.md                 # decisões tomadas na programação
+│   ├── capturas/                   # capturas de tela das entregas
+│   └── ferramentas/                # exportar_barco.mjs (3D → Godot), gerar_catalogo_inspecao.py, gerar_estrutura_produto.py
 ├── data/
 │   ├── linha-33.json               # gates, HH, material, preço, cotas
-│   ├── nc-catalogo.json            # tipos de NC, gravidade, probabilidade por gate
-│   ├── pessoas.json                # equipe inicial (nomes fictícios), salários, níveis
-│   ├── fornecedores.json           # 4 perfis escondidos, PPM, prazo
+│   ├── nc-catalogo.json            # tipos de NC, gravidade, probabilidade por gate, fator de nível da equipe
+│   ├── nc-catalogo-inspecao.json   # catálogo ampliado da inspeção 3D (73 defeitos, 8 categorias)
+│   ├── estrutura-produto.json      # linhas 33/47/59: escopos STD/OPC, itens, compartimentos
+│   ├── pessoas.json                # equipe inicial (nomes fictícios), salários, níveis, treinos
+│   ├── fornecedores.json           # 3 fornecedores com perfil escondido, PPM, prazo
 │   ├── eventos.json                # eventos do MVP
-│   ├── financeiro.json             # caixa inicial, despesas fixas, múltiplo, descontos
-│   └── textos-ptbr.json            # falas do conselho e dos personagens
+│   ├── financeiro.json             # caixa inicial, despesas fixas, múltiplo, descontos, conselho
+│   └── textos-ptbr.json            # mensagens, falas do conselho e dos personagens
 ├── marellar-engine/
 │   └── src/main/java/br/marellar/engine/
 │       ├── Simulacao.java          # fachada: novaPartida, avancar, aplicarOrdem, estado
-│       ├── Relogio.java            # ticks, dias úteis, mês
-│       ├── dominio/                # Barco, Gate, NaoConformidade, Rnc, Pessoa, Fornecedor,
-│       │                           # Pedido, Cota, Caixa, Lancamento, Evento, Conselho
-│       ├── regras/                 # ProducaoRegra, QualidadeRegra, PessoasRegra,
-│       │                           # FornecedorRegra, FinanceiroRegra, EventoRegra
-│       ├── agentes/                # Inspetor (personalidade), interface Agente
+│       ├── Partida.java, Relogio.java, Aleatorio.java, MesContabil.java
+│       ├── dominio/                # Barco, NaoConformidade, NcInspecao3d, Rnc, Pessoa, Fornecedor,
+│       │                           # Pedido, CotaAReceber, Lancamento, Evento e os enums
+│       ├── regras/                 # Producao, Qualidade, Inspecao, Inspecao3d, Pessoas,
+│       │                           # Fornecedor, Financeiro, Evento, Conselho
+│       ├── agentes/                # Inspetor (personalidade)
 │       ├── ordens/                 # Ordem (sealed interface) e implementações
-│       ├── relatorio/              # RelatorioConselho, Dre, IndicadoresQualidade
-│       └── dados/                  # carregamento dos JSON de data/
+│       ├── estado/                 # EstadoPartida: a visão que a API devolve
+│       ├── relatorio/              # RelatorioConselho, Dre, IndicadoresQualidade, Valuation
+│       ├── save/                   # Save com verificação SHA-256
+│       └── dados/                  # carregamento e validação dos JSON de data/
 ├── marellar-cli/
 │   └── src/main/java/br/marellar/cli/Main.java
 ├── marellar-api/
-│   └── src/main/java/br/marellar/api/  # controllers, DTOs, PartidaService
+│   └── src/main/java/br/marellar/api/  # controllers, DTOs, PartidaService; página /inspecao/ (three.js)
 ├── marellar-web/                   # o motor compilado para JavaScript (TeaVM): a API dentro do navegador
 │   └── src/main/java/br/marellar/web/  # MotorWeb (entrada JS), ServicoWeb (rotas), json/ (JSON sem reflexão)
 ├── web/                            # montagem do site: montar_site.sh, marellar-inicio.js, template do Godot
 └── client-godot/
     ├── project.godot
-    ├── scenes/ (Fabrica.tscn, Barco.tscn, Conselho.tscn)
-    ├── scripts/ (api.gd, estado.gd, ...)
-    └── assets/ (sprites 16 px, paleta Endesga 32)
+    ├── scenes/                     # Fabrica.tscn (o jogo) e amostra_tema.tscn (design system)
+    ├── scripts/                    # fabrica.gd, ficha_barco.gd, inspecao_3d.gd, formulario_nc_3d.gd, planta.gd,
+    │                               # pixel_art.gd, sprites.gd, api.gd, tokens.gd, movimento.gd, sons.gd, ...
+    ├── ferramentas/                # gerar_tema.gd, gerar_sons.gd, conferir_barco.gd
+    └── assets/                     # barcos (modelo 3D da linha 33), fontes, sons, tema
 ```
 
 ---
@@ -140,17 +162,17 @@ marellar/
 | Produção | Só a **linha de 33 pés**; 3 a 4 barcos em produção ao mesmo tempo; gates em sequência |
 | Qualidade | Sorteio de NC por gate; inspetor detecta ou não; RNC, retrabalho ou concessão; NC escapada vira evento de garantia depois |
 | Pessoas | Equipe de produção com nível (1–5) e moral; contratar, treinar, 1:1; produtividade = HH × nível × moral |
-| Fornecedores | 3 fornecedores sintéticos; PPM, prazo, scorecard A–F; escada até **chargeback** |
+| Fornecedores | 3 fornecedores sintéticos; PPM, prazo, scorecard A–F; RNC, 8D e **chargeback** |
 | Finanças | Caixa, cotas do cliente, salários, material, DRE do mês, valor da empresa |
 | Eventos | Quebra de peça, atraso de fornecedor, acidente de trabalho, pedido de demissão |
 | Conselho | Reunião no fim do mês: metas, falas (sério + humor leve), 3 a 4 decisões para o mês seguinte |
-| Telas | Fábrica, Ficha do barco, Conselho |
+| Telas | Fábrica (galpões G1 e G2), ficha do barco, inspeção 3D, painéis Equipe, Fornecedores e Conselho, saves |
 
 ### Fora do MVP (próximas versões)
 
 - Linhas de 47 e 59 pés, segundo jogo de moldes.
 - Obras e terreno. No MVP o layout já está pronto.
-- Telas de Pessoas, Obras e Fornecedores. No MVP essas ações ficam em menus simples.
+- Tela de Obras.
 - CS1, CS2, bloqueio e troca de fornecedor. O MVP vai até o chargeback.
 - ISO 9001, salões náuticos, pós-venda como negócio, Escola Marellar, tributos detalhados.
 - Os 3 objetivos completos e a venda da empresa em 2031.
@@ -224,13 +246,15 @@ O inspetor tem falas curtas em `textos-ptbr.json`, com tom misto: sério sobre s
 
 - Equipe inicial do MVP: **12 produtivos** da linha de 33 pés, com nomes fictícios, mais 1 inspetor.
 - **Contratar:** a pessoa chega em 10 dias úteis, no nível 1, e sobe 1 nível a cada `diasParaSubirNivel` (padrão 30) até o nível 3.
-- **Treinar:** a pessoa sai da linha por X dias, sobe 1 nível (máximo 5) e reduz a chance de acidente.
+- **Treinar:** a pessoa sai da linha por `diasTreinamento` (padrão 3 dias). São dois treinos:
+  - **Técnico:** sobe 1 nível (máximo 5), de forma permanente: mais velocidade, menos chance de NC (pelo nível médio de quem trabalhou no gate) e salário maior.
+  - **NR (segurança):** põe o treino em dia; com o treino vencido, a chance de acidente dobra.
 - **1:1:** +5 de moral, gasta 0,5 h do líder. Sem 1:1 por mais de 30 dias, a moral cai 1 por dia.
 - **Pedido de demissão:** chance diária maior com moral abaixo de 40.
 
 ### 5.7 Fornecedores (modelo automotivo, até o chargeback)
 
-- **3 fornecedores sintéticos**, cada um com um perfil escondido: premium confiável, barato instável, grande indiferente ou pequeno dedicado.
+- **3 fornecedores sintéticos**, cada um com um perfil escondido: premium confiável, barato instável e grande indiferente. O motor tem um quarto perfil, pequeno dedicado, ainda sem fornecedor no `data/`.
 - PPM = peças rejeitadas ÷ peças recebidas × 1.000.000.
 - Scorecard mensal: entrega 40%, qualidade (PPM) 30%, custo 20%, resposta 10%. Nota de A a F.
 - **Chargeback:** custo documentado (HH × R$ 57 + material + frete + horas de linha parada) **+ 10% de taxa administrativa**, descontado na próxima compra.
@@ -246,7 +270,7 @@ O inspetor tem falas curtas em `textos-ptbr.json`, com tom misto: sério sobre s
   - Desconto de 5% por acidente com afastamento no mês.
   - Desconto de 3% por NC escapada.
   - Os descontos são parâmetros.
-- **Caixa negativo:** aparece alerta no conselho. Derrota após 3 meses seguidos sem crédito; isso não acontece num MVP de 1 mês, mas a regra deve estar implementada.
+- **Caixa negativo:** aparece alerta no conselho. Derrota após `mesesCaixaNegativoParaDerrota` (padrão 3) meses seguidos sem crédito.
 
 ### 5.9 Eventos do MVP
 
@@ -280,30 +304,40 @@ Indicadores de acidente (NBR 14280):
 Use `record` do Java 21 para objetos de valor e classes para entidades com estado.
 
 ```java
-// identificação
-record BarcoId(String valor) {}          // ex.: "33-007"
+// identificação e enums
 enum Linha { L33 }                        // L47, L59 depois do MVP
 enum CodigoGate { DM, BA, BF, ST, CT, PI, TR, TM, ET }
+enum StatusBarco { EM_PRODUCAO, AGUARDANDO_INSPECAO, EM_INSPECAO, AGUARDANDO_DECISAO,
+                   EM_RETRABALHO, APROVADO, PARADO_MATERIAL, ENTREGUE }
 enum Gravidade { LEVE, MEDIA, CRITICA }
+enum Origem { PROCESSO, FORNECEDOR }
 enum DecisaoNc { RETRABALHO, CONCESSAO, RNC_FORNECEDOR }
+enum Funcao { PRODUCAO, INSPETOR }
+enum SituacaoPessoa { ATIVA, A_CAMINHO, EM_TREINAMENTO, AFASTADA, DESLIGADA }
+enum Treinamento { TECNICO, SEGURANCA }
+enum PerfilFornecedor { PREMIUM_CONFIAVEL, BARATO_INSTAVEL, GRANDE_INDIFERENTE, PEQUENO_DEDICADO }
+enum MotivoDerrota { CAIXA, CONSELHO }
 
-class Barco {
-  BarcoId id; Linha linha; String cliente;
-  CodigoGate gateAtual; StatusGate status;   // EM_PRODUCAO, AGUARDANDO_INSPECAO, APROVADO, PARADO_MATERIAL
-  BigDecimal hhRestantesNoGate; int prioridade;
-  List<NaoConformidade> ncs; List<Cota> cotas;
-}
-record NaoConformidade(String id, BarcoId barco, CodigoGate gate, String tipo,
-                       Gravidade gravidade, boolean detectada, Origem origem,
-                       Optional<String> fornecedorId, BigDecimal hhRetrabalho) {}
-class Pessoa { String id; String nome; Funcao funcao; int nivel; int moral;
-               LocalDate ultimo1a1; Set<Treinamento> treinamentos; Optional<BarcoId> alocadoEm; }
-class Fornecedor { String id; String nome; PerfilFornecedor perfil /* escondido do cliente */;
-                   long pecasRecebidas, pecasRejeitadas; NotaScorecard nota; }
+class Barco { String id /* ex.: "33-007" */; Linha linha; String cliente;
+              CodigoGate gateAtual; StatusBarco status; boolean retido; int prioridade;
+              BigDecimal hhTotalDoGate, hhRestantesNoGate, hhRetrabalhoPendente;
+              List<CodigoGate> gatesAprovados; }
+class NaoConformidade { String id, barcoId; CodigoGate gate; String tipo, descricao;
+                        Gravidade gravidade; Origem origem; String fornecedorId;
+                        BigDecimal hhRetrabalho, custoMaterial; StatusNc status; DecisaoNc decisao; }
+class Pessoa { String id, nome; Funcao funcao; int nivel, moral; boolean treinoSegurancaEmDia;
+               SituacaoPessoa situacao; Treinamento treinamentoEmCurso; String alocadoEm; }
+class Fornecedor { String id, nome; PerfilFornecedor perfil /* escondido do jogador */;
+                   long pecasRecebidas, pecasRejeitadas; /* nota A–F pelo scorecard */ }
 record Lancamento(LocalDate data, TipoLancamento tipo, BigDecimal valor, String descricao) {}
-class EstadoPartida { long semente; LocalDateTime agora; Velocidade velocidade;
-                      List<Barco> barcos; List<Pessoa> pessoas; List<Fornecedor> fornecedores;
-                      Caixa caixa; List<Evento> eventos; Optional<RelatorioConselho> conselhoPendente; }
+
+// o que a API devolve (estado/EstadoPartida.java), resumido
+record EstadoPartida(long semente, LocalDate data, int hora, int mes, Velocidade velocidade,
+                     boolean pausado, MotivoPausa motivoPausa,
+                     List<BarcoVisao> barcos, List<PessoaVisao> pessoas, InspetorVisao inspetor,
+                     List<FornecedorVisao> fornecedores, Map<String, Integer> estoque, List<RncVisao> rncs,
+                     SegurancaVisao seguranca, FinanceiroVisao financeiro, RelatorioConselho conselho,
+                     MotivoDerrota derrota, List<NcInspecao3d> ncsInspecao, TreinamentosVisao treinamentos) {}
 ```
 
 **Ordens** do jogador (`sealed interface Ordem`):
@@ -371,44 +405,30 @@ Base: `/api/v1`. JSON em camelCase. Valores em reais como string decimal (`"3200
 
 - **Tema:** `client-godot/assets/tema/marellar_theme.tres`, gerado a partir do `Tokens` por `ferramentas/gerar_tema.gd` (cantos chanfrados de 2 px, grade de 8 px). Não edite o `.tres` à mão. No máximo um `BotaoAcao` por painel.
 - **Fontes:** Pixelify Sans 16 px no texto; Jersey 10 a 20 px nos títulos de tela e nos números de valor (a Pixelify sem suavização desenha o "5" parecido com "S"). Ambas OFL, sem antialiasing.
-- **Telas do MVP** (mockups fora do repositório, veja a seção 12):
-  1. **Fábrica:** baias da montagem com os barcos de 33 pés, bonequinhos andando e trabalhando, barra de topo (data, velocidade, caixa, valor, moral, NCs) e barra de baixo com os menus.
-  2. **Ficha do barco:** gates, HH e material, NCs com botões de decisão, cotas.
-  3. **Conselho:** metas, falas, decisões.
-- **Arte provisória:** retângulos e sprites simples na paleta. A arte final vem depois.
+- **Telas** (mockups fora do repositório, veja a seção 11):
+  1. **Fábrica:** galpões G1 (laminação) e G2 (montagem) em abas, baias com os barcos de 33 pés, bonequinhos andando e trabalhando, almoxarifado, barra de topo (data, velocidade, caixa, valor, moral, NCs, conselho) e barra de baixo com os menus.
+  2. **Ficha do barco:** caminho pelos gates, HH e material, NCs com botões de decisão, cotas e o botão **Inspecionar 3D**.
+  3. **Inspeção 3D:** o barco no gate atual, em pixel art; clicar numa peça registra uma NC.
+  4. **Painéis laterais:** Equipe (contratar, 1:1, treinar), Fornecedores (scorecard, estoque, pedidos), Conselho e saves.
+- **Arte v1:** planta vista de cima e sprites gerados em código (`pixel_art.gd`, `planta.gd`, `sprites.gd`). A arte final vem depois.
 
 ---
 
-## 9. Ordem de construção (milestones)
-
-| # | Entrega | Pronto quando |
-| --- | --- | --- |
-| M1 | Maven multi-módulo, `data/*.json`, carregamento e validação dos parâmetros | `mvn verify` passa; JSON inválido gera erro claro |
-| M2 | Motor: relógio, barcos, gates e produção | Teste: 1 barco sem NC passa de DM a ET com HH ≈ 1.900 |
-| M3 | Qualidade e inspetor | Teste com semente fixa: mesmas NCs e detecções a cada rodada |
-| M4 | Pessoas, fornecedores e eventos | Teste: moral baixa aumenta pedidos de demissão; chargeback = custo + 10% |
-| M5 | Finanças, DRE, valor da empresa, conselho | Teste: cotas somam 100% do preço; EBITDA × 6 bate com o relatório |
-| M6 | `marellar-cli` | `java -jar marellar-cli.jar --semente 42 --meses 1` imprime o relatório do conselho |
-| M7 | `marellar-api` | Testes de integração dos endpoints; partida de 1 mês jogável via HTTP |
-| M8 | `client-godot`: telas Fábrica, Barco, Conselho | Uma pessoa joga 1 mês só com mouse |
-
----
-
-## 10. Testes obrigatórios
+## 9. Testes obrigatórios
 
 - **Determinismo:** duas partidas com a mesma semente e as mesmas ordens têm estados iguais (comparar o JSON).
 - **Soma das cotas** = 100% do preço do barco.
-- **Dinheiro:** nenhum `double` em valores monetários. Um teste de arquitetura com ArchUnit verifica isso.
 - **Gate não aprova** com NC crítica aberta.
 - **Chargeback** = custo documentado × 1,10.
 - **Taxa de frequência e de gravidade** batem com as fórmulas da NBR 14280.
 - **Sem material:** o barco fica parado e a hora improdutiva é registrada.
 - **Valor da empresa** = EBITDA anualizado × múltiplo − descontos.
-- **Cobertura** do `marellar-engine` acima de 80%.
+- **Arquitetura** (ArchUnit): o motor não depende de Spring e não usa `double` em dinheiro.
+- **Paridade:** o motor no navegador (`marellar-web`) lê os mesmos parâmetros e escreve o mesmo JSON que a API (`ParidadeJacksonTest`).
 
 ---
 
-## 11. Como rodar
+## 10. Como rodar
 
 Pré-requisitos: **JDK 21** e **Godot 4** (o Maven vem pelo wrapper).
 
@@ -457,7 +477,7 @@ Também se joga só com teclado ou só com controle: setas ou D-pad movem o foco
 
 ---
 
-## 12. Documentos de referência
+## 11. Documentos de referência
 
 Os documentos de design ficam **fora do repositório**, na pasta local do projeto, porque o Documento de Visão cita dados reais:
 
