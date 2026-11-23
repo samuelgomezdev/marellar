@@ -7,6 +7,7 @@ import br.marellar.engine.dominio.Gravidade;
 import br.marellar.engine.dominio.Linha;
 import br.marellar.engine.dominio.MotivoDerrota;
 import br.marellar.engine.dominio.MotivoPausa;
+import br.marellar.engine.dominio.NcInspecao3d;
 import br.marellar.engine.dominio.Lancamento;
 import br.marellar.engine.relatorio.RelatorioConselho;
 import br.marellar.engine.dominio.Origem;
@@ -55,6 +56,7 @@ public record EstadoPartida(
         MotivoDerrota derrota,
         BigDecimal horasOciosas,
         long ultimoEventoId,
+        List<NcInspecao3d> ncsInspecao,
         TreinamentosVisao treinamentos) {
 
     /**
@@ -164,6 +166,7 @@ public record EstadoPartida(
     /** Caixa, cotas a receber, valor da empresa (do ultimo fechamento) e paciencia do conselho. */
     public record FinanceiroVisao(BigDecimal caixa, BigDecimal cotasAReceber, BigDecimal valorEmpresa,
                                   int pacienciaConselho, int pacienciaMaxima, int mesesCaixaNegativo,
+                                  int mesesRuinsSeguidos, int mesesRuinsParaDemissao,
                                   BigDecimal receitaDoMes, List<Lancamento> ultimosLancamentos) {}
 
     /** Indicadores de seguranca (NBR 14280) e de rotatividade. */

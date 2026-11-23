@@ -37,8 +37,32 @@ public final class ValidadorDados {
         v.textos(p.textos());
         v.itensDeFornecedor(p.catalogoNc(), p.fornecedores());
         v.itensDaLinha(p.linha33(), p.fornecedores());
+        v.catalogoInspecao(p.catalogoInspecao(), p.catalogoNc());
         if (!v.erros.isEmpty()) {
             throw new DadosInvalidosException(v.erros);
+        }
+    }
+
+    /** Cada defeito da inspecao 3D tem categoria conhecida, gravidade e um defeito-base que existe no motor. */
+    private void catalogoInspecao(CatalogoInspecao c, CatalogoNc motor) {
+        String arq = CarregadorDados.NC_CATALOGO_INSPECAO;
+        if (c.tipos().isEmpty()) {
+            erros.add(arq + ": nenhum defeito em tipos");
+        }
+        java.util.Set<String> vistos = new java.util.HashSet<>();
+        for (CatalogoInspecao.Defeito d : c.tipos()) {
+            if (!vistos.add(d.codigo())) {
+                erros.add(arq + ": defeito repetido " + d.codigo());
+            }
+            if (!c.categorias().containsKey(d.categoria())) {
+                erros.add(arq + ": " + d.codigo() + " com categoria desconhecida " + d.categoria());
+            }
+            if (d.gravidade() == null) {
+                erros.add(arq + ": " + d.codigo() + " sem gravidade");
+            }
+            if (motor.tipos().stream().noneMatch(t -> t.codigo().equals(d.base()))) {
+                erros.add(arq + ": " + d.codigo() + " aponta para um defeito-base fora do motor: " + d.base());
+            }
         }
     }
 
@@ -249,6 +273,8 @@ public final class ValidadorDados {
             regra(f.conselho().pacienciaInicial() >= 1 && f.conselho().pacienciaInicial() <= f.conselho().pacienciaMaxima(),
                     arq, "conselho.pacienciaInicial deve estar entre 1 e pacienciaMaxima");
             naoNegativo(arq, "conselho.metaCaixaMinimo", f.conselho().metaCaixaMinimo());
+            regra(f.conselho().metasPerdidasParaMesRuim() >= 1, arq, "conselho.metasPerdidasParaMesRuim deve ser pelo menos 1");
+            regra(f.conselho().mesesRuinsParaDemissao() >= 1, arq, "conselho.mesesRuinsParaDemissao deve ser pelo menos 1");
             positivo(arq, "conselho.fatorMaterialDemais", f.conselho().fatorMaterialDemais());
         }
         regra(f.decisoes().keySet().containsAll(br.marellar.engine.regras.ConselhoRegra.OPCOES), arq,
@@ -264,7 +290,7 @@ public final class ValidadorDados {
             regra(t.ehListaNaoVazia(caminho), arq, caminho + " deve ser uma lista nao vazia");
         }
         for (String caminho : List.of("eventos.gateConcluido", "eventos.gateAprovado", "eventos.barcoEntregue",
-                "eventos.fimDoMes", "eventos.ncDetectada", "eventos.ncCritica", "eventos.retrabalhoConcluido",
+                "eventos.fimDoMes", "eventos.ncInspecao3d", "eventos.ncDetectada", "eventos.ncCritica", "eventos.retrabalhoConcluido",
                 "eventos.concessao", "eventos.rncAberta", "eventos.paradoMaterial", "eventos.materialChegou",
                 "eventos.pedidoFeito", "eventos.quebraPeca", "eventos.acidente", "eventos.demissao",
                 "eventos.contratacao", "eventos.chegadaContratado", "eventos.treinamentoInicio",

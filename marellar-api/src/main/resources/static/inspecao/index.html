@@ -1590,7 +1590,7 @@ function compartimentos(ctx) {
     const K = consoleDims(ctx), yc = apoio(ctx).conves(K.u), Xc = K.u * L;
     return [
       { id: 'PLAT', nome: 'Plataforma e motores de popa', x0: -prof - 1.5, x1: 0, y0: -1, y1: alto, z0: -hB, z1: hB, piso: d.T + 0.3 },
-      { id: 'CONS', nome: 'Interior do console (WC)', x0: Xc - K.c / 2 + 0.03, x1: Xc + K.c / 2 - 0.03, y0: yc - 0.1, y1: yc + K.a, z0: -K.w / 2, z1: K.w / 2, piso: yc, olho: 1.05 },
+      { id: 'CONS', nome: 'Interior do console (WC)', x0: Xc - K.c / 2 + 0.03, x1: Xc + K.c / 2 - 0.03, y0: yc - 0.1, y1: yc + K.a, z0: -K.w / 2, z1: K.w / 2, piso: yc, olho: 0.75 },
       { id: 'PORAO', nome: 'Porão (sob o piso)', x0: 0, x1: 0.64 * L, y0: -1, y1: d.Daft - 0.03, z0: -hB, z1: hB, piso: 0.3, corte: d.Daft - 0.12 },
       { id: 'CMD', nome: 'Console e leaning post', x0: 0.33 * L, x1: 0.64 * L, y0: d.Daft - 0.03, y1: alto, z0: -hB, z1: hB, piso: yc },
       { id: 'CPT', nome: 'Praça de popa', x0: 0, x1: 0.33 * L, y0: d.Daft - 0.03, y1: alto, z0: -hB, z1: hB, piso: d.Daft },
@@ -2945,6 +2945,76 @@ renderer.setAnimationLoop(() => {
   renderer.render(scene, camera);
   rotulos.render(scene, camera);
 });
+// ---------- Exportar o barco para o jogo (Godot) ----------
+// /inspecao/?exportar=33 monta a linha com todos os opcionais e oferece dois arquivos:
+//   marellar-33.glb  -> a malha; cada item é um nó com o código como nome e os dados em extras
+//   marellar-33.json -> dimensões, gates, compartimentos (caixa, piso, ponto de entrada) e itens
+// O jogo carrega os dois de client-godot/assets/barcos/. Gerador: docs/ferramentas/exportar_barco.mjs.
+const r3 = (v) => Math.round(v * 1000) / 1000;
+async function exportarBarco(linha) {
+  linha = String(linha);
+  const { GLTFExporter } = await import('three/addons/exporters/GLTFExporter.js');
+  const estr = ESTRUTURA.linhas.find(l => String(l.linha) === linha);
+  if (!estr) throw new Error('Linha desconhecida: ' + linha);
+  for (const esc of estr.escopos) if (!esc.padrao) opcionaisLigados[linha].add(esc.codigo);
+  montarModelo(linha);
+  if (explodido) alternarExplodido();
+  aplicarVista('ext');
+  irPara(GATES.length - 1, false);
+
+  const raiz = new THREE.Group(); raiz.name = 'barco' + linha;
+  const itens = [];
+  for (const [nomeParte, g] of Object.entries(partes)) {
+    const parte = new THREE.Group(); parte.name = nomeParte; raiz.add(parte);
+    for (const c of g.children) {
+      if (c.name !== 'item') continue;
+      const it = c.userData.item, esc = c.userData.escopo;
+      const n = c.clone(true);
+      n.name = it.codigo;
+      n.traverse(o => { o.userData = {}; });
+      const dados = { codigo: it.codigo, descricao: it.descricao, tipo: it.tipo, gate: it.gate, etapa: etapaDoItem(it),
+                      peca: nomeParte, compartimento: it.compartimento || null, escopo: esc.codigo, padrao: !!esc.padrao,
+                      exclusivo: esc.exclusivo || it.exclusivo || null, casca: CASCA.has(it.modelo3d) };
+      n.userData = dados;
+      parte.add(n);
+      itens.push({ ...dados, verificar: it.verificar || [], ref: it.ref || null, lado: it.lado || null });
+    }
+  }
+  const glb = await new GLTFExporter().parseAsync(raiz, { binary: true, onlyVisible: true });
+
+  const dims = {};
+  for (const k of ['L', 'B', 'T', 'Daft', 'Dfwd', 'Hc', 'tipo']) dims[k] = d[k];
+  if (d.piso) dims.piso = d.piso;
+  const json = {
+    versao: 1, linha: +linha, gerado: 'docs/ferramentas/exportar_barco.mjs a partir de static/inspecao/index.html',
+    eixos: 'metros; x da popa (0) para a proa (L), y para cima a partir da quilha, z para boreste',
+    dims,
+    gates: GATES.map((g, i) => ({ etapa: i, id: g.id, nome: g.nome, pecas: g.pecas })),
+    compartimentos: comps.map(c => {
+      const e = pontoDeEntrada(c);
+      return { id: c.id, nome: c.nome, x0: r3(c.x0), x1: r3(c.x1), y0: r3(c.y0), y1: r3(Math.min(c.y1, 50)),
+               z0: r3(c.z0), z1: r3(c.z1), piso: r3(c.piso), corte: c.corte != null ? r3(c.corte) : null,
+               entrada: { x: r3(e.x), y: r3(e.y ?? c.piso + (c.olho ?? 1.6)), z: r3(e.z), rumo: r3(RUMO[c.id] ?? 0), inclinacao: r3(e.incl ?? -0.08) } };
+    }),
+    itens,
+  };
+  return { glb, json };
+}
+function baixar(nome, conteudo, tipo) {
+  const a = document.createElement('a');
+  a.href = URL.createObjectURL(new Blob([conteudo], { type: tipo })); a.download = nome; a.textContent = nome;
+  return a;
+}
+const pedidoExport = new URLSearchParams(location.search).get('exportar');
+if (pedidoExport) {
+  exportarBarco(pedidoExport).then(({ glb, json }) => {
+    const texto = JSON.stringify(json, null, 1);
+    window.__exportado = { glb: new Uint8Array(glb), json: texto };
+    elMsg.textContent = `Exportado: ${json.itens.length} itens, ${json.compartimentos.length} compartimentos, ${(glb.byteLength / 1048576).toFixed(1)} MB. Baixe: `;
+    elMsg.append(baixar(`marellar-${pedidoExport}.glb`, glb, 'model/gltf-binary'), ' · ', baixar(`marellar-${pedidoExport}.json`, texto, 'application/json'));
+  }).catch(e => { window.__exportado = { erro: e.message }; erro(e); });
+}
+
 if (window.__TESTE) window.__m = { THREE, scene, camera, controls, renderer, montarModelo, aplicarVista, entrar, verDeCima, sair, irPara, opcionaisLigados, escolherComp,
   get comps() { return comps; }, geo: () => ({ c: d.casaria ? geomCasaria(ctxAtual) : null, P: d.ant ? plano(ctxAtual) : null }), get itens() { return itensObj; }, get d() { return d; }, get barco() { return barco; }, olho, set rumo(v) { rumo = v; }, set inclinacao(v) { inclinacao = v; }, acharPeca, ncNoItem };
 </script>

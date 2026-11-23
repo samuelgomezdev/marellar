@@ -25,13 +25,13 @@ const NOMES_ITEM := {
 	"gelcoat": "Gel",
 	"eletrica": "Elétrica",
 	"vidro": "Vidros",
-	"motor": "Motores",
+	"motor": "Motor",
 }
 
 
 ## Em que galpão o barco está agora: "G1" (laminação) ou "G2" (montagem, piscina, carreta, marina).
 static func galpao_do_barco(b: Dictionary) -> String:
-	return "G1" if str(b["gateAtual"]) in ["RE", "DM"] and b["status"] != "ENTREGUE" else "G2"
+	return "G1" if str(b["gateAtual"]) == "DM" and b["status"] != "ENTREGUE" else "G2"
 
 
 ## Desenha o galpão pedido em `area` e devolve {id do barco: Rect2 clicável}.
@@ -57,7 +57,7 @@ static func desenhar(c: CanvasItem, area: Rect2, estado: Dictionary, selecionado
 			entregues += 1
 			continue
 		match str(b["gateAtual"]):
-			"RE", "DM":
+			"DM":
 				no_molde.append(b)
 			"PI":
 				na_piscina.append(b)
@@ -120,9 +120,7 @@ static func _desenhar_g1(c: CanvasItem, chao: Rect2, parede: Rect2, baias: Rect2
 			c.draw_line(centro, centro + Vector2(cos(ang), sin(ang)) * 8, Paleta.FUNDO, 3.0)
 		c.draw_circle(centro, 2, Paleta.FUNDO_ESCURO)
 		x += 64
-	var placa := Rect2(parede.end.x - 100, parede.position.y + 5, 94, 14)
-	c.draw_rect(placa, Paleta.FUNDO_ESCURO)
-	c.draw_string(fonte, placa.position + Vector2(4, 11), "G1 · LAMINAÇÃO", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.TECA)
+	_placa(c, fonte, parede, "G1 · LAMINAÇÃO", Paleta.TECA)
 
 	# estações de molde (1 molde por linha; a segunda é para a próxima linha)
 	var largura := floorf(baias.size.x * 0.62 / ESTACOES_MOLDE)
@@ -158,12 +156,12 @@ static func _desenhar_g1(c: CanvasItem, chao: Rect2, parede: Rect2, baias: Rect2
 	# lateral: saída de resíduos e chuveiros do vestiário
 	c.draw_rect(lateral, Paleta.FUNDO)
 	c.draw_rect(lateral.grow(-0.5), Paleta.ARMAZEM_ESCURO, false, 1.0)
-	c.draw_string(fonte, lateral.position + Vector2(6, 14), "VESTIÁRIO G1", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.TEXTO)
+	c.draw_string(fonte, lateral.position + Vector2(6, 14), "VESTIÁRIO G1", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.PAPEL)
 	for k in 4:
 		var box := Rect2(lateral.position.x + 8 + k * 26, lateral.position.y + 24, 20, 20)
 		c.draw_rect(box, Paleta.CASCO_SOMBRA)
 		c.draw_circle(box.get_center(), 3, Paleta.AGUA)
-	c.draw_string(fonte, lateral.position + Vector2(6, 70), "RESÍDUOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.TEXTO)
+	c.draw_string(fonte, lateral.position + Vector2(6, 70), "RESÍDUOS", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.PAPEL)
 	for k in 3:
 		var tambor := Vector2(lateral.position.x + 18 + k * 30, lateral.position.y + 88)
 		c.draw_circle(tambor, 9, Paleta.FUNDO_ESCURO)
@@ -206,7 +204,7 @@ static func _desenhar_mezanino(c: CanvasItem, r: Rect2, estado: Dictionary, t: f
 			c.draw_rect(Rect2(x - 1, r.position.y + 5, 34, 18), Paleta.FUNDO_ESCURO)
 			for linha in 2:
 				for coluna in 6:
-					var cor: Color = [Paleta.CRITICO, Paleta.ALERTA, Paleta.MONTAGEM_LIMPA, Paleta.AGUA][(coluna + linha + k) % 4]
+					var cor: Color = [Paleta.NAO_CONFORME, Paleta.ALERTA, Paleta.MONTAGEM_LIMPA, Paleta.AGUA][(coluna + linha + k) % 4]
 					c.draw_rect(Rect2(x + 1 + coluna * 5, r.position.y + 7 + linha * 8, 4, 6), cor)
 		else:
 			c.draw_rect(Rect2(x, r.position.y + 6, 18, 12), Paleta.CASCO_SOMBRA)
@@ -217,9 +215,7 @@ static func _desenhar_mezanino(c: CanvasItem, r: Rect2, estado: Dictionary, t: f
 	# guarda-corpo
 	c.draw_rect(Rect2(r.position.x, r.end.y - 3, r.size.x, 1), Paleta.FAIXA)
 	c.draw_rect(Rect2(r.position.x, r.end.y - 2, r.size.x, 2), Paleta.FUNDO_ESCURO)
-	var placa := Rect2(r.end.x - 92, r.position.y + 5, 86, 14)
-	c.draw_rect(placa, Paleta.FUNDO_ESCURO)
-	c.draw_string(fonte, placa.position + Vector2(4, 11), "MEZANINO +3,5 m", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.ALERTA)
+	_placa(c, fonte, r, "MEZANINO +3,5 m", Paleta.ALERTA)
 
 	# quem está sem barco fica no mezanino (e a inspetora, se não estiver inspecionando)
 	var livres: Array = []
@@ -252,12 +248,20 @@ static func _desenhar_rua(c: CanvasItem, r: Rect2, t: float, animar: bool) -> vo
 		c.draw_texture_rect(tex, Rect2(origem + Vector2(tex.get_width(), 0), Vector2(-tex.get_width(), tex.get_height())), false)
 
 
+## Placa no canto direito da parede, do tamanho do texto (nada cortado).
+static func _placa(c: CanvasItem, fonte: Font, parede: Rect2, texto: String, cor: Color) -> void:
+	var largura := fonte.get_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, -1, 16).x + 8
+	var placa := Rect2(parede.end.x - largura - 6, parede.position.y + 4, largura, 18)
+	c.draw_rect(placa, Paleta.FUNDO_ESCURO)
+	c.draw_string(fonte, placa.position + Vector2(4, 14), texto, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, cor)
+
+
 static func _desenhar_patio(c: CanvasItem, r: Rect2, estado: Dictionary, fonte: Font) -> void:
 	# almoxarifado: um palete por item, com uma caixa por kit (até 4) e o nome inteiro
 	var itens: Array = estado["estoque"].keys()
 	itens.sort()
-	var x := r.position.x + 192  # o canto esquerdo fica para o cartão do barco selecionado
-	c.draw_string(fonte, Vector2(x, r.position.y + 11), "ALMOXARIFADO", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.ARMAZEM_ESCURO)
+	var x := r.position.x + 190  # o canto esquerdo fica para o cartão do barco selecionado
+	c.draw_string(fonte, Vector2(x, r.position.y + 13), "ALMOXARIFADO", HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.ARMAZEM_ESCURO)
 	for item in itens:
 		var kits := int(estado["estoque"][item])
 		var cor: Color = CORES_ITEM.get(item, Paleta.MADEIRA)
@@ -273,9 +277,9 @@ static func _desenhar_patio(c: CanvasItem, r: Rect2, estado: Dictionary, fonte: 
 			c.draw_rect(Rect2(caixa.position.x + 1, caixa.position.y + 1, caixa.size.x - 2, 1), cor.lightened(0.3))
 		var nome: String = NOMES_ITEM.get(item, item)
 		c.draw_string(fonte, Vector2(palete.end.x + 3, palete.end.y - 2), "x%d" % kits, HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
-				Paleta.CRITICO if kits == 0 else Paleta.FUNDO)
-		c.draw_string(fonte, Vector2(x, r.end.y - 3), nome, HORIZONTAL_ALIGNMENT_LEFT, 60, 16, Paleta.ARMAZEM_ESCURO)
-		x += 64
+				Tokens.ATENCAO if kits == 0 else Paleta.FUNDO)
+		c.draw_string(fonte, Vector2(x, r.end.y - 3), nome, HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.ARMAZEM_ESCURO)
+		x += 68
 		if x > r.end.x - 50:
 			break
 
@@ -284,7 +288,7 @@ static func _desenhar_patio(c: CanvasItem, r: Rect2, estado: Dictionary, fonte: 
 
 static func _etapa(gate: String) -> PixelArt.Etapa:
 	match gate:
-		"RE", "DM":
+		"DM":
 			return PixelArt.Etapa.MOLDE
 		"BA":
 			return PixelArt.Etapa.ABERTO
@@ -297,7 +301,7 @@ static func _barco_na_baia(c: CanvasItem, baia: Rect2, b: Dictionary, estado: Di
 		t: float, animar: bool, fonte: Font) -> Rect2:
 	var gate: String = b["gateAtual"]
 	var etapa := _etapa(gate)
-	var progresso := 0.0 if gate == "RE" else float(b["progressoGate"])
+	var progresso := float(b["progressoGate"])
 	if b["status"] == "PARADO_MATERIAL":
 		# barco parado: a baia pulsa em vermelho (GDD, Luz)
 		var pulso := 0.12 + 0.10 * sin(t * 4.0)
@@ -339,7 +343,7 @@ static func _barco_na_baia(c: CanvasItem, baia: Rect2, b: Dictionary, estado: Di
 			Paleta.PRODUCAO_SUJA if etapa == PixelArt.Etapa.MOLDE else Paleta.MONTAGEM_LIMPA_ESCURA)
 	_balao_do_barco(c, b, Vector2(casco.end.x - 4, casco.position.y - 4), t)
 	if b["id"] == selecionado:
-		c.draw_rect(casco.grow(4), Paleta.ALERTA, false, 1.0)
+		c.draw_rect(casco.grow(4), Tokens.TEXTO, false, 1.0)   # seleção (branco: não confunde com o foco nem com a ação)
 	return casco.grow(8)
 
 
@@ -375,7 +379,7 @@ static func _carreta(c: CanvasItem, rua: Rect2, b: Dictionary, selecionado: Stri
 	c.draw_set_transform(Vector2.ZERO)
 	c.draw_texture(PixelArt.caminhao(), Vector2(area.end.x + 4, area.position.y + 6))
 	if b["id"] == selecionado:
-		c.draw_rect(area.grow(3), Paleta.ALERTA, false, 1.0)
+		c.draw_rect(area.grow(3), Tokens.TEXTO, false, 1.0)
 	return area.grow(4)
 
 
@@ -402,7 +406,7 @@ static func _desenhar_piscina(c: CanvasItem, r: Rect2, barcos: Array, selecionad
 		c.draw_string(fonte, Vector2(casco.position.x - 4, casco.end.y + 14), b["id"], HORIZONTAL_ALIGNMENT_LEFT, -1, 16, Paleta.CASCO)
 		_balao_do_barco(c, b, Vector2(casco.end.x - 4, casco.position.y - 4), t)
 		if b["id"] == selecionado:
-			c.draw_rect(casco.grow(4), Paleta.ALERTA, false, 1.0)
+			c.draw_rect(casco.grow(4), Tokens.TEXTO, false, 1.0)
 		clicaveis[b["id"]] = casco.grow(6)
 
 
@@ -417,9 +421,9 @@ static func _desenhar_marina(c: CanvasItem, r: Rect2, barcos: Array, entregues: 
 	for b in barcos:
 		var linha := Rect2(r.position.x + 2, y - 11, r.size.x - 4, 13)
 		if b["id"] == selecionado:
-			c.draw_rect(linha, Color(Paleta.ALERTA, 0.25))
+			c.draw_rect(linha, Color(Tokens.TEXTO, 0.25))
 		c.draw_string(fonte, Vector2(r.position.x + 4, y), "%s · %s" % [b["id"], b["gateAtual"]], HORIZONTAL_ALIGNMENT_LEFT, -1, 16,
-				Paleta.TEXTO)
+				Tokens.TEXTO)
 		clicaveis[b["id"]] = linha
 		y += 13
 		if y > r.end.y:

@@ -8,28 +8,44 @@ signal fechar
 signal priorizar
 signal alternar_segurar
 signal decidir_nc(nc_id: String, decisao: String)
+signal inspecionar
 
-const GATES := ["RE", "DM", "BA", "BF", "ST", "CT", "PI", "TR", "TM", "ET"]
+const GATES := ["DM", "BA", "BF", "ST", "CT", "PI", "TR", "TM", "ET"]
 const NOMES_STATUS_NC := {"EM_RETRABALHO": "em retrabalho", "RESOLVIDA": "fechada", "CONCEDIDA": "concessão",
 	"PENDENTE_INSPECAO": "pendente"}
 const NOMES_GRAVIDADE := {"LEVE": "leve", "MEDIA": "média", "CRITICA": "CRÍTICA"}
 const MARGEM := 6.0
 const LARGURA_ESQUERDA := 196.0
-const ALTURA_BOTOES := 22.0
+const ALTURA_BOTOES := 26.0
+const CABECALHO := 24.0   # faixa do título (Jersey 10 a 20 px tem 23 px de altura)
 
 var barco: Dictionary = {}
 var hoje := 0
 var fonte: Font
 var fonte_titulo: Font
 var tamanho_texto := 16
-var tamanho_titulo := 8
+var tamanho_titulo := Tokens.TAMANHO_TITULO
 var animado := false
+
+## Aberta é o estado (a lógica usa isto); o `visible` acompanha com a animação de abrir e fechar (Movimento).
+var aberta := false:
+	set(v):
+		if v == aberta:
+			return
+		aberta = v
+		if v:
+			Movimento.abrir(self)
+		else:
+			Movimento.fechar(self)
 
 var _lista_ncs: VBoxContainer
 var _rolagem_ncs: ScrollContainer
 var _assinatura_ncs := ""
 var _botao_prioridade: Button
 var _botao_segurar: Button
+var botao_3d: Button
+var _botao_fechar: Button
+var _primeiro_retrabalho: Button   # ação principal da ficha quando há NC esperando decisão
 
 
 func _ready() -> void:
@@ -46,10 +62,16 @@ func _ready() -> void:
 	botoes.add_theme_constant_override("separation", 4)
 	add_child(botoes)
 	botoes.add_child(_botao("< Fábrica", func(): fechar.emit()))
+	botao_3d = _botao("Inspecionar 3D", func(): inspecionar.emit())
+	botao_3d.tooltip_text = "Abre o barco em 3D, no estado do gate atual."
+	botoes.add_child(botao_3d)
 	_botao_prioridade = _botao("Prioridade 1", func(): priorizar.emit())
 	botoes.add_child(_botao_prioridade)
 	_botao_segurar = _botao("Segurar gate", func(): alternar_segurar.emit())
 	botoes.add_child(_botao_segurar)
+	_botao_fechar = _botao("X", func(): fechar.emit())
+	_botao_fechar.tooltip_text = "Fechar (Esc)"
+	add_child(_botao_fechar)
 	resized.connect(_posicionar)
 	_posicionar()
 
@@ -74,13 +96,13 @@ func _process(_delta: float) -> void:
 
 func _area_direita() -> Rect2:
 	var x := MARGEM + LARGURA_ESQUERDA + MARGEM
-	return Rect2(x, 18, size.x - x - MARGEM, size.y - 18 - ALTURA_BOTOES - MARGEM)
+	return Rect2(x, CABECALHO, size.x - x - MARGEM, size.y - CABECALHO - ALTURA_BOTOES - MARGEM)
 
 
 ## Caixa das NCs (esquerda) e das cotas (direita), abaixo do caminho pelos gates.
 func _caixas_inferiores() -> Array[Rect2]:
 	var d := _area_direita()
-	var topo := d.position.y + 82
+	var topo := d.position.y + 90
 	var altura := d.end.y - topo
 	var meia := floorf((d.size.x - MARGEM) / 2)
 	return [Rect2(d.position.x, topo, meia, altura), Rect2(d.position.x + meia + MARGEM, topo, d.size.x - meia - MARGEM, altura)]
@@ -96,6 +118,8 @@ func _posicionar() -> void:
 	var botoes := get_node("Botoes") as HBoxContainer
 	botoes.position = Vector2(MARGEM, size.y - ALTURA_BOTOES - 2)
 	botoes.size = Vector2(size.x - 2 * MARGEM, ALTURA_BOTOES - 2)
+	_botao_fechar.position = Vector2(size.x - 18 - MARGEM, 2)
+	_botao_fechar.size = Vector2(18, 20)
 
 
 # ---------------------------------------------------------------- NCs (Controls, com botões)
@@ -105,40 +129,68 @@ func _reconstruir_ncs() -> void:
 	if assinatura == _assinatura_ncs:
 		return
 	_assinatura_ncs = assinatura
+	var dono := get_viewport().gui_get_focus_owner()
+	var chave_foco := str(dono.get_meta("chave", "")) if dono != null and _lista_ncs.is_ancestor_of(dono) else ""
+	_primeiro_retrabalho = null
 	for filho in _lista_ncs.get_children():
+		_lista_ncs.remove_child(filho)
 		filho.queue_free()
+	if not chave_foco.is_empty():
+		_refocar.call_deferred(chave_foco)
 	if barco.is_empty():
 		return
 	var ncs: Array = barco["ncs"].duplicate()
 	# abertas primeiro, depois as mais recentes
 	ncs.sort_custom(_antes_na_lista)
 	if ncs.is_empty():
-		_lista_ncs.add_child(_rotulo("Nenhuma NC neste barco.", Paleta.PISO_ESCURO))
+		_lista_ncs.add_child(_rotulo("Nenhuma NC neste barco.", Tokens.TEXTO_CALMO))
 	for nc in ncs:
 		var aberta: bool = nc["status"] == "ABERTA"
-		var cor := Paleta.CRITICO if aberta else (Paleta.MONTAGEM_LIMPA if nc["status"] == "RESOLVIDA" else Paleta.ALERTA)
+		var cor := Tokens.NC if aberta else (Tokens.OK if nc["status"] == "RESOLVIDA" else Tokens.ATENCAO)
 		_lista_ncs.add_child(_rotulo("%s %s · %s %s" % [nc["id"], nc["descricao"], nc["gate"],
 				NOMES_GRAVIDADE.get(nc["gravidade"], nc["gravidade"])], cor))
 		if not aberta:
 			var situacao: String = NOMES_STATUS_NC.get(nc["status"], str(nc["status"]).to_lower())
 			if nc["status"] == "EM_RETRABALHO":
 				situacao += " %d HH" % int(nc["hhRetrabalho"])
-			_lista_ncs.add_child(_rotulo("   " + situacao, Paleta.PISO_ESCURO))
+			_lista_ncs.add_child(_rotulo("   " + situacao, Tokens.TEXTO_CALMO))
 			continue
 		var acoes := HBoxContainer.new()
 		acoes.add_theme_constant_override("separation", 2)
 		var retrabalho := _botao("Retrabalho", func(): decidir_nc.emit(nc["id"], "RETRABALHO"))
 		retrabalho.tooltip_text = "Conserta agora: %d HH." % int(nc["hhRetrabalho"])
+		retrabalho.set_meta("chave", "%s/RETRABALHO" % nc["id"])
 		acoes.add_child(retrabalho)
+		if _primeiro_retrabalho == null:
+			_primeiro_retrabalho = retrabalho
+			retrabalho.theme_type_variation = "BotaoAcao"   # a única ação principal da ficha
 		var concessao := _botao("Concessão", func(): decidir_nc.emit(nc["id"], "CONCESSAO"))
+		concessao.set_meta("chave", "%s/CONCESSAO" % nc["id"])
 		concessao.disabled = nc["gravidade"] == "CRITICA"
 		concessao.tooltip_text = "NC crítica não aceita concessão." if concessao.disabled else "Libera sem consertar: risco de garantia."
 		acoes.add_child(concessao)
 		if nc["origem"] == "FORNECEDOR":
 			var rnc := _botao("RNC", func(): decidir_nc.emit(nc["id"], "RNC_FORNECEDOR"))
+			rnc.set_meta("chave", "%s/RNC" % nc["id"])
 			rnc.tooltip_text = "Abre RNC contra o fornecedor (chargeback)."
 			acoes.add_child(rnc)
 		_lista_ncs.add_child(acoes)
+
+
+## Ao abrir a ficha, o foco vai para a ação principal: Retrabalho da primeira NC aberta; sem NC aberta, Inspecionar 3D.
+func focar_acao_principal() -> void:
+	var alvo: Button = _primeiro_retrabalho if _primeiro_retrabalho != null else botao_3d
+	alvo.call_deferred("grab_focus")
+
+
+## A lista foi refeita: o foco volta para o mesmo botão da mesma NC; se a NC foi decidida, para a próxima ação principal.
+func _refocar(chave: String) -> void:
+	for acoes in _lista_ncs.get_children():
+		for b in acoes.get_children():
+			if b is Button and str(b.get_meta("chave", "")) == chave:
+				b.grab_focus()
+				return
+	focar_acao_principal()
 
 
 ## NCs abertas primeiro; dentro do mesmo grupo, as mais recentes.
@@ -153,20 +205,21 @@ static func _antes_na_lista(a: Dictionary, b: Dictionary) -> bool:
 # ---------------------------------------------------------------- desenho
 
 func _draw() -> void:
-	draw_rect(Rect2(Vector2.ZERO, size), Paleta.FUNDO_ESCURO)
-	draw_rect(Rect2(0, size.y - ALTURA_BOTOES - 3, size.x, ALTURA_BOTOES + 3), Paleta.FUNDO)
+	draw_rect(Rect2(Vector2.ZERO, size), Tokens.FUNDO)
+	draw_rect(Rect2(0, size.y - ALTURA_BOTOES - 3, size.x, ALTURA_BOTOES + 3), Tokens.PAINEL)
 	if barco.is_empty():
 		return
 	var t := Time.get_ticks_msec() / 1000.0
 
 	# cabeçalho
-	draw_string(fonte_titulo, Vector2(MARGEM, 12), "BARCO %s" % barco["id"], HORIZONTAL_ALIGNMENT_LEFT, -1,
-			tamanho_titulo, Paleta.ALERTA)
+	var titulo := "BARCO %s" % barco["id"]
+	draw_string(fonte_titulo, Vector2(MARGEM, 19), titulo, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_titulo, Tokens.TEXTO)
+	var x_sub := MARGEM + fonte_titulo.get_string_size(titulo, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_titulo).x + 10
 	var status := "entregue" if barco["status"] == "ENTREGUE" else "P%d" % int(barco["prioridade"])
-	draw_string(fonte, Vector2(MARGEM + 112, 12), "Linha 33 pés · %s · %s%s" % [barco["cliente"], status,
-			" · segurado" if barco["retido"] else ""], HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Paleta.TEXTO)
+	draw_string(fonte, Vector2(x_sub, 18), "Linha 33 pés · %s · %s%s" % [barco["cliente"], status,
+			" · segurado" if barco["retido"] else ""], HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Tokens.TEXTO_CALMO)
 
-	_desenhar_baia(Rect2(MARGEM, 18, LARGURA_ESQUERDA, size.y - 18 - ALTURA_BOTOES - MARGEM), t)
+	_desenhar_baia(Rect2(MARGEM, CABECALHO, LARGURA_ESQUERDA, size.y - CABECALHO - ALTURA_BOTOES - MARGEM), t)
 	_desenhar_gates(_area_direita())
 	var caixas := _caixas_inferiores()
 	_caixa(caixas[0], "NÃO CONFORMIDADES")
@@ -186,10 +239,10 @@ func _desenhar_baia(area: Rect2, t: float) -> void:
 		draw_line(Vector2(x, area.position.y), Vector2(x, area.end.y), linha)
 	for y in range(int(area.position.y) + 16, int(area.end.y), 16):
 		draw_line(Vector2(area.position.x, y), Vector2(area.end.x, y), linha)
-	draw_rect(Rect2(area.position, Vector2(area.size.x, 18)), Paleta.FUNDO)
+	draw_rect(Rect2(area.position, Vector2(area.size.x, 20)), Tokens.PAINEL)
 
 	# casco visto de cima em escala 2, com a equipe em volta
-	var tex := PixelArt.casco(etapa, 0.0 if gate == "RE" else float(barco["progressoGate"]))
+	var tex := PixelArt.casco(etapa, float(barco["progressoGate"]))
 	var escala := 2.0
 	var tamanho := tex.get_size() * escala
 	var pos := (area.position + Vector2((area.size.x - tamanho.x) / 2, 24 + (area.size.y - 52 - tamanho.y) / 2)).floor()
@@ -211,18 +264,18 @@ func _desenhar_baia(area: Rect2, t: float) -> void:
 			draw_texture_rect(p, Rect2(Vector2(px, py), p.get_size() * escala), false)
 
 	var x := area.position.x + 4
-	draw_string(fonte, Vector2(x, area.position.y + 13), "%s · %s" % [gate, barco["nomeGate"]],
-			HORIZONTAL_ALIGNMENT_LEFT, area.size.x - 8, tamanho_texto, Paleta.TEXTO_CLARO)
-	draw_rect(Rect2(area.position.x, area.end.y - 26, area.size.x, 26), Paleta.FUNDO)
+	draw_string(fonte, Vector2(x, area.position.y + 15), "%s · %s" % [gate, barco["nomeGate"]],
+			HORIZONTAL_ALIGNMENT_LEFT, area.size.x - 8, tamanho_texto, Tokens.TEXTO)
+	draw_rect(Rect2(area.position.x, area.end.y - 26, area.size.x, 26), Tokens.PAINEL)
 	var barra := Rect2(x, area.end.y - 22, area.size.x - 8, 3)
-	draw_rect(barra, Paleta.FUNDO_ESCURO)
-	draw_rect(Rect2(barra.position, Vector2(barra.size.x * float(barco["progressoGate"]), 3)), Paleta.MONTAGEM_LIMPA)
-	draw_string(fonte, Vector2(x, area.end.y - 5), "Gate %d%% · %d pessoa(s)" % [int(float(barco["progressoGate"]) * 100),
-			alocadas.size()], HORIZONTAL_ALIGNMENT_LEFT, area.size.x - 8, tamanho_texto, Paleta.TEXTO)
+	draw_rect(barra, Tokens.FUNDO)
+	draw_rect(Rect2(barra.position, Vector2(barra.size.x * float(barco["progressoGate"]), 3)), Tokens.MARCA_CLARA)
+	Texto.desenhar(self, Vector2(x, area.end.y - 4), "Gate %d%% · %d pessoa(s)" % [int(float(barco["progressoGate"]) * 100),
+			alocadas.size()], Tokens.TEXTO)
 
 
 func _desenhar_gates(area: Rect2) -> void:
-	var caixa := Rect2(area.position, Vector2(area.size.x, 76))
+	var caixa := Rect2(area.position, Vector2(area.size.x, 84))
 	_caixa(caixa, "CAMINHO PELOS GATES")
 	var aprovados: Array = barco["gatesAprovados"]
 	var atual: String = barco["gateAtual"]
@@ -232,75 +285,74 @@ func _desenhar_gates(area: Rect2) -> void:
 	var largura := floorf((caixa.size.x - 8 - 2 * (GATES.size() - 1)) / GATES.size())
 	for i in GATES.size():
 		var g: String = GATES[i]
-		var r := Rect2(caixa.position.x + 4 + i * (largura + 2), caixa.position.y + 16, largura, 14)
-		var fundo := Paleta.ARMAZEM_ESCURO
-		var texto := Paleta.PISO_ESCURO
+		var r := Rect2(caixa.position.x + 4 + i * (largura + 2), caixa.position.y + 21, largura, 18)
+		var fundo := Tokens.FUNDO
+		var texto := Tokens.TEXTO_CALMO
 		if g in aprovados:
-			fundo = Paleta.MONTAGEM_LIMPA_ESCURA
-			texto = Paleta.TEXTO_CLARO
+			fundo = Tokens.OK
+			texto = Tokens.FUNDO
 		if g == atual and barco["status"] != "ENTREGUE":
-			fundo = Paleta.NAO_CONFORME_ESCURO if ncs_abertas else Paleta.ALERTA_ESCURO
-			texto = Paleta.TEXTO_CLARO
+			fundo = Tokens.NC if ncs_abertas else Tokens.MARCA
+			texto = Tokens.TEXTO
 		draw_rect(r, fundo)
 		if g == atual and barco["status"] != "ENTREGUE":
-			draw_rect(r.grow(-0.5), Paleta.ALERTA, false, 1.0)
-		draw_string(fonte, Vector2(r.position.x, r.end.y - 2), g, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, tamanho_texto, texto)
+			draw_rect(r.grow(-0.5), Tokens.TEXTO, false, 1.0)
+		draw_string(fonte, Vector2(r.position.x, r.end.y - 3), g, HORIZONTAL_ALIGNMENT_CENTER, r.size.x, tamanho_texto, texto)
 
-	var y := caixa.position.y + 46
+	var y := caixa.position.y + 58
 	_linha_valor(caixa, y, "Horas-homem", "%s de %s" % [_milhar(barco["hhConcluidas"]), _milhar(barco["hhPrevistas"])],
-			float(barco["hhConcluidas"]) / maxf(1.0, float(barco["hhPrevistas"])), Paleta.MONTAGEM_LIMPA)
-	_linha_valor(caixa, y + 16, "Material", "R$ %s mil de %s mil" % [_mil(barco["materialAplicado"]), _mil(barco["materialPrevisto"])],
-			float(barco["materialAplicado"]) / maxf(1.0, float(barco["materialPrevisto"])), Paleta.AGUA)
+			float(barco["hhConcluidas"]) / maxf(1.0, float(barco["hhPrevistas"])), Tokens.MARCA_CLARA)
+	_linha_valor(caixa, y + 19, "Material", "R$ %s mil de %s mil" % [_mil(barco["materialAplicado"]), _mil(barco["materialPrevisto"])],
+			float(barco["materialAplicado"]) / maxf(1.0, float(barco["materialPrevisto"])), Tokens.MARCA_CLARA)
 
 
 func _linha_valor(caixa: Rect2, y: float, rotulo: String, valor: String, fracao: float, cor: Color) -> void:
 	var x := caixa.position.x + 4
-	draw_string(fonte, Vector2(x, y), rotulo, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Paleta.PISO_ESCURO)
-	var barra := Rect2(x + 76, y - 6, caixa.size.x * 0.32, 3)
-	draw_rect(barra, Paleta.FUNDO_ESCURO)
+	draw_string(fonte, Vector2(x, y), rotulo, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Tokens.TEXTO_CALMO)
+	var largura_rotulo := fonte.get_string_size("Horas-homem", HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto).x   # o rótulo mais largo
+	var barra := Rect2(x + largura_rotulo + 8, y - 6, caixa.size.x * 0.24, 3)
+	draw_rect(barra, Tokens.FUNDO)
 	draw_rect(Rect2(barra.position, Vector2(barra.size.x * clampf(fracao, 0.0, 1.0), 3)), cor)
-	draw_string(fonte, Vector2(barra.end.x + 6, y), valor, HORIZONTAL_ALIGNMENT_RIGHT, caixa.end.x - barra.end.x - 10,
-			tamanho_texto, Paleta.TEXTO_CLARO)
+	Texto.desenhar(self, Vector2(barra.end.x + 6, y), valor, Tokens.TEXTO, HORIZONTAL_ALIGNMENT_RIGHT, caixa.end.x - barra.end.x - 10)
 
 
 func _desenhar_cotas(caixa: Rect2) -> void:
 	_caixa(caixa, "COTAS DO CLIENTE")
 	var x := caixa.position.x + 4
-	var y := caixa.position.y + 28
+	var y := caixa.position.y + 36
 	var direita := caixa.size.x - 8
 	for c in barco["cotas"]:
-		var nome := "Contrato" if c["gate"] == null else "Gate %s" % c["gate"]
+		var nome := "Contrato" if c["gate"] == null else str(c["gate"])   # só a sigla do gate: cabe ao lado da situação
 		var situacao := "-"
-		var cor := Paleta.PISO_ESCURO
+		var cor := Tokens.TEXTO_CALMO
 		match c["situacao"]:
 			"PAGA":
 				situacao = "pago"
-				cor = Paleta.MONTAGEM_LIMPA
+				cor = Tokens.OK
 			"A_RECEBER":
 				var dias := maxi(0, int(c["diaRecebimento"]) - hoje)
 				situacao = "a receber (%d d)" % dias if dias > 0 else "a receber"
-				cor = Paleta.ALERTA
+				cor = Tokens.MARCA_CLARA
 			_:
 				if c["gate"] == barco["gateAtual"]:
 					situacao = "no gate"
-					cor = Paleta.ALERTA
-		draw_string(fonte, Vector2(x, y), "%s %d%%" % [nome, int(float(c["percentual"]))], HORIZONTAL_ALIGNMENT_LEFT, -1,
-				tamanho_texto, Paleta.TEXTO)
-		draw_string(fonte, Vector2(x, y), situacao, HORIZONTAL_ALIGNMENT_RIGHT, direita, tamanho_texto, cor)
-		y += 15
+					cor = Tokens.TEXTO
+		Texto.desenhar(self, Vector2(x, y), "%s %d%%" % [nome, int(float(c["percentual"]))], Tokens.TEXTO)
+		Texto.desenhar(self, Vector2(x, y), situacao, cor, HORIZONTAL_ALIGNMENT_RIGHT, direita)
+		y += 18
 	var fracao := float(barco["valorRecebido"]) / maxf(1.0, float(barco["precoVenda"]))
 	var barra := Rect2(x, caixa.end.y - 22, direita, 3)
-	draw_rect(barra, Paleta.FUNDO_ESCURO)
-	draw_rect(Rect2(barra.position, Vector2(barra.size.x * fracao, 3)), Paleta.MONTAGEM_LIMPA)
-	draw_string(fonte, Vector2(x, caixa.end.y - 5), "Recebido", HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Paleta.PISO_ESCURO)
-	draw_string(fonte, Vector2(x, caixa.end.y - 5), "R$ %s mil de %s mil" % [_mil(barco["valorRecebido"]), _mil(barco["precoVenda"])],
-			HORIZONTAL_ALIGNMENT_RIGHT, direita, tamanho_texto, Paleta.MONTAGEM_LIMPA)
+	draw_rect(barra, Tokens.FUNDO)
+	draw_rect(Rect2(barra.position, Vector2(barra.size.x * fracao, 3)), Tokens.OK)
+	draw_string(fonte, Vector2(x, caixa.end.y - 5), "Recebido", HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Tokens.TEXTO_CALMO)
+	Texto.desenhar(self, Vector2(x, caixa.end.y - 5), "R$ %s de %s mil" % [_mil(barco["valorRecebido"]), _mil(barco["precoVenda"])],
+			Tokens.OK, HORIZONTAL_ALIGNMENT_RIGHT, direita)
 
 
 func _caixa(r: Rect2, titulo: String) -> void:
-	draw_rect(r, Paleta.FUNDO)
-	draw_rect(r.grow(-0.5), Paleta.ARMAZEM_ESCURO, false, 1.0)
-	draw_string(fonte_titulo, r.position + Vector2(4, 12), titulo, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_titulo, Paleta.ALERTA)
+	draw_rect(r, Tokens.PAINEL)
+	draw_rect(r.grow(-0.5), Tokens.FUNDO, false, 1.0)
+	draw_string(fonte, r.position + Vector2(4, 15), titulo, HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Tokens.TEXTO)
 
 
 # ---------------------------------------------------------------- utilitários
@@ -308,17 +360,20 @@ func _caixa(r: Rect2, titulo: String) -> void:
 func _botao(texto: String, acao: Callable) -> Button:
 	var b := Button.new()
 	b.text = texto
-	b.focus_mode = Control.FOCUS_NONE
 	b.pressed.connect(acao)
 	return b
 
 
-func _rotulo(texto: String, cor: Color) -> Label:
-	var r := Label.new()
-	r.text = texto
-	r.autowrap_mode = TextServer.AUTOWRAP_WORD
+func _rotulo(texto: String, cor: Color) -> RichTextLabel:
+	var r := RichTextLabel.new()
+	r.bbcode_enabled = true
+	r.fit_content = true
+	r.scroll_active = false
+	r.autowrap_mode = TextServer.AUTOWRAP_WORD_SMART
 	r.custom_minimum_size.x = _lista_ncs.custom_minimum_size.x
-	r.add_theme_color_override("font_color", cor)
+	r.mouse_filter = Control.MOUSE_FILTER_PASS
+	r.add_theme_color_override("default_color", cor)
+	r.text = Texto.bbcode(texto)   # números em Jersey
 	return r
 
 

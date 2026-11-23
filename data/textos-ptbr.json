@@ -66,7 +66,7 @@
     },
     "derrota": {
       "CAIXA": "Três meses de caixa negativo. O conselho fechou a empresa.",
-      "CONSELHO": "O conselho perdeu a paciência. Você foi substituído no cargo de CEO."
+      "CONSELHO": "Três meses ruins seguidos com o conselho. Você foi substituído no cargo de CEO."
     }
   },
   "metas": [
@@ -108,6 +108,7 @@
     "demissao": "{pessoa} pediu demissão.",
     "contratacao": "{pessoa} contratado(a). Chega em {dias} dias úteis.",
     "chegadaContratado": "{pessoa} começou hoje na linha (nível {nivel}).",
+    "ncInspecao3d": "NC {numero} marcada na inspeção 3D do {barco} (gate {gate}): {descricao}, {gravidade}.",
     "treinamentoInicio": "{pessoa} saiu da linha para o treinamento de {treinamento} ({dias} dias).",
     "treinamentoFimTecnico": "{pessoa} terminou o treinamento técnico e subiu para o nível {nivel}: chance de NC {nc}, velocidade {velocidade}.",
     "treinamentoFimSeguranca": "{pessoa} está com a NR em dia: chance de acidente {acidente} em relação à NR vencida.",

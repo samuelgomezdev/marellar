@@ -16,6 +16,7 @@ import br.marellar.engine.dominio.CodigoGate;
 import br.marellar.engine.estado.EstadoPartida.PessoaVisao;
 import br.marellar.engine.ordens.Ordem;
 import br.marellar.engine.ordens.OrdemInvalidaException;
+import br.marellar.engine.regras.Inspecao3dRegra;
 import br.marellar.engine.regras.InspecaoRegra;
 import br.marellar.engine.regras.ProducaoRegra;
 import br.marellar.engine.regras.QualidadeRegra;
@@ -201,6 +202,7 @@ public final class Simulacao {
             case Ordem.FazerUmAUm o -> PessoasRegra.fazerUmAUm(partida, o.pessoaId());
             case Ordem.EscolherDecisaoConselho o -> ConselhoRegra.escolher(partida, o.opcaoId());
             case Ordem.MudarVelocidade o -> partida.definirVelocidade(o.velocidade());
+            case Ordem.RegistrarNcInspecao o -> Inspecao3dRegra.registrar(partida, o);
         }
         historico.add(new Save.OrdemNoTempo(partida.relogio().tick(), ordem));
     }
@@ -267,6 +269,7 @@ public final class Simulacao {
                 partida.derrota().orElse(null),
                 partida.horasOciosas(),
                 partida.eventos().size(),
+                List.copyOf(partida.ncsInspecao()),
                 treinamentosVisao());
     }
 
@@ -431,6 +434,7 @@ public final class Simulacao {
         int n = partida.lancamentos().size();
         return new FinanceiroVisao(partida.caixa(), aReceber, partida.valorEmpresa(), partida.pacienciaConselho(),
                 partida.parametros().financeiro().conselho().pacienciaMaxima(), partida.mesesCaixaNegativo(),
+                partida.mesesRuinsSeguidos(), partida.parametros().financeiro().conselho().mesesRuinsParaDemissao(),
                 partida.mes().receita(), List.copyOf(partida.lancamentos().subList(Math.max(0, n - 10), n)));
     }
 

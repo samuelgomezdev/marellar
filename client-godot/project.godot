@@ -13,6 +13,8 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 [autoload]
 
 Api="*res://scripts/api.gd"
+Sons="*res://scripts/sons.gd"
+Impacto="*res://scripts/impacto.gd"
 
 [display]
 
@@ -23,8 +25,23 @@ window/size/window_height_override=720
 window/stretch/mode="viewport"
 window/stretch/scale_mode="integer"
 
+[gui]
+
+theme/custom="res://assets/tema/marellar_theme.tres"
+
 [rendering]
 
 textures/canvas_textures/default_texture_filter=0
 renderer/rendering_method="gl_compatibility"
 renderer/rendering_method.mobile="gl_compatibility"
+
+[shader_globals]
+
+inspecao_corte_y={
+"type": "float",
+"value": 1000.0
+}
+inspecao_corte_z={
+"type": "float",
+"value": 1000.0
+}

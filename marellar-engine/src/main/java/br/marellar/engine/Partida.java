@@ -15,6 +15,7 @@ import br.marellar.engine.dominio.Funcao;
 import br.marellar.engine.dominio.Pedido;
 import br.marellar.engine.dominio.Rnc;
 import br.marellar.engine.dominio.NaoConformidade;
+import br.marellar.engine.dominio.NcInspecao3d;
 import br.marellar.engine.dominio.MotivoPausa;
 import br.marellar.engine.dominio.Pessoa;
 import br.marellar.engine.dominio.TipoEvento;
@@ -64,6 +65,7 @@ public final class Partida {
     private final Map<String, Integer> estoque = new LinkedHashMap<>();
     private final List<Pedido> pedidos = new ArrayList<>();
     private final List<Rnc> rncs = new ArrayList<>();
+    private final List<NcInspecao3d> ncsInspecao = new ArrayList<>();
     private int proximoNomeContratacao;
     private int contadorPessoa;
     private int acidentes;
@@ -80,6 +82,7 @@ public final class Partida {
     private BigDecimal valorEmpresa = BigDecimal.ZERO;
     private int pacienciaConselho;
     private int mesesCaixaNegativo;
+    private int mesesRuinsSeguidos;
     private MotivoDerrota derrota;
 
     Partida(long semente, ParametrosJogo parametros, LocalDate inicio) {
@@ -232,6 +235,15 @@ public final class Partida {
         pacienciaConselho = p;
     }
 
+    /** Meses ruins seguidos com o conselho (mes ruim = muitas metas perdidas). */
+    public int mesesRuinsSeguidos() {
+        return mesesRuinsSeguidos;
+    }
+
+    public void definirMesesRuinsSeguidos(int m) {
+        mesesRuinsSeguidos = m;
+    }
+
     public int mesesCaixaNegativo() {
         return mesesCaixaNegativo;
     }
@@ -291,6 +303,15 @@ public final class Partida {
 
     public String proximoIdPedido() {
         return String.format("PC-%04d", pedidos.size() + 1);
+    }
+
+    /** NCs marcadas pelo jogador no modelo 3D, na ordem em que foram registradas. */
+    public List<NcInspecao3d> ncsInspecao() {
+        return java.util.Collections.unmodifiableList(ncsInspecao);
+    }
+
+    public void registrarNcInspecao(NcInspecao3d nc) {
+        ncsInspecao.add(nc);
     }
 
     public List<Rnc> rncs() {

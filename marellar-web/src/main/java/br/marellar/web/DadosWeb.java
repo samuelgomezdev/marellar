@@ -38,12 +38,13 @@ public final class DadosWeb {
                 CodecGerado.lerParametrosFornecedores(arvore.apply(CarregadorDados.FORNECEDORES)),
                 CodecGerado.lerParametrosEventos(arvore.apply(CarregadorDados.EVENTOS)),
                 CodecGerado.lerParametrosFinanceiro(arvore.apply(CarregadorDados.FINANCEIRO)),
-                new Textos(Json.objeto(arvore.apply(CarregadorDados.TEXTOS), CarregadorDados.TEXTOS)));
+                new Textos(Json.objeto(arvore.apply(CarregadorDados.TEXTOS), CarregadorDados.TEXTOS)),
+                CodecGerado.lerCatalogoInspecao(arvore.apply(CarregadorDados.NC_CATALOGO_INSPECAO)));
         ValidadorDados.validar(p);
         return p;
     }
 
     public static final List<String> ARQUIVOS = List.of(CarregadorDados.LINHA_33, CarregadorDados.NC_CATALOGO,
             CarregadorDados.PESSOAS, CarregadorDados.FORNECEDORES, CarregadorDados.EVENTOS,
-            CarregadorDados.FINANCEIRO, CarregadorDados.TEXTOS);
+            CarregadorDados.FINANCEIRO, CarregadorDados.TEXTOS, CarregadorDados.NC_CATALOGO_INSPECAO);
 }

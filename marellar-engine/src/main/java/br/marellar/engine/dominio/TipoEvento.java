@@ -18,5 +18,7 @@ public enum TipoEvento {
     SCORECARD,
     FINANCEIRO,
     DERROTA,
+    /** NC marcada pelo jogador no modelo 3D do barco. */
+    NC_INSPECAO_3D,
     FIM_DO_MES
 }
