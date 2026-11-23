@@ -71,6 +71,46 @@ class PessoasRegraTest {
     }
 
     @Test
+    void fimDoTreinamentoTecnicoDizOEfeitoDoNovoNivel() {
+        Simulacao sim = Simulacao.novaPartida(1, TRANQUILO);
+        sim.aplicarOrdem(new Ordem.Treinar("P08", Treinamento.TECNICO));     // nivel 1 -> 2
+        avancarDias(sim, 3);
+
+        // NC x1,50 -> x1,25 = -17%; velocidade 0,60 -> 0,75 = +25% (data/nc-catalogo.json e data/pessoas.json)
+        assertThat(sim.eventosDesde(0)).anySatisfy(e -> assertThat(e.mensagem())
+                .contains("subiu para o nível 2").contains("chance de NC -17%").contains("velocidade +25%"));
+    }
+
+    @Test
+    void fimDoTreinamentoDeSegurancaDizQuantoCaiOAcidente() {
+        Simulacao sim = Simulacao.novaPartida(1, TRANQUILO);
+        sim.aplicarOrdem(new Ordem.Treinar("P06", Treinamento.SEGURANCA));
+        avancarDias(sim, 3);
+
+        assertThat(sim.eventosDesde(0)).anySatisfy(e -> assertThat(e.mensagem())
+                .contains("NR em dia").contains("chance de acidente -50%"));
+    }
+
+    @Test
+    void estadoTrazOEfeitoDeCadaNivelParaOCliente() {
+        var t = Simulacao.novaPartida(1, TRANQUILO).estado().treinamentos();
+
+        assertThat(t.diasTreinamento()).isEqualTo(3);
+        assertThat(t.multiplicadorAcidenteSemNr()).isEqualByComparingTo("2.0");
+        assertThat(t.niveis()).hasSize(5);
+        assertThat(t.niveis().get(2).fatorVelocidade()).isEqualByComparingTo("0.9");
+        assertThat(t.niveis().get(2).fatorNc()).isEqualByComparingTo("1.0");
+        assertThat(t.niveis().get(4).salario()).isEqualByComparingTo("5300");
+    }
+
+    @Test
+    void variacaoPercentualComSinal() {
+        assertThat(PessoasRegra.variacao(new BigDecimal("1.0"), new BigDecimal("1.25"))).isEqualTo("-20%");
+        assertThat(PessoasRegra.variacao(new BigDecimal("0.9"), new BigDecimal("0.75"))).isEqualTo("+20%");
+        assertThat(PessoasRegra.variacao(BigDecimal.ONE, BigDecimal.ONE)).isEqualTo("0%");
+    }
+
+    @Test
     void treinamentoDeSegurancaPoeOTreinoEmDia() {
         Simulacao sim = Simulacao.novaPartida(1, TRANQUILO);
         assertThat(pessoa(sim, "P06").treinoSegurancaEmDia()).isFalse();

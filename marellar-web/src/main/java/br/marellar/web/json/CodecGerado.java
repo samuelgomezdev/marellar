@@ -1058,7 +1058,8 @@ public final class CodecGerado {
                 lerMotivoDerrota(m.get("derrota")),
                 Json.decimal(m.get("horasOciosas")),
                 Json.longo(m.get("ultimoEventoId")),
-                Json.lista(m.get("ncsInspecao"), o -> lerNcInspecao3d(o)));
+                Json.lista(m.get("ncsInspecao"), o -> lerNcInspecao3d(o)),
+                lerEstadoPartida_TreinamentosVisao(m.get("treinamentos")));
     }
 
     public static void escreverEstadoPartida(StringBuilder sb, br.marellar.engine.estado.EstadoPartida v) {
@@ -1120,6 +1121,8 @@ public final class CodecGerado {
         ((Json.Escritor<Long>) Json::numero).escrever(sb, v.ultimoEventoId());
         sb.append(",\"ncsInspecao\":");
         ((Json.Escritor<java.util.List<br.marellar.engine.dominio.NcInspecao3d>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.dominio.NcInspecao3d>) CodecGerado::escreverNcInspecao3d)).escrever(sb, v.ncsInspecao());
+        sb.append(",\"treinamentos\":");
+        ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.TreinamentosVisao>) CodecGerado::escreverEstadoPartida_TreinamentosVisao).escrever(sb, v.treinamentos());
         sb.append("}");
     }
 
@@ -2014,6 +2017,59 @@ public final class CodecGerado {
         ((Json.Escritor<java.time.LocalDate>) Json::data).escrever(sb, v.data());
         sb.append(",\"hora\":");
         ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.hora());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.TreinamentosVisao lerEstadoPartida_TreinamentosVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "TreinamentosVisao");
+        return new br.marellar.engine.estado.EstadoPartida.TreinamentosVisao(
+                Json.inteiro(m.get("diasTreinamento")),
+                Json.lista(m.get("niveis"), o -> lerEstadoPartida_NivelVisao(o)),
+                Json.decimal(m.get("multiplicadorAcidenteSemNr")));
+    }
+
+    public static void escreverEstadoPartida_TreinamentosVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.TreinamentosVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"diasTreinamento\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.diasTreinamento());
+        sb.append(",\"niveis\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.NivelVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.NivelVisao>) CodecGerado::escreverEstadoPartida_NivelVisao)).escrever(sb, v.niveis());
+        sb.append(",\"multiplicadorAcidenteSemNr\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.multiplicadorAcidenteSemNr());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.NivelVisao lerEstadoPartida_NivelVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "NivelVisao");
+        return new br.marellar.engine.estado.EstadoPartida.NivelVisao(
+                Json.inteiro(m.get("nivel")),
+                Json.decimal(m.get("fatorVelocidade")),
+                Json.decimal(m.get("fatorNc")),
+                Json.decimal(m.get("salario")));
+    }
+
+    public static void escreverEstadoPartida_NivelVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.NivelVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"nivel\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.nivel());
+        sb.append(",\"fatorVelocidade\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.fatorVelocidade());
+        sb.append(",\"fatorNc\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.fatorNc());
+        sb.append(",\"salario\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.salario());
         sb.append("}");
     }
 

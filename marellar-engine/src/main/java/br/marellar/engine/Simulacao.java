@@ -269,7 +269,20 @@ public final class Simulacao {
                 partida.derrota().orElse(null),
                 partida.horasOciosas(),
                 partida.eventos().size(),
-                List.copyOf(partida.ncsInspecao()));
+                List.copyOf(partida.ncsInspecao()),
+                treinamentosVisao());
+    }
+
+    private EstadoPartida.TreinamentosVisao treinamentosVisao() {
+        var pessoas = partida.parametros().pessoas();
+        var catalogo = partida.parametros().catalogoNc();
+        List<EstadoPartida.NivelVisao> niveis = new java.util.ArrayList<>();
+        for (int nivel = 1; nivel <= 5; nivel++) {
+            niveis.add(new EstadoPartida.NivelVisao(nivel, pessoas.fatorDoNivel(nivel),
+                    catalogo.fatorDoNivelDaEquipe(nivel), pessoas.salarioPorNivel().get(nivel)));
+        }
+        return new EstadoPartida.TreinamentosVisao(pessoas.diasTreinamento(), List.copyOf(niveis),
+                partida.parametros().eventos().acidente().multiplicadorTreinoVencido());
     }
 
     public synchronized BarcoVisao barco(String barcoId) {
