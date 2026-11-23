@@ -161,21 +161,20 @@ marellar/
 
 ### 5.1 Gates da linha de 33 pés
 
-Os barcos passam pelos gates abaixo, em ordem. A lista completa de 15 gates está no Documento de Visão; o MVP usa estes 10.
+Os barcos passam pelos gates abaixo, em ordem. A lista completa de 15 gates está no Documento de Visão; o MVP usa estes 9. Não há gate RE: recebimento e inspeção de material comprado não são etapa do barco (DEC-0054 da wiki). Pesos de HH pela equipe por fase (DEC-0057).
 
 | Ordem | Código | Gate | Peso de HH | Cota do cliente ao aprovar |
 | --- | --- | --- | --- | --- |
 | 0 | — | Contrato assinado | — | **30%** |
-| 1 | RE | Recebimento de materiais | 2% | — |
-| 2 | DM | Desmolde (casco laminado) | 28% | **10%** |
-| 3 | BA | Barco aberto | 20% | — |
-| 4 | BF | Barco fechado | 18% | **10%** |
-| 5 | ST | Sistemas (estanqueidade diesel, isolamento, pressão, incêndio) | 4% | **10%** |
-| 6 | CT | Collaudo terra (funcional completo em seco) | 10% | — |
-| 7 | PI | Collaudo piscina (flutuação, trim, bombas, infiltração) | 6% | **10%** |
-| 8 | TR | Carreta (Osasco → marina) | 3% | — |
-| 9 | TM | Teste de mar (marina) | 6% | — |
-| 10 | ET | Entrega técnica | 3% | **30%** |
+| 1 | DM | Desmolde (casco laminado) | 8% | **10%** |
+| 2 | BA | Barco aberto | 25% | — |
+| 3 | BF | Barco fechado | 3% | **10%** |
+| 4 | ST | Sistemas (estanqueidade diesel, isolamento, pressão, incêndio) | 25% | **10%** |
+| 5 | CT | Collaudo terra (funcional completo em seco) | 27% | — |
+| 6 | PI | Collaudo piscina (flutuação, trim, bombas, infiltração) | 5% | **10%** |
+| 7 | TR | Carreta (Osasco → marina) | 1% | — |
+| 8 | TM | Teste de mar (marina) | 3% | — |
+| 9 | ET | Entrega técnica | 3% | **30%** |
 
 A cota só entra no caixa quando o gate é **aprovado pela qualidade**, e entra após `prazoRecebimentoDias` (parâmetro, padrão 5 dias úteis).
 
@@ -270,7 +269,8 @@ Indicadores de acidente (NBR 14280):
   - zero acidente com afastamento;
   - RNC por barco abaixo de 4.
 - **Falas** de 2 conselheiros fictícios. A fala escolhida depende do resultado: sério quando há acidente ou caixa ruim, humor leve quando há algo estranho (ex.: compra de material muito acima do uso).
-- **Paciência do conselho:** de 0 a 5. Cada meta perdida tira 1; cada meta cumprida devolve 1, até o máximo.
+- **Paciência do conselho:** de 0 a 5. Cada meta perdida tira 1; cada meta cumprida devolve 1, até o máximo. Aparece no painel como termômetro e não causa derrota (DEC-0062 da wiki).
+- **Demissão do CEO (derrota):** mês ruim é aquele com 3 ou mais das 4 metas perdidas. No 3º mês ruim seguido o conselho demite o CEO; um mês que não é ruim zera a contagem (`mesesRuinsParaDemissao` em `data/financeiro.json`; DEC-0058 e DEC-0062).
 - **Decisões para o mês seguinte:** 3 a 4 opções com custo e efeito (treinar NR-35, contratar, antecipar compra, negociar com fornecedor). A escolha vira uma ordem aplicada no início do mês seguinte.
 
 ---
@@ -283,7 +283,7 @@ Use `record` do Java 21 para objetos de valor e classes para entidades com estad
 // identificação
 record BarcoId(String valor) {}          // ex.: "33-007"
 enum Linha { L33 }                        // L47, L59 depois do MVP
-enum CodigoGate { RE, DM, BA, BF, ST, CT, PI, TR, TM, ET }
+enum CodigoGate { DM, BA, BF, ST, CT, PI, TR, TM, ET }
 enum Gravidade { LEVE, MEDIA, CRITICA }
 enum DecisaoNc { RETRABALHO, CONCESSAO, RNC_FORNECEDOR }
 
@@ -384,7 +384,7 @@ Base: `/api/v1`. JSON em camelCase. Valores em reais como string decimal (`"3200
 | # | Entrega | Pronto quando |
 | --- | --- | --- |
 | M1 | Maven multi-módulo, `data/*.json`, carregamento e validação dos parâmetros | `mvn verify` passa; JSON inválido gera erro claro |
-| M2 | Motor: relógio, barcos, gates e produção | Teste: 1 barco sem NC passa de RE a ET com HH ≈ 1.900 |
+| M2 | Motor: relógio, barcos, gates e produção | Teste: 1 barco sem NC passa de DM a ET com HH ≈ 1.900 |
 | M3 | Qualidade e inspetor | Teste com semente fixa: mesmas NCs e detecções a cada rodada |
 | M4 | Pessoas, fornecedores e eventos | Teste: moral baixa aumenta pedidos de demissão; chargeback = custo + 10% |
 | M5 | Finanças, DRE, valor da empresa, conselho | Teste: cotas somam 100% do preço; EBITDA × 6 bate com o relatório |
