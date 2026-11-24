@@ -30,6 +30,24 @@ static func _dentro(x: int, y: int, comprimento: int, largura: int, recuo: float
 	return absf(x + 0.5 - largura / 2.0) <= _meia_boca(y, comprimento, largura) - recuo
 
 
+## Gera de uma vez os sprites grandes (cascos em todas as etapas e posições, passos do molde).
+## Gerar pixel a pixel na primeira vez em que aparecem custava até ~40 ms num quadro, por exemplo
+## quando o barco saía para a carreta ou a piscina (M12-3). Chamado na abertura, antes da partida.
+static func gerar_tudo() -> void:
+	for etapa in Etapa.values():
+		for popa in [false, true]:
+			if etapa == Etapa.MOLDE:
+				for passo in 9:
+					casco(etapa, passo / 8.0, popa)
+			else:
+				casco(etapa, 1.0, popa)
+	for icone in _ICONES:
+		balao(icone)
+	for carga in [false, true]:
+		empilhadeira(carga)
+	caminhao()
+
+
 ## Casco na etapa pedida, proa para cima. `popa_para_cima` vira o casco (montagem: popa para o mezanino).
 ## `progresso` (0 a 1) só conta no molde: o gelcoat vai cobrindo o molde.
 static func casco(etapa: Etapa, progresso: float = 1.0, popa_para_cima: bool = false) -> ImageTexture:

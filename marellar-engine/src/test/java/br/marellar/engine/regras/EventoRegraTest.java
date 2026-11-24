@@ -48,6 +48,9 @@ class EventoRegraTest {
         assertThat(r.pausado()).isTrue();
         assertThat(r.motivoPausa()).isEqualTo(MotivoPausa.ACIDENTE);
         var estado = sim.estado();
+        // varios acidentes no mesmo tick: a pausa aponta o barco do ultimo
+        var acidente = sim.eventosDesde(0).stream().filter(e -> e.tipo() == TipoEvento.ACIDENTE).reduce((x, y) -> y).orElseThrow();
+        assertThat(estado.barcoPausa()).isEqualTo(acidente.barcoId()).isNotNull();
         assertThat(estado.seguranca().acidentes()).isPositive();
         assertThat(estado.seguranca().diasPerdidos()).isPositive();
         assertThat(estado.seguranca().taxaFrequencia()).isPositive();

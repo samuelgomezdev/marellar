@@ -253,6 +253,7 @@ public final class Simulacao {
                 partida.velocidade(),
                 partida.pausado(),
                 partida.motivoPausa().orElse(null),
+                partida.barcoPausa().orElse(null),
                 partida.barcos().stream().map(this::visao).toList(),
                 partida.pessoas().stream().map(this::visao).toList(),
                 inspetorVisao(),

@@ -40,6 +40,7 @@ public record EstadoPartida(
         Velocidade velocidade,
         boolean pausado,
         MotivoPausa motivoPausa,
+        String barcoPausa,
         List<BarcoVisao> barcos,
         List<PessoaVisao> pessoas,
         InspetorVisao inspetor,

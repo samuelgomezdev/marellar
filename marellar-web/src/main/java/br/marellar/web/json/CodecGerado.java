@@ -1042,6 +1042,7 @@ public final class CodecGerado {
                 lerVelocidade(m.get("velocidade")),
                 Json.logico(m.get("pausado")),
                 lerMotivoPausa(m.get("motivoPausa")),
+                Json.texto(m.get("barcoPausa")),
                 Json.lista(m.get("barcos"), o -> lerEstadoPartida_BarcoVisao(o)),
                 Json.lista(m.get("pessoas"), o -> lerEstadoPartida_PessoaVisao(o)),
                 lerEstadoPartida_InspetorVisao(m.get("inspetor")),
@@ -1087,6 +1088,8 @@ public final class CodecGerado {
         ((Json.Escritor<Boolean>) Json::numero).escrever(sb, v.pausado());
         sb.append(",\"motivoPausa\":");
         ((Json.Escritor<br.marellar.engine.dominio.MotivoPausa>) CodecGerado::escreverMotivoPausa).escrever(sb, v.motivoPausa());
+        sb.append(",\"barcoPausa\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.barcoPausa());
         sb.append(",\"barcos\":");
         ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.BarcoVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.BarcoVisao>) CodecGerado::escreverEstadoPartida_BarcoVisao)).escrever(sb, v.barcos());
         sb.append(",\"pessoas\":");
