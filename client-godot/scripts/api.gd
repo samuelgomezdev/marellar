@@ -7,6 +7,8 @@ signal erro(mensagem: String)
 const BASE_URL := "http://127.0.0.1:8080/api/v1"
 
 var partida_id: String = ""
+var medindo := false          # --medir: guarda o tempo de cada chamada em `medicoes`
+var medicoes: Array[Dictionary] = []   # {rota, total_ms, json_ms, bytes}
 
 
 func criar_partida(semente: int) -> bool:
@@ -51,9 +53,25 @@ func carregar(id: String) -> bool:
 
 
 func _requisitar(metodo: int, caminho: String, corpo = null) -> Variant:
+	if not medindo:
+		return await _requisitar_sem_medir(metodo, caminho, corpo)
+	var inicio := Time.get_ticks_usec()
+	var resposta = await _requisitar_sem_medir(metodo, caminho, corpo)
+	medicoes.append({"rota": caminho.get_slice("?", 0).get_slice("/", caminho.get_slice_count("/") - 1),
+			"total_ms": (Time.get_ticks_usec() - inicio) / 1000.0, "json_ms": _ultimo_json_ms, "bytes": _ultimos_bytes})
+	return resposta
+
+
+var _ultimo_json_ms := 0.0
+var _ultimos_bytes := 0
+
+
+func _requisitar_sem_medir(metodo: int, caminho: String, corpo = null) -> Variant:
 	if OS.has_feature("web"):
 		return await _requisitar_no_navegador(metodo, caminho, corpo)
 	var http := HTTPRequest.new()
+	# Sem thread, o HTTPRequest anda um passo por quadro: ~150 ms por chamada mesmo em localhost (M12-3).
+	http.use_threads = true
 	add_child(http)
 	var cabecalhos := PackedStringArray(["Content-Type: application/json", "Accept: application/json"])
 	var dados := "" if corpo == null else JSON.stringify(corpo)
@@ -97,7 +115,10 @@ func _requisitar_no_navegador(metodo: int, caminho: String, corpo) -> Variant:
 
 
 func _tratar_resposta(codigo: int, texto: String) -> Variant:
+	var inicio := Time.get_ticks_usec()
 	var json = JSON.parse_string(texto) if not texto.is_empty() else {}
+	_ultimo_json_ms = (Time.get_ticks_usec() - inicio) / 1000.0
+	_ultimos_bytes = texto.length()
 	if codigo >= 400:
 		var detalhe = json.get("detail", texto) if json is Dictionary else texto
 		erro.emit("Erro %d: %s" % [codigo, detalhe])

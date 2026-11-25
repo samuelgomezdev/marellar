@@ -55,6 +55,7 @@ public final class Partida {
     private Velocidade velocidade = Velocidade.PAUSA;
     private boolean pausado;
     private MotivoPausa motivoPausa;
+    private String barcoPausa;
     private BigDecimal horasOciosas = BigDecimal.ZERO;
     private final List<NaoConformidade> ncs = new ArrayList<>();
     private int contadorNc;
@@ -122,13 +123,20 @@ public final class Partida {
     }
 
     public void pausar(MotivoPausa motivo) {
+        pausar(motivo, null);
+    }
+
+    /** Pausa ligada a um barco (NC critica, acidente): o cliente leva o jogador ate ele. */
+    public void pausar(MotivoPausa motivo, String barcoId) {
         this.pausado = true;
         this.motivoPausa = motivo;
+        this.barcoPausa = barcoId;
     }
 
     void limparPausa() {
         this.pausado = false;
         this.motivoPausa = null;
+        this.barcoPausa = null;
     }
 
     // ----- barcos -----
@@ -493,6 +501,11 @@ public final class Partida {
 
     public Optional<MotivoPausa> motivoPausa() {
         return Optional.ofNullable(motivoPausa);
+    }
+
+    /** Barco envolvido na pausa automatica; vazio no fim do mes e na derrota. */
+    public Optional<String> barcoPausa() {
+        return Optional.ofNullable(barcoPausa);
     }
 
     public BigDecimal horasOciosas() {

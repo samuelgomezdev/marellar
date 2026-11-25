@@ -173,6 +173,7 @@ class SimulacaoTest {
         assertThat(r.ticksExecutados()).isEqualTo(Relogio.TICKS_POR_MES);
         assertThat(r.pausado()).isTrue();
         assertThat(r.motivoPausa()).isEqualTo(MotivoPausa.FIM_DO_MES);
+        assertThat(sim.estado().barcoPausa()).isNull();
         assertThat(sim.estado().mes()).isEqualTo(2);
         assertThat(sim.estado().mesReferencia()).isEqualTo("abr/2027");
         var fimDoMes = sim.eventosDesde(0).getLast();

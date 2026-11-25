@@ -96,7 +96,7 @@ public final class QualidadeRegra {
         detectadas.stream().filter(nc -> nc.gravidade() == Gravidade.CRITICA).findFirst().ifPresent(critica -> {
             partida.registrarEvento(TipoEvento.NC_CRITICA, barco.id(), "eventos.ncCritica", Map.of(
                     "barco", barco.id(), "gate", barco.gateAtual().name(), "descricao", critica.descricao()));
-            partida.pausar(MotivoPausa.NC_CRITICA);
+            partida.pausar(MotivoPausa.NC_CRITICA, barco.id());
         });
     }
 

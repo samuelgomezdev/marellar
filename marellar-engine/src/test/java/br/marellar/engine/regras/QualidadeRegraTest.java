@@ -93,7 +93,9 @@ class QualidadeRegraTest {
 
         assertThat(r.pausado()).isTrue();
         assertThat(r.motivoPausa()).isEqualTo(MotivoPausa.NC_CRITICA);
-        assertThat(sim.eventosDesde(0)).anyMatch(e -> e.tipo() == TipoEvento.NC_CRITICA);
+        var critica = sim.eventosDesde(0).stream().filter(e -> e.tipo() == TipoEvento.NC_CRITICA).findFirst().orElseThrow();
+        // a pausa aponta o barco da NC, para o aviso levar o jogador ate a ficha dele
+        assertThat(sim.estado().barcoPausa()).isEqualTo(critica.barcoId()).isNotNull();
 
         // sem decisao, o gate nao aprova nunca
         for (int i = 0; i < 10; i++) {

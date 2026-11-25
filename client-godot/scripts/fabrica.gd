@@ -6,6 +6,7 @@ extends Control
 
 const SEMENTE := 42
 const SEGUNDOS_POR_TICK_X1 := 2.5  # 1 dia útil (8 ticks) ≈ 20 s na velocidade 1 (GDD, Loops de jogo)
+const MAX_TICKS_POR_AVANCO := 4    # alcança o relógio depois de uma resposta lenta, sem saltar meio dia
 const ALTURA_TOPO := 22     # Pixelify Sans 16 (20 px de linha) e números em Jersey 20
 const ALTURA_BASE := 28     # botões do tema com a Pixelify Sans 16: 22 px
 const ALTURA_ABAS := 24     # faixa das abas G1/G2, logo abaixo da barra de cima
@@ -14,6 +15,7 @@ const LARGURA_PAINEL := 200
 const TAMANHO_TEXTO := Tokens.TAMANHO_UI       # Pixelify Sans
 const TAMANHO_TITULO := Tokens.TAMANHO_TITULO   # Jersey 10, só nos títulos de tela
 const MAX_AVISOS := 6
+const LARGURA_AVISO := 360   # aviso de pausa automática, no centro
 
 
 const NOMES_STATUS := {
@@ -93,6 +95,14 @@ var alfa_painel := 0.0:       # transparência do painel lateral na animação d
 		if rolagem != null:
 			rolagem.modulate.a = v
 			botao_fechar_painel.modulate.a = v
+var tela_aviso: PanelContainer   # aviso de pausa automática (M12-1)
+var pausa_auto := ""       # motivo da pausa automática em vigor ("" = jogo rodando ou pausado pelo jogador)
+var velocidade_antes := 1  # velocidade de antes da pausa automática: Continuar volta para ela
+var ultima_mensagem := {}  # tipo do evento -> última mensagem (o aviso de pausa repete a do evento)
+var medir_ate := -1.0      # --medir N: até quando (segundos) mede quadros e chamadas antes de sair
+var quadros_ms: Array[float] = []
+var desenho_ms: Array[float] = []
+var interface_ms: Array[float] = []   # tempo de _atualizar_interface depois de cada avanço
 var foco_ao_fechar := {}   # painel -> Control que tinha o foco antes de abrir (o foco volta para ele ao fechar)
 
 
@@ -109,6 +119,7 @@ func _ready() -> void:
 	_montar_ficha_completa()
 	_montar_inspecao_3d()
 	_atualizar_interface()
+	PixelArt.gerar_tudo()   # antes da partida: nenhum sprite grande é gerado no meio do jogo (M12-3)
 	if await Api.criar_partida(SEMENTE):
 		await _atualizar_estado()
 		_avisar("Partida criada. Espaço pausa; 1, 2 e 3 mudam a velocidade. Clique num barco.")
@@ -128,6 +139,23 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 			estado = resposta["estado"]
 			faltam -= int(resposta["resultado"]["ticksExecutados"])
 		await _buscar_eventos()
+	if args.has("--ate-pausa"):   # avança até a próxima NC crítica ou acidente e mostra o aviso (capturas)
+		for _volta in 200:
+			var resposta = await Api.avancar(168)
+			if resposta == null:
+				return
+			estado = resposta["estado"]
+			var motivo = resposta["resultado"]["motivoPausa"]
+			if motivo in ["NC_CRITICA", "ACIDENTE", "DERROTA"]:
+				await _buscar_eventos()
+				velocidade = 4
+				_pausa_automatica(str(motivo))
+				break
+		if args.has("--apertar"):   # aperta o botão em foco no aviso (testa a ação principal)
+			await get_tree().create_timer(1.0).timeout
+			var dono := get_viewport().gui_get_focus_owner()
+			if dono is BaseButton:
+				(dono as BaseButton).pressed.emit()
 	if args.has("--salvar"):
 		await _salvar()
 	if args.has("--carregar"):
@@ -173,17 +201,30 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 	_atualizar_interface()
 	if args.has("--rodar"):
 		_mudar_velocidade(4)
+	i = args.find("--medir")
+	if i >= 0 and i + 1 < args.size():
+		Api.medindo = true
+		medir_ate = Time.get_ticks_msec() / 1000.0 + float(args[i + 1])
+		_mudar_velocidade(4)
 
 
 func _process(delta: float) -> void:
+	if medir_ate > 0:
+		_medir(delta)
 	queue_redraw()  # bonequinhos animados
 	_sincronizar_botoes_planta()
-	if velocidade == 0 or ocupado or Api.partida_id.is_empty():
+	if velocidade == 0 or Api.partida_id.is_empty():
 		return
+	# O relógio conta mesmo durante a chamada: se a resposta atrasar, o próximo avanço leva os ticks
+	# que faltam (M12-3). Antes o tempo parava a cada chamada e o x4 rodava como x2,7, aos trancos.
 	acumulado += delta
-	if acumulado >= SEGUNDOS_POR_TICK_X1 / velocidade:
-		acumulado = 0.0
-		_avancar(1)
+	if ocupado:
+		return
+	var periodo := SEGUNDOS_POR_TICK_X1 / velocidade
+	if acumulado >= periodo:
+		var ticks := mini(int(acumulado / periodo), MAX_TICKS_POR_AVANCO)
+		acumulado = fmod(acumulado, periodo) if ticks < MAX_TICKS_POR_AVANCO else 0.0
+		_avancar(ticks)
 
 
 # ---------------------------------------------------------------- ordens e API
@@ -197,14 +238,57 @@ func _avancar(ticks: int) -> void:
 		return
 	estado = resposta["estado"]
 	_detectar_mudancas_de_gate()
-	await _buscar_eventos()
+	if int(estado.get("ultimoEventoId", 0)) > ultimo_evento:   # sem evento novo, não chama a API
+		await _buscar_eventos()
 	if resposta["resultado"]["pausado"]:
-		_mudar_velocidade(0)
-		var motivo := str(resposta["resultado"]["motivoPausa"])
-		_avisar("PAUSA: %s" % _motivo_pausa(motivo))
-		if motivo == "FIM_DO_MES" or motivo == "DERROTA":
-			_abrir_conselho()
+		_pausa_automatica(str(resposta["resultado"]["motivoPausa"]))
+	var inicio := Time.get_ticks_usec()
 	_atualizar_interface()
+	if medir_ate > 0:
+		interface_ms.append((Time.get_ticks_usec() - inicio) / 1000.0)
+
+
+## --medir: guarda o tempo de cada quadro; no fim imprime o resumo e sai.
+func _medir(delta: float) -> void:
+	quadros_ms.append(delta * 1000.0)
+	if delta > 0.05:
+		print("MEDICAO pico %.0f ms em %.1f s, tick %d, ocupado %s, ultimo evento %d" % [delta * 1000.0,
+				Time.get_ticks_msec() / 1000.0, int(estado.get("tick", 0)), ocupado, ultimo_evento])
+	if velocidade == 0 and tela_conselho != null:
+		_fechar_conselho()   # medição sem parar no fim do mês
+		_mudar_velocidade(4)
+	if Time.get_ticks_msec() / 1000.0 < medir_ate:
+		return
+	medir_ate = -1.0
+	print("MEDICAO quadros: %s" % _resumo_ms(quadros_ms))
+	var lentos := quadros_ms.filter(func(q): return q > 1000.0 / 30.0).size()
+	print("MEDICAO quadros acima de 33 ms: %d de %d" % [lentos, quadros_ms.size()])
+	print("MEDICAO _draw: %s" % _resumo_ms(desenho_ms))
+	print("MEDICAO _atualizar_interface: %s" % _resumo_ms(interface_ms))
+	var por_rota := {}
+	for m in Api.medicoes:
+		if not por_rota.has(m["rota"]):
+			por_rota[m["rota"]] = {"total": [] as Array[float], "json": [] as Array[float], "bytes": 0}
+		por_rota[m["rota"]]["total"].append(m["total_ms"])
+		por_rota[m["rota"]]["json"].append(m["json_ms"])
+		por_rota[m["rota"]]["bytes"] = maxi(por_rota[m["rota"]]["bytes"], m["bytes"])
+	for rota in por_rota:
+		var r: Dictionary = por_rota[rota]
+		print("MEDICAO %s: total %s | JSON %s | maior resposta %d bytes" % [rota, _resumo_ms(r["total"]), _resumo_ms(r["json"]), r["bytes"]])
+	print("MEDICAO dia final: %s d%d" % [estado.get("mesReferencia"), int(estado.get("diaUtilDoMes", 0))])
+	get_tree().quit()
+
+
+static func _resumo_ms(valores: Array[float]) -> String:
+	if valores.is_empty():
+		return "sem dados"
+	var ordenados := valores.duplicate()
+	ordenados.sort()
+	var soma := 0.0
+	for v in ordenados:
+		soma += v
+	return "n=%d media %.1f ms, p95 %.1f ms, max %.1f ms" % [ordenados.size(), soma / ordenados.size(),
+			ordenados[int(ordenados.size() * 0.95)], ordenados[-1]]
 
 
 func _atualizar_estado() -> void:
@@ -220,6 +304,7 @@ func _buscar_eventos() -> void:
 		return
 	for evento in lista:
 		ultimo_evento = maxi(ultimo_evento, int(evento["id"]))
+		ultima_mensagem[str(evento["tipo"])] = str(evento["mensagem"])
 		_avisar(str(evento["mensagem"]))
 		_efeito_do_evento(evento)
 
@@ -236,6 +321,9 @@ func _enviar_ordem(dados: Dictionary, aviso: String) -> void:
 
 
 func _mudar_velocidade(nova: int) -> void:
+	if nova > 0 and not pausa_auto.is_empty():
+		pausa_auto = ""
+		_fechar_aviso_pausa()
 	velocidade = nova
 	acumulado = 0.0
 	for chave in botoes_velocidade:
@@ -327,9 +415,14 @@ func _unhandled_input(event: InputEvent) -> void:
 	if tela_conselho != null or tela_saves != null:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
+		# Letras não valem no 3D: lá WASD/R/F movem a câmera e o formulário tem campo de texto.
+		var letras_livres: bool = not tela_3d.aberta
 		match event.keycode:
 			KEY_SPACE:
-				_mudar_velocidade(0 if velocidade != 0 else 1)
+				if velocidade == 0 and not pausa_auto.is_empty():
+					_continuar_depois_da_pausa()
+				else:
+					_mudar_velocidade(0 if velocidade != 0 else 1)
 			KEY_1:
 				_mudar_velocidade(1)
 			KEY_2:
@@ -340,8 +433,15 @@ func _unhandled_input(event: InputEvent) -> void:
 				_abrir_painel(PAINEL_EQUIPE)
 			KEY_F2:
 				_abrir_painel(PAINEL_FORNECEDORES)
+			KEY_E:   # alternativa ao F1, que em alguns notebooks hiberna
+				if letras_livres:
+					_abrir_painel(PAINEL_EQUIPE)
+			KEY_F:
+				if letras_livres:
+					_abrir_painel(PAINEL_FORNECEDORES)
 			KEY_G:
-				_mudar_galpao("G1" if galpao == "G2" else "G2")
+				if letras_livres:
+					_mudar_galpao("G1" if galpao == "G2" else "G2")
 			KEY_F5:
 				_salvar()
 			KEY_F9:
@@ -355,6 +455,9 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Fecha o painel de cima: saves, conselho, formulário/vista do 3D, 3D, ficha, painel lateral;
 ## sem nada aberto, tira a seleção.
 func _fechar_o_de_cima() -> void:
+	if tela_aviso != null:
+		_fechar_aviso_pausa()
+		return
 	if tela_saves != null:
 		_fechar_saves()
 		return
@@ -985,6 +1088,16 @@ func _avisar(texto: String) -> void:
 # ---------------------------------------------------------------- desenho
 
 func _draw() -> void:
+	var inicio_desenho := Time.get_ticks_usec()
+	_desenhar_tudo()
+	if medir_ate > 0:
+		var ms := (Time.get_ticks_usec() - inicio_desenho) / 1000.0
+		desenho_ms.append(ms)
+		if ms > 20.0:
+			print("MEDICAO _draw lento %.0f ms, tick %d" % [ms, int(estado.get("tick", 0))])
+
+
+func _desenhar_tudo() -> void:
 	draw_rect(Rect2(Vector2.ZERO, size), Tokens.FUNDO)
 	if estado.is_empty():
 		var texto := erro_api if not erro_api.is_empty() else "Conectando à API..."
@@ -1178,8 +1291,22 @@ func _desenhar_topo() -> void:
 		draw_string(fonte, Vector2(x + 3, 16), rotulo, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Tokens.TEXTO_CALMO)
 		Texto.desenhar(self, Vector2(x + 3 + largura_rotulo, 16), valor, b[2])
 		x += largura + 1
+	if velocidade == 0 and not pausa_auto.is_empty():
+		_desenhar_faixa_pausa()
 	var vel := "PAUSA" if velocidade == 0 else "x%d" % velocidade
 	Texto.desenhar(self, Vector2(x + 1, 16), vel, Tokens.ATENCAO if velocidade == 0 else Tokens.OK)
+
+
+## Pausa automática: "PAUSADO: motivo" à direita das abas G1/G2 até o jogo voltar a rodar (M12-1).
+## A barra de cima não tem espaço sobrando; a faixa das abas fica logo abaixo dela.
+func _desenhar_faixa_pausa() -> void:
+	var texto := "PAUSADO: %s" % _motivo_curto(pausa_auto)
+	var largura := fonte.get_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO).x + 12
+	var r := Rect2(size.x - largura - 4, ALTURA_TOPO + 1, largura, ALTURA_ABAS - 2)
+	draw_rect(r, Tokens.FUNDO)
+	draw_rect(r.grow(-0.5), Tokens.ATENCAO, false, 1.0)
+	draw_string(fonte, Vector2(r.position.x + 6, r.position.y + 16), texto, HORIZONTAL_ALIGNMENT_LEFT, -1,
+			TAMANHO_TEXTO, Tokens.ATENCAO)
 
 
 ## Depois de um clique em botão que precisa de barco: os barcos clicáveis piscam com o contorno de foco.
@@ -1286,6 +1413,105 @@ func _desenhar_painel() -> void:
 	draw_rect(r.grow(-0.5), Color(Tokens.FUNDO, alfa_painel), false, 1.0)
 	draw_string(fonte, Vector2(r.position.x + 6, r.position.y + 15), "EQUIPE" if painel_desenhado == PAINEL_EQUIPE else "FORNECEDORES",
 			HORIZONTAL_ALIGNMENT_LEFT, -1, TAMANHO_TEXTO, Color(Tokens.TEXTO, alfa_painel))
+
+
+# ---------------------------------------------------------------- aviso de pausa automática (M12-1)
+
+## O motor pausou sozinho: o jogo para, a barra de cima mostra o motivo e um aviso no centro
+## leva o jogador à ação. Fim do mês e derrota abrem direto o conselho, que já é o aviso grande.
+func _pausa_automatica(motivo: String) -> void:
+	if velocidade > 0:
+		velocidade_antes = velocidade
+	_mudar_velocidade(0)
+	pausa_auto = motivo
+	_avisar("PAUSADO: %s." % _motivo_curto(motivo))
+	if motivo == "FIM_DO_MES" or motivo == "DERROTA":
+		_abrir_conselho()
+	else:
+		var barco = estado.get("barcoPausa")
+		_abrir_aviso_pausa(motivo, "" if barco == null else str(barco))
+
+
+func _abrir_aviso_pausa(motivo: String, barco_id: String) -> void:
+	_fechar_aviso_pausa(false)
+	_guardar_foco("aviso", null)
+	tela_aviso = PanelContainer.new()
+	tela_aviso.theme_type_variation = "Janela"
+	tela_aviso.custom_minimum_size = Vector2(LARGURA_AVISO, 0)
+	_veu(tela_aviso, _fechar_aviso_pausa)
+	add_child(tela_aviso)
+	var itens := VBoxContainer.new()
+	itens.add_theme_constant_override("separation", Tokens.GRADE / 2)
+	tela_aviso.add_child(itens)
+
+	var titulo := Label.new()
+	titulo.text = "PAUSADO: %s" % _motivo_curto(motivo).to_upper()
+	titulo.theme_type_variation = "Titulo"
+	titulo.add_theme_color_override("font_color", Tokens.NC)
+	itens.add_child(_cabecalho(titulo, _fechar_aviso_pausa))
+	var texto: String = ultima_mensagem.get(motivo, "")
+	if texto.is_empty():
+		texto = "%s parou." % barco_id if not barco_id.is_empty() else "O jogo parou."
+	itens.add_child(_rotulo_rico(texto, Tokens.TEXTO, LARGURA_AVISO - 16))
+
+	var botoes := HBoxContainer.new()
+	botoes.add_theme_constant_override("separation", Tokens.GRADE)
+	botoes.alignment = BoxContainer.ALIGNMENT_END
+	itens.add_child(botoes)
+	var acao: Button = null
+	match motivo:
+		"NC_CRITICA":
+			if not _barco(barco_id).is_empty():
+				acao = _botao("Abrir ficha do %s" % barco_id, _ir_para_barco.bind(barco_id))
+		"ACIDENTE":
+			acao = _botao("Ver equipe", _ir_para_equipe)
+	if acao != null:
+		acao.theme_type_variation = "BotaoAcao"
+		botoes.add_child(acao)
+	var continuar := _botao("Continuar (Espaço)", _continuar_depois_da_pausa)
+	botoes.add_child(continuar)
+
+	# no centro da tela, já com o tamanho final
+	tela_aviso.reset_size()
+	tela_aviso.position = ((size - tela_aviso.get_combined_minimum_size()) / 2).floor()
+	Movimento.abrir(tela_aviso)
+	_focar_depois(acao if acao != null else continuar)
+
+
+func _fechar_aviso_pausa(devolver_foco := true) -> void:
+	if tela_aviso == null:
+		return
+	var janela := tela_aviso
+	tela_aviso = null
+	Movimento.fechar(janela, janela.queue_free)
+	if devolver_foco:
+		_devolver_foco("aviso")
+
+
+## Continuar: volta à velocidade de antes da pausa automática.
+func _continuar_depois_da_pausa() -> void:
+	if pausa_auto == "DERROTA":
+		return
+	_fechar_aviso_pausa()
+	if tela_conselho != null:
+		_fechar_conselho()
+	_mudar_velocidade(velocidade_antes)
+
+
+func _ir_para_barco(barco_id: String) -> void:
+	_fechar_aviso_pausa(false)
+	foco_ao_fechar.erase("aviso")
+	selecionado = barco_id
+	_mudar_galpao(Planta.galpao_do_barco(_barco(barco_id)))
+	painel = PAINEL_BARCO
+	_abrir_ficha_completa()
+
+
+func _ir_para_equipe() -> void:
+	_fechar_aviso_pausa(false)
+	foco_ao_fechar.erase("aviso")
+	if painel != PAINEL_EQUIPE:
+		_abrir_painel(PAINEL_EQUIPE)
 
 
 # ---------------------------------------------------------------- lista de saves
@@ -1464,7 +1690,7 @@ func _abrir_conselho() -> void:
 		if escolhida == o["id"]:
 			b.text = "> " + b.text
 		lista.add_child(b)
-	var continuar := _botao("Continuar", _fechar_conselho)
+	var continuar := _botao("Continuar", _continuar_depois_da_pausa if pausa_auto == "FIM_DO_MES" else _fechar_conselho)
 	if escolhida != null:
 		continuar.theme_type_variation = "BotaoAcao"   # decidido: a ação principal passa a ser seguir o jogo
 	lista.add_child(continuar)
@@ -1535,17 +1761,18 @@ func _cor_status(status: String) -> Color:
 	return Tokens.TEXTO
 
 
-func _motivo_pausa(motivo: String) -> String:
+## Motivo da pausa automática em poucas palavras (barra de cima, título do aviso e lista de avisos).
+func _motivo_curto(motivo: String) -> String:
 	match motivo:
 		"FIM_DO_MES":
-			return "fim do mês. Reunião do conselho."
+			return "fim do mês"
 		"DERROTA":
-			return "fim de jogo."
+			return "fim de jogo"
 		"NC_CRITICA":
-			return "NC crítica detectada. Clique no barco e decida."
+			return "NC crítica"
 		"ACIDENTE":
-			return "acidente de trabalho. Veja a equipe (F1)."
-	return motivo
+			return "acidente"
+	return motivo.to_lower()
 
 
 ## Cor do bloco "Conselho" na barra de cima: segue os meses ruins seguidos (a paciência é só termômetro).

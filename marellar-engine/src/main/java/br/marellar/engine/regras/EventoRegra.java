@@ -65,7 +65,7 @@ public final class EventoRegra {
         }
         partida.registrarEvento(TipoEvento.ACIDENTE, barco.id(), "eventos.acidente", Map.of(
                 "pessoa", p.nome(), "barco", barco.id(), "dias", String.valueOf(dias)));
-        partida.pausar(MotivoPausa.ACIDENTE);
+        partida.pausar(MotivoPausa.ACIDENTE, barco.id());
     }
 
     public static BigDecimal probabilidadeAcidente(boolean treinoEmDia, boolean baiaLotada, ParametrosEventos.Acidente regras) {
