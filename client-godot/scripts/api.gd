@@ -28,6 +28,7 @@ func avancar(ticks: int) -> Variant:
 
 
 func ordem(dados: Dictionary) -> Variant:
+	Playtest.ordem(dados)
 	return await _requisitar(HTTPClient.METHOD_POST, "/partidas/%s/ordens" % partida_id, dados)
 
 

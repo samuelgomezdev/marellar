@@ -237,6 +237,8 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 				tela_3d._formulario._confirmar()
 	if args.has("--saves"):
 		await _abrir_saves()
+	if args.has("--exportar-log"):   # baixa o log de playtest (teste do F8 no navegador)
+		_baixar_log()
 	if args.has("--gestao"):
 		_abrir_gestao(false)
 	i = args.find("--painel")
@@ -353,6 +355,7 @@ func _buscar_eventos() -> void:
 	for evento in lista:
 		ultimo_evento = maxi(ultimo_evento, int(evento["id"]))
 		ultima_mensagem[str(evento["tipo"])] = str(evento["mensagem"])
+		Playtest.evento(evento)
 		_avisar(str(evento["mensagem"]))
 		_efeito_do_evento(evento)
 
@@ -506,6 +509,8 @@ func _unhandled_input(event: InputEvent) -> void:
 					_mudar_galpao("G1" if galpao == "G2" else "G2")
 			KEY_F5:
 				_salvar()
+			KEY_F8:
+				_baixar_log()
 			KEY_F9:
 				_carregar_ultimo_save()
 			KEY_ENTER, KEY_KP_ENTER:
@@ -967,6 +972,9 @@ func _devolver_foco(nome: String) -> void:
 
 
 func _atualizar_interface() -> void:
+	if not estado.is_empty():
+		Playtest.observar(estado)
+		Playtest.tela(_tela_de_cima())
 	var barco := _barco(selecionado)
 	var ativo: bool = not barco.is_empty() and barco["status"] != "ENTREGUE"
 	botao_ficha.disabled = barco.is_empty()
@@ -1593,6 +1601,7 @@ func _pausa_automatica(motivo: String) -> void:
 		velocidade_antes = velocidade
 	_mudar_velocidade(0)
 	pausa_auto = motivo
+	Playtest.pausa(motivo, estado)
 	_avisar("PAUSADO: %s." % _motivo_curto(motivo))
 	if motivo == "FIM_DO_MES" or motivo == "DERROTA":
 		_abrir_fim_do_mes(motivo)
@@ -1672,6 +1681,7 @@ func _fechar_aviso_pausa(devolver_foco := true) -> void:
 func _continuar_depois_da_pausa() -> void:
 	if pausa_auto == "DERROTA":
 		return
+	Playtest.continuou(pausa_auto)
 	_fechar_aviso_pausa()
 	if tela_conselho != null:
 		_fechar_conselho()
@@ -1725,6 +1735,7 @@ func _concluir_rodada(barco_id: String, marcas: Array) -> void:
 	await _enviar_ordem({"tipo": "InspecionarRodada", "barcoId": barco_id, "marcas": marcas}, "")
 	var r = estado.get("rodada", {}).get("ultimoResultado")
 	if r != null and r["barcoId"] == barco_id:
+		Playtest.rodada(r)
 		tela_rodada.mostrar_resultado(r)
 	else:
 		_fechar_rodada_e_seguir()
@@ -2078,6 +2089,7 @@ func _abrir_gestao(fechamento: bool) -> void:
 				primeira_livre = b
 			opcoes.add_child(b)
 		direita.add_child(opcoes)
+	botoes.add_child(_botao("Baixar log (F8)", _baixar_log))
 	botoes.add_child(_botao("Última reunião", func():
 		_fechar_gestao()
 		_abrir_conselho()))
@@ -2086,7 +2098,7 @@ func _abrir_gestao(fechamento: bool) -> void:
 	if fechamento:
 		fechar_ou_seguir.theme_type_variation = "BotaoAcao"
 	botoes.add_child(fechar_ou_seguir)
-	botoes.get_child(0).disabled = r == null
+	botoes.get_child(1).disabled = r == null
 	lista.add_child(botoes)
 
 	if primeira:
@@ -2122,6 +2134,33 @@ func _ncs_por_barco() -> String:
 			continue
 		partes.append("%s %d" % [str(b["id"]).substr(3), (b["ncs"] as Array).size()])
 	return "NCs por barco: " + (" · ".join(partes) if not partes.is_empty() else "-")
+
+
+## Log de playtest: baixa o arquivo (navegador) ou abre a pasta (desktop).
+func _baixar_log() -> void:
+	var onde := Playtest.exportar()
+	_avisar("Log de playtest: %s" % onde if not onde.is_empty() else "Não foi possível salvar o log.")
+
+
+## Nome da tela de cima, para o log saber onde o jogador estava quando parou.
+func _tela_de_cima() -> String:
+	if tela_rodada != null and tela_rodada.aberta:
+		return "rodada"
+	if tela_proposta != null:
+		return "proposta"
+	if tela_gestao != null:
+		return "fechamento" if gestao_fechamento else "gestao"
+	if tela_conselho != null:
+		return "conselho"
+	if tela_aviso != null:
+		return "aviso:" + pausa_auto
+	if tela_3d != null and tela_3d.aberta:
+		return "inspecao_3d"
+	if tela_ficha != null and tela_ficha.aberta:
+		return "ficha"
+	if painel != PAINEL_BARCO:
+		return painel
+	return "fabrica"
 
 
 func _fechar_gestao() -> void:
