@@ -1251,7 +1251,8 @@ public final class CodecGerado {
                 Json.lista(m.get("ncsInspecao"), o -> lerNcInspecao3d(o)),
                 lerEstadoPartida_TreinamentosVisao(m.get("treinamentos")),
                 lerEstadoPartida_VendasVisao(m.get("vendas")),
-                lerEstadoPartida_RodadaVisao(m.get("rodada")));
+                lerEstadoPartida_RodadaVisao(m.get("rodada")),
+                lerEstadoPartida_GestaoVisao(m.get("gestao")));
     }
 
     public static void escreverEstadoPartida(StringBuilder sb, br.marellar.engine.estado.EstadoPartida v) {
@@ -1321,6 +1322,8 @@ public final class CodecGerado {
         ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.VendasVisao>) CodecGerado::escreverEstadoPartida_VendasVisao).escrever(sb, v.vendas());
         sb.append(",\"rodada\":");
         ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.RodadaVisao>) CodecGerado::escreverEstadoPartida_RodadaVisao).escrever(sb, v.rodada());
+        sb.append(",\"gestao\":");
+        ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.GestaoVisao>) CodecGerado::escreverEstadoPartida_GestaoVisao).escrever(sb, v.gestao());
         sb.append("}");
     }
 
@@ -2036,7 +2039,10 @@ public final class CodecGerado {
                 Json.texto(m.get("id")),
                 Json.texto(m.get("descricao")),
                 Json.logico(m.get("cumprida")),
-                Json.texto(m.get("resultado")));
+                Json.texto(m.get("resultado")),
+                Json.decimal(m.get("atual")),
+                Json.decimal(m.get("alvo")),
+                Json.logico(m.get("limite")));
     }
 
     public static void escreverRelatorioConselho_Meta(StringBuilder sb, br.marellar.engine.relatorio.RelatorioConselho.Meta v) {
@@ -2052,6 +2058,12 @@ public final class CodecGerado {
         ((Json.Escritor<Boolean>) Json::numero).escrever(sb, v.cumprida());
         sb.append(",\"resultado\":");
         ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.resultado());
+        sb.append(",\"atual\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.atual());
+        sb.append(",\"alvo\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.alvo());
+        sb.append(",\"limite\":");
+        ((Json.Escritor<Boolean>) Json::numero).escrever(sb, v.limite());
         sb.append("}");
     }
 
@@ -2624,6 +2636,58 @@ public final class CodecGerado {
 
     public static void escreverResultadoMarca(StringBuilder sb, br.marellar.engine.dominio.ResultadoMarca v) {
         Json.nome(sb, v);
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.GestaoVisao lerEstadoPartida_GestaoVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "GestaoVisao");
+        return new br.marellar.engine.estado.EstadoPartida.GestaoVisao(
+                Json.lista(m.get("metasDoMes"), o -> lerRelatorioConselho_Meta(o)),
+                Json.inteiro(m.get("metasPerdidas")),
+                Json.inteiro(m.get("metasPerdidasParaMesRuim")),
+                Json.decimal(m.get("ebitdaMesPassado")),
+                Json.inteiro(m.get("acidentesDoMes")),
+                Json.inteiro(m.get("ncsDetectadasDoMes")),
+                Json.decimal(m.get("multasDoMes")),
+                Json.decimal(m.get("garantiaDoMes")),
+                Json.inteiro(m.get("vendasDoMes")),
+                Json.inteiro(m.get("vendasPerdidasDoMes")),
+                Json.inteiro(m.get("diaUtilDoMes")),
+                Json.inteiro(m.get("diasUteisPorMes")));
+    }
+
+    public static void escreverEstadoPartida_GestaoVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.GestaoVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"metasDoMes\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.relatorio.RelatorioConselho.Meta>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.relatorio.RelatorioConselho.Meta>) CodecGerado::escreverRelatorioConselho_Meta)).escrever(sb, v.metasDoMes());
+        sb.append(",\"metasPerdidas\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.metasPerdidas());
+        sb.append(",\"metasPerdidasParaMesRuim\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.metasPerdidasParaMesRuim());
+        sb.append(",\"ebitdaMesPassado\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.ebitdaMesPassado());
+        sb.append(",\"acidentesDoMes\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.acidentesDoMes());
+        sb.append(",\"ncsDetectadasDoMes\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.ncsDetectadasDoMes());
+        sb.append(",\"multasDoMes\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.multasDoMes());
+        sb.append(",\"garantiaDoMes\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.garantiaDoMes());
+        sb.append(",\"vendasDoMes\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.vendasDoMes());
+        sb.append(",\"vendasPerdidasDoMes\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.vendasPerdidasDoMes());
+        sb.append(",\"diaUtilDoMes\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.diaUtilDoMes());
+        sb.append(",\"diasUteisPorMes\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.diasUteisPorMes());
+        sb.append("}");
     }
 
     public static br.marellar.engine.ResultadoAvanco lerResultadoAvanco(Object no) {

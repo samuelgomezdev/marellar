@@ -31,7 +31,12 @@ public record RelatorioConselho(
         String decisaoEscolhida,
         MotivoDerrota derrota) {
 
-    public record Meta(String id, String descricao, boolean cumprida, String resultado) {}
+    /**
+     * Meta do conselho. {@code atual} e {@code alvo} desenham a barra do painel: com {@code limite} falso, a meta e
+     * chegar ao alvo (cascos no DM, caixa); com {@code limite} verdadeiro, e nao passar dele (acidentes, NC por barco).
+     */
+    public record Meta(String id, String descricao, boolean cumprida, String resultado, java.math.BigDecimal atual,
+                       java.math.BigDecimal alvo, boolean limite) {}
 
     public record Fala(String conselheiro, String papel, String texto, boolean seria) {}
 

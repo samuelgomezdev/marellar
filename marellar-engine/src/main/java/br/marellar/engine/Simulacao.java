@@ -283,7 +283,8 @@ public final class Simulacao {
                 List.copyOf(partida.ncsInspecao()),
                 treinamentosVisao(),
                 vendasVisao(),
-                rodadaVisao());
+                rodadaVisao(),
+                gestaoVisao());
     }
 
     private EstadoPartida.TreinamentosVisao treinamentosVisao() {
@@ -332,6 +333,16 @@ public final class Simulacao {
                 b.diaPrometido().map(this::dataDoDia).orElse(null),
                 VendasRegra.semanasAteHoje(partida, b),
                 VendasRegra.multaAteHoje(partida, b));
+    }
+
+    private EstadoPartida.GestaoVisao gestaoVisao() {
+        var metas = ConselhoRegra.metas(partida);
+        var mes = partida.mes();
+        return new EstadoPartida.GestaoVisao(metas, (int) metas.stream().filter(m -> !m.cumprida()).count(),
+                partida.parametros().financeiro().conselho().metasPerdidasParaMesRuim(),
+                partida.ultimoConselho().map(c -> c.dre().ebitda()).orElse(null), mes.acidentes(), mes.ncsDetectadas(),
+                mes.multas(), mes.garantia(), mes.vendas(), mes.vendasPerdidas(), partida.relogio().diaUtilDoMes(),
+                Relogio.DIAS_UTEIS_POR_MES);
     }
 
     /** Rodadas abertas (marcas sem dizer qual e NC) e o resultado da ultima rodada respondida (revela tudo). */
