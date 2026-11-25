@@ -121,6 +121,14 @@
     "cotaRecebida": "{barco}: cota de R$ {valor} recebida ({gate}).",
     "salarios": "Folha paga: R$ {valor} (salários e encargos).",
     "decisaoConselho": "Decisão do conselho: {titulo}.",
-    "derrota": "FIM DE JOGO: {motivo}"
+    "derrota": "FIM DE JOGO: {motivo}",
+    "propostaNova": "{vendedor} (vendas): {cliente} quer um 33 pés em {semanas} semanas. Responda até {validade}.",
+    "propostaExpirada": "{cliente} foi embora: a proposta {proposta} ficou sem resposta.",
+    "propostaRecusada": "Proposta {proposta} de {cliente} recusada.",
+    "vendaFechada": "Venda fechada: {cliente}, entrega prometida para {data}. Contrato de R$ {valor}.",
+    "clienteDesistiu": "{cliente} desistiu: o prazo de {semanas} semanas foi longo demais.",
+    "cascoNovo": "{barco} ({cliente}) entrou no molde. Entrega prometida para {data}.",
+    "multa": "{barco} entregue com {semanas} semana(s) de atraso: multa de R$ {valor} ({percentual}%).",
+    "capacidade": "Capacidade declarada para o próximo mês: {capacidade} barco(s)."
   }
 }

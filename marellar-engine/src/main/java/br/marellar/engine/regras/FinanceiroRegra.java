@@ -91,7 +91,7 @@ public final class FinanceiroRegra {
         BigDecimal consumiveis = percentual(partida.mes().custoMaterial(), partida.parametros().linha33().percentualConsumiveis());
         return Dre.calcular(partida.mes().receita(), partida.mes().custoMaterial(), consumiveis,
                 partida.mes().materialRetrabalho(), folha, regras.despesasFixasMensais(),
-                partida.mes().chargebackRecuperado());
+                partida.mes().chargebackRecuperado(), partida.mes().multas());
     }
 
     /** Salarios de quem esta na empresa (menos quem ainda nao chegou) x (1 + encargos). */

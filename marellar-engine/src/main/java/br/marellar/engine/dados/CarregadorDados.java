@@ -28,6 +28,7 @@ public final class CarregadorDados {
     public static final String FINANCEIRO = "financeiro.json";
     public static final String TEXTOS = "textos-ptbr.json";
     public static final String NC_CATALOGO_INSPECAO = "nc-catalogo-inspecao.json";
+    public static final String VENDAS = "vendas.json";
 
     private static final ObjectMapper MAPPER = JsonMapper.builder()
             .enable(DeserializationFeature.USE_BIG_DECIMAL_FOR_FLOATS)
@@ -83,7 +84,8 @@ public final class CarregadorDados {
                 ler(EVENTOS, fonte.ler(EVENTOS), ParametrosEventos.class),
                 ler(FINANCEIRO, fonte.ler(FINANCEIRO), ParametrosFinanceiro.class),
                 new Textos(lerArvore(TEXTOS, fonte.ler(TEXTOS))),
-                ler(NC_CATALOGO_INSPECAO, fonte.ler(NC_CATALOGO_INSPECAO), CatalogoInspecao.class));
+                ler(NC_CATALOGO_INSPECAO, fonte.ler(NC_CATALOGO_INSPECAO), CatalogoInspecao.class),
+                ler(VENDAS, fonte.ler(VENDAS), ParametrosVendas.class));
         ValidadorDados.validar(parametros);
         return parametros;
     }

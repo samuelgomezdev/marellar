@@ -1,0 +1,22 @@
+{
+  "vendedor": "Beto",
+  "mercadoInternoAnual": 650,
+  "fatiaMercadoPercentual": 1.75,
+  "sazonalidade": [0.6, 0.5, 0.7, 1.4, 1.2, 0.7, 1.0, 0.7, 1.6, 1.4, 1.1, 1.2],
+  "capacidadeInicial": 1,
+  "capacidadeMaxima": 4,
+  "moldes": 2,
+  "cicloPlanejadoDiasUteis": 54,
+  "prazoPedidoMinDiasUteis": 60,
+  "prazoPedidoMaxDiasUteis": 120,
+  "validadePropostaDiasUteis": 5,
+  "diasUteisPorSemana": 5,
+  "multaPercentualPorSemana": 0.5,
+  "multaTetoPercentual": 10,
+  "desistenciaInicio": 1.2,
+  "desistenciaTotal": 1.6,
+  "clientes": ["Cliente Foxtrot", "Cliente Golf", "Cliente Hotel", "Cliente India", "Cliente Juliett",
+    "Cliente Kilo", "Cliente Lima", "Cliente Mike", "Cliente November", "Cliente Oscar", "Cliente Papa",
+    "Cliente Quebec", "Cliente Romeo", "Cliente Sierra", "Cliente Tango", "Cliente Uniform"],
+  "prazosIniciaisDiasUteis": { "33-001": 40, "33-002": 45, "33-003": 95, "33-004": 130 }
+}

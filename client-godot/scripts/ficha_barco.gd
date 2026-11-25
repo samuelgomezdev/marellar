@@ -218,6 +218,9 @@ func _draw() -> void:
 	var status := "entregue" if barco["status"] == "ENTREGUE" else "P%d" % int(barco["prioridade"])
 	draw_string(fonte, Vector2(x_sub, 18), "Linha 33 pés · %s · %s%s" % [barco["cliente"], status,
 			" · segurado" if barco["retido"] else ""], HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Tokens.TEXTO_CALMO)
+	var prazo := _texto_prazo()
+	if not prazo.is_empty():
+		Texto.desenhar(self, Vector2(x_sub, 18), prazo[0], prazo[1], HORIZONTAL_ALIGNMENT_RIGHT, size.x - x_sub - 34)
 
 	_desenhar_baia(Rect2(MARGEM, CABECALHO, LARGURA_ESQUERDA, size.y - CABECALHO - ALTURA_BOTOES - MARGEM), t)
 	_desenhar_gates(_area_direita())
@@ -347,6 +350,20 @@ func _desenhar_cotas(caixa: Rect2) -> void:
 	draw_string(fonte, Vector2(x, caixa.end.y - 5), "Recebido", HORIZONTAL_ALIGNMENT_LEFT, -1, tamanho_texto, Tokens.TEXTO_CALMO)
 	Texto.desenhar(self, Vector2(x, caixa.end.y - 5), "R$ %s de %s mil" % [_mil(barco["valorRecebido"]), _mil(barco["precoVenda"])],
 			Tokens.OK, HORIZONTAL_ALIGNMENT_RIGHT, direita)
+
+
+## Prazo do contrato e multa (M14): [texto, cor]; vazio se o barco não tem prazo. A multa é a que valeria
+## se o barco fosse entregue hoje (semana de atraso iniciada conta); depois da entrega, a que foi paga.
+func _texto_prazo() -> Array:
+	if barco.get("prazoEntrega") == null:
+		return []
+	var p := str(barco["prazoEntrega"]).split("-")
+	var data := "%s/%s/%s" % [p[2], p[1], p[0].substr(2)] if p.size() == 3 else str(barco["prazoEntrega"])
+	var semanas := int(barco["semanasAtraso"])
+	var entregue: bool = barco["status"] == "ENTREGUE"
+	if semanas == 0:
+		return ["Entregue no prazo" if entregue else "Entrega %s" % data, Tokens.OK if entregue else Tokens.TEXTO]
+	return ["%s %d sem · multa R$ %s mil" % ["Atrasou" if entregue else "Atrasado", semanas, _mil(barco["multa"])], Tokens.NC]
 
 
 func _caixa(r: Rect2, titulo: String) -> void:

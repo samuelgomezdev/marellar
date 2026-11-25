@@ -13,6 +13,8 @@ import br.marellar.engine.dominio.TipoLancamento;
 import br.marellar.engine.relatorio.RelatorioConselho;
 import br.marellar.engine.dominio.Funcao;
 import br.marellar.engine.dominio.Pedido;
+import br.marellar.engine.dominio.PedidoCliente;
+import br.marellar.engine.dominio.Proposta;
 import br.marellar.engine.dominio.Rnc;
 import br.marellar.engine.dominio.NaoConformidade;
 import br.marellar.engine.dominio.NcInspecao3d;
@@ -86,6 +88,23 @@ public final class Partida {
     private int mesesRuinsSeguidos;
     private MotivoDerrota derrota;
 
+    // ----- vendas (M14) -----
+    /** Sorteios das vendas em sequencia propria: nao mexem nos sorteios de producao, qualidade e pessoas. */
+    private final Aleatorio aleatorioVendas;
+    private int capacidadeVigente;
+    private int capacidadeDeclarada;
+    private final List<Proposta> propostas = new ArrayList<>();
+    private final List<PedidoCliente> carteira = new ArrayList<>();
+    /** Dias uteis em que chegam as proximas propostas do mes (sorteados no inicio do mes). */
+    private final List<Long> chegadasDePropostas = new ArrayList<>();
+    private int contadorCliente;
+    private int contadorBarco;
+    private int vendasFechadas;
+    private int desistencias;
+    private int propostasExpiradas;
+    private int propostasRecusadas;
+    private BigDecimal multasTotal = BigDecimal.ZERO;
+
     Partida(long semente, ParametrosJogo parametros, LocalDate inicio) {
         this.semente = semente;
         this.parametros = parametros;
@@ -103,6 +122,14 @@ public final class Partida {
                     p.segurancaEmDia(), false));
         }
         this.contadorPessoa = pessoas.size();
+        this.contadorBarco = barcos.size();
+        this.aleatorioVendas = new Aleatorio(semente ^ 0x56454E444153L);   // "VENDAS"
+        this.capacidadeVigente = parametros.vendas().capacidadeInicial();
+        this.capacidadeDeclarada = capacidadeVigente;
+        for (Barco b : barcos) {
+            Integer prazo = parametros.vendas().prazosIniciaisDiasUteis().get(b.id());
+            b.definirContrato(prazo == null ? null : prazo.longValue(), linha.precoVenda());
+        }
         this.caixa = parametros.financeiro().caixaInicial();
         this.pacienciaConselho = parametros.financeiro().conselho().pacienciaInicial();
         for (var f : parametros.fornecedores().fornecedores()) {
@@ -151,6 +178,117 @@ public final class Partida {
                 .filter(Barco::ativo)
                 .sorted(Comparator.comparingInt(Barco::prioridade).thenComparing(Barco::id))
                 .toList();
+    }
+
+    /** Casco novo vindo da carteira: entra no fim da fila de prioridade. */
+    public void adicionarBarco(Barco barco) {
+        barcos.add(barco);
+    }
+
+    public String proximoIdBarco() {
+        contadorBarco++;
+        return String.format("33-%03d", contadorBarco);
+    }
+
+    public int ultimaPrioridade() {
+        return barcosPorPrioridade().stream().mapToInt(Barco::prioridade).max().orElse(0);
+    }
+
+    // ----- vendas -----
+
+    public Aleatorio aleatorioVendas() {
+        return aleatorioVendas;
+    }
+
+    public int capacidadeVigente() {
+        return capacidadeVigente;
+    }
+
+    public int capacidadeDeclarada() {
+        return capacidadeDeclarada;
+    }
+
+    public void declararCapacidade(int barcosPorMes) {
+        capacidadeDeclarada = barcosPorMes;
+    }
+
+    /** No inicio de cada mes a capacidade declarada no fechamento passa a valer. */
+    public void aplicarCapacidadeDeclarada() {
+        capacidadeVigente = capacidadeDeclarada;
+    }
+
+    public List<Proposta> propostas() {
+        return propostas;
+    }
+
+    public Optional<Proposta> proposta(String id) {
+        return propostas.stream().filter(p -> p.id().equals(id)).findFirst();
+    }
+
+    public String proximoIdProposta() {
+        return String.format("PR-%04d", propostas.size() + 1);
+    }
+
+    /** Proximo cliente sintetico da lista de data/vendas.json (volta ao inicio, com numero, se acabar). */
+    public String proximoCliente() {
+        List<String> nomes = parametros.vendas().clientes();
+        String nome = nomes.get(contadorCliente % nomes.size());
+        int volta = contadorCliente / nomes.size();
+        contadorCliente++;
+        return volta == 0 ? nome : nome + " " + (volta + 1);
+    }
+
+    public List<PedidoCliente> carteira() {
+        return carteira;
+    }
+
+    public List<Long> chegadasDePropostas() {
+        return chegadasDePropostas;
+    }
+
+    public void contarVendaFechada() {
+        vendasFechadas++;
+        mes.contarVenda();
+    }
+
+    public void contarDesistencia() {
+        desistencias++;
+        mes.contarVendaPerdida();
+    }
+
+    public void contarPropostaExpirada() {
+        propostasExpiradas++;
+        mes.contarVendaPerdida();
+    }
+
+    public void contarPropostaRecusada() {
+        propostasRecusadas++;
+        mes.contarVendaPerdida();
+    }
+
+    public void registrarMulta(BigDecimal valor) {
+        multasTotal = multasTotal.add(valor);
+        mes.somarMulta(valor);
+    }
+
+    public int vendasFechadas() {
+        return vendasFechadas;
+    }
+
+    public int desistencias() {
+        return desistencias;
+    }
+
+    public int propostasExpiradas() {
+        return propostasExpiradas;
+    }
+
+    public int propostasRecusadas() {
+        return propostasRecusadas;
+    }
+
+    public BigDecimal multasTotal() {
+        return multasTotal;
     }
 
     // ----- qualidade -----

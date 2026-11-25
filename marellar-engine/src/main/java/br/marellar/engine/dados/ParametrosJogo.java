@@ -11,7 +11,8 @@ public record ParametrosJogo(
         ParametrosEventos eventos,
         ParametrosFinanceiro financeiro,
         Textos textos,
-        CatalogoInspecao catalogoInspecao) {
+        CatalogoInspecao catalogoInspecao,
+        ParametrosVendas vendas) {
 
     public ParametrosJogo {
         Objects.requireNonNull(linha33, "linha33");
@@ -22,25 +23,30 @@ public record ParametrosJogo(
         Objects.requireNonNull(financeiro, "financeiro");
         Objects.requireNonNull(textos, "textos");
         Objects.requireNonNull(catalogoInspecao, "catalogoInspecao");
+        Objects.requireNonNull(vendas, "vendas");
     }
 
     public ParametrosJogo comLinha33(ParametrosLinha nova) {
-        return new ParametrosJogo(nova, catalogoNc, pessoas, fornecedores, eventos, financeiro, textos, catalogoInspecao);
+        return new ParametrosJogo(nova, catalogoNc, pessoas, fornecedores, eventos, financeiro, textos, catalogoInspecao, vendas);
     }
 
     public ParametrosJogo comCatalogoNc(CatalogoNc novo) {
-        return new ParametrosJogo(linha33, novo, pessoas, fornecedores, eventos, financeiro, textos, catalogoInspecao);
+        return new ParametrosJogo(linha33, novo, pessoas, fornecedores, eventos, financeiro, textos, catalogoInspecao, vendas);
     }
 
     public ParametrosJogo comFinanceiro(ParametrosFinanceiro novo) {
-        return new ParametrosJogo(linha33, catalogoNc, pessoas, fornecedores, eventos, novo, textos, catalogoInspecao);
+        return new ParametrosJogo(linha33, catalogoNc, pessoas, fornecedores, eventos, novo, textos, catalogoInspecao, vendas);
     }
 
     public ParametrosJogo comEventos(ParametrosEventos novos) {
-        return new ParametrosJogo(linha33, catalogoNc, pessoas, fornecedores, novos, financeiro, textos, catalogoInspecao);
+        return new ParametrosJogo(linha33, catalogoNc, pessoas, fornecedores, novos, financeiro, textos, catalogoInspecao, vendas);
+    }
+
+    public ParametrosJogo comVendas(ParametrosVendas novas) {
+        return new ParametrosJogo(linha33, catalogoNc, pessoas, fornecedores, eventos, financeiro, textos, catalogoInspecao, novas);
     }
 
     public ParametrosJogo comPessoas(ParametrosPessoas novas) {
-        return new ParametrosJogo(linha33, catalogoNc, novas, fornecedores, eventos, financeiro, textos, catalogoInspecao);
+        return new ParametrosJogo(linha33, catalogoNc, novas, fornecedores, eventos, financeiro, textos, catalogoInspecao, vendas);
     }
 }

@@ -58,7 +58,8 @@ public record EstadoPartida(
         BigDecimal horasOciosas,
         long ultimoEventoId,
         List<NcInspecao3d> ncsInspecao,
-        TreinamentosVisao treinamentos) {
+        TreinamentosVisao treinamentos,
+        VendasVisao vendas) {
 
     /**
      * Efeito de cada nivel e dos treinamentos, para o cliente explicar os botoes de treino.
@@ -96,7 +97,34 @@ public record EstadoPartida(
             BigDecimal materialAplicado,
             BigDecimal precoVenda,
             BigDecimal valorRecebido,
-            List<CotaVisao> cotas) {}
+            List<CotaVisao> cotas,
+            LocalDate prazoEntrega,
+            int semanasAtraso,
+            BigDecimal multa) {}
+
+    /**
+     * Vendas (M14). {@code capacidadeVigente} vale neste mes; {@code capacidadeDeclarada} vale a partir do proximo.
+     * {@code propostas} sao so as abertas; {@code carteira} sao as vendas esperando molde livre.
+     */
+    public record VendasVisao(String vendedor, int capacidadeVigente, int capacidadeDeclarada, int capacidadeMaxima,
+                              int moldes, int moldesOcupados, List<PropostaVisao> propostas,
+                              List<CarteiraVisao> carteira, int vendasFechadas, int desistencias,
+                              int propostasExpiradas, int propostasRecusadas, BigDecimal multasTotal,
+                              int diasUteisPorSemana) {}
+
+    /**
+     * Proposta aberta. Prazos em dias uteis a partir de hoje (as datas sao as de entrega se a fabrica aceitar hoje).
+     * {@code opcoes}: prazos que a fabrica pode prometer, com a chance de desistencia e a multa estimada de cada um.
+     */
+    public record PropostaVisao(String id, String cliente, Linha linha, BigDecimal preco, int prazoPedidoDias,
+                                LocalDate dataPedida, int prazoFabricaDias, LocalDate dataFabrica, LocalDate validaAte,
+                                List<OpcaoPrazoVisao> opcoes) {}
+
+    /** {@code tipo}: CLIENTE (o prazo pedido), SEM_DESISTENCIA (o maior sem risco de desistir) ou FABRICA. */
+    public record OpcaoPrazoVisao(String tipo, int prazoDias, LocalDate data, BigDecimal chanceDesistencia,
+                                  BigDecimal multaEstimada) {}
+
+    public record CarteiraVisao(String propostaId, String cliente, LocalDate prazoEntrega) {}
 
     /**
      * Cota do cliente para a ficha do barco. {@code gate} nulo = cota do contrato.

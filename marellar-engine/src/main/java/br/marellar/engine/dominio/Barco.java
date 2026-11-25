@@ -28,6 +28,12 @@ public final class Barco {
     private long somaNiveisNoGate;
     private long horasNoGate;
     private final List<CodigoGate> gatesAprovados = new ArrayList<>();
+    /** Dia util prometido para a entrega (null = barco sem prazo, sem multa). */
+    private Long diaPrometido;
+    private BigDecimal precoVenda;
+    private long diaEntrega = -1;
+    private int semanasAtraso;
+    private BigDecimal multa = BigDecimal.ZERO;
 
     public Barco(String id, Linha linha, String cliente, CodigoGate gateInicial, BigDecimal hhDoGate, int prioridade) {
         this.id = Objects.requireNonNull(id);
@@ -118,6 +124,39 @@ public final class Barco {
         return BigDecimal.valueOf(somaNiveisNoGate)
                 .divide(BigDecimal.valueOf(horasNoGate), 0, RoundingMode.HALF_EVEN)
                 .intValue();
+    }
+
+    /** Prazo e preco do contrato (vendas, M14). */
+    public void definirContrato(Long diaPrometido, BigDecimal precoVenda) {
+        this.diaPrometido = diaPrometido;
+        this.precoVenda = precoVenda;
+    }
+
+    public void registrarEntrega(long dia, int semanasAtraso, BigDecimal multa) {
+        this.diaEntrega = dia;
+        this.semanasAtraso = semanasAtraso;
+        this.multa = multa;
+    }
+
+    public java.util.Optional<Long> diaPrometido() {
+        return java.util.Optional.ofNullable(diaPrometido);
+    }
+
+    public BigDecimal precoVenda() {
+        return precoVenda;
+    }
+
+    /** Dia util da entrega; -1 enquanto nao foi entregue. */
+    public long diaEntrega() {
+        return diaEntrega;
+    }
+
+    public int semanasAtraso() {
+        return semanasAtraso;
+    }
+
+    public BigDecimal multa() {
+        return multa;
     }
 
     public void mudarStatus(StatusBarco novo) {

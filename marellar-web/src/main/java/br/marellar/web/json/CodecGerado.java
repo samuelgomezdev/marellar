@@ -841,6 +841,76 @@ public final class CodecGerado {
         sb.append("}");
     }
 
+    public static br.marellar.engine.dados.ParametrosVendas lerParametrosVendas(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "ParametrosVendas");
+        return new br.marellar.engine.dados.ParametrosVendas(
+                Json.texto(m.get("vendedor")),
+                Json.decimal(m.get("mercadoInternoAnual")),
+                Json.decimal(m.get("fatiaMercadoPercentual")),
+                Json.lista(m.get("sazonalidade"), o -> Json.decimal(o)),
+                Json.inteiro(m.get("capacidadeInicial")),
+                Json.inteiro(m.get("capacidadeMaxima")),
+                Json.inteiro(m.get("moldes")),
+                Json.inteiro(m.get("cicloPlanejadoDiasUteis")),
+                Json.inteiro(m.get("prazoPedidoMinDiasUteis")),
+                Json.inteiro(m.get("prazoPedidoMaxDiasUteis")),
+                Json.inteiro(m.get("validadePropostaDiasUteis")),
+                Json.inteiro(m.get("diasUteisPorSemana")),
+                Json.decimal(m.get("multaPercentualPorSemana")),
+                Json.decimal(m.get("multaTetoPercentual")),
+                Json.decimal(m.get("desistenciaInicio")),
+                Json.decimal(m.get("desistenciaTotal")),
+                Json.lista(m.get("clientes"), o -> Json.texto(o)),
+                Json.mapa(m.get("prazosIniciaisDiasUteis"), k -> k, o -> Json.inteiroOuNulo(o)));
+    }
+
+    public static void escreverParametrosVendas(StringBuilder sb, br.marellar.engine.dados.ParametrosVendas v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"vendedor\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.vendedor());
+        sb.append(",\"mercadoInternoAnual\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.mercadoInternoAnual());
+        sb.append(",\"fatiaMercadoPercentual\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.fatiaMercadoPercentual());
+        sb.append(",\"sazonalidade\":");
+        ((Json.Escritor<java.util.List<java.math.BigDecimal>>) (s, x) -> Json.lista(s, x, (Json.Escritor<java.math.BigDecimal>) Json::decimal)).escrever(sb, v.sazonalidade());
+        sb.append(",\"capacidadeInicial\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.capacidadeInicial());
+        sb.append(",\"capacidadeMaxima\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.capacidadeMaxima());
+        sb.append(",\"moldes\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.moldes());
+        sb.append(",\"cicloPlanejadoDiasUteis\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.cicloPlanejadoDiasUteis());
+        sb.append(",\"prazoPedidoMinDiasUteis\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.prazoPedidoMinDiasUteis());
+        sb.append(",\"prazoPedidoMaxDiasUteis\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.prazoPedidoMaxDiasUteis());
+        sb.append(",\"validadePropostaDiasUteis\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.validadePropostaDiasUteis());
+        sb.append(",\"diasUteisPorSemana\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.diasUteisPorSemana());
+        sb.append(",\"multaPercentualPorSemana\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.multaPercentualPorSemana());
+        sb.append(",\"multaTetoPercentual\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.multaTetoPercentual());
+        sb.append(",\"desistenciaInicio\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.desistenciaInicio());
+        sb.append(",\"desistenciaTotal\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.desistenciaTotal());
+        sb.append(",\"clientes\":");
+        ((Json.Escritor<java.util.List<java.lang.String>>) (s, x) -> Json.lista(s, x, (Json.Escritor<java.lang.String>) Json::texto)).escrever(sb, v.clientes());
+        sb.append(",\"prazosIniciaisDiasUteis\":");
+        ((Json.Escritor<java.util.Map<java.lang.String, java.lang.Integer>>) (s, x) -> Json.mapa(s, x, (Json.Escritor<java.lang.Integer>) Json::numero)).escrever(sb, v.prazosIniciaisDiasUteis());
+        sb.append("}");
+    }
+
     public static br.marellar.engine.ordens.Ordem lerOrdem(Object no) {
         if (no == null) {
             return null;
@@ -859,6 +929,9 @@ public final class CodecGerado {
             case "FazerUmAUm" -> lerOrdem_FazerUmAUm(no);
             case "EscolherDecisaoConselho" -> lerOrdem_EscolherDecisaoConselho(no);
             case "MudarVelocidade" -> lerOrdem_MudarVelocidade(no);
+            case "DeclararCapacidade" -> lerOrdem_DeclararCapacidade(no);
+            case "AceitarProposta" -> lerOrdem_AceitarProposta(no);
+            case "RecusarProposta" -> lerOrdem_RecusarProposta(no);
             case "RegistrarNcInspecao" -> lerOrdem_RegistrarNcInspecao(no);
             default -> throw new JsonInvalidoException("Ordem: tipo desconhecido " + tipo);
         };
@@ -903,6 +976,18 @@ public final class CodecGerado {
         }
         if (v instanceof br.marellar.engine.ordens.Ordem.MudarVelocidade x) {
             escreverOrdem_MudarVelocidade(sb, x);
+            return;
+        }
+        if (v instanceof br.marellar.engine.ordens.Ordem.DeclararCapacidade x) {
+            escreverOrdem_DeclararCapacidade(sb, x);
+            return;
+        }
+        if (v instanceof br.marellar.engine.ordens.Ordem.AceitarProposta x) {
+            escreverOrdem_AceitarProposta(sb, x);
+            return;
+        }
+        if (v instanceof br.marellar.engine.ordens.Ordem.RecusarProposta x) {
+            escreverOrdem_RecusarProposta(sb, x);
             return;
         }
         if (v instanceof br.marellar.engine.ordens.Ordem.RegistrarNcInspecao x) {
@@ -1060,7 +1145,8 @@ public final class CodecGerado {
                 Json.decimal(m.get("horasOciosas")),
                 Json.longo(m.get("ultimoEventoId")),
                 Json.lista(m.get("ncsInspecao"), o -> lerNcInspecao3d(o)),
-                lerEstadoPartida_TreinamentosVisao(m.get("treinamentos")));
+                lerEstadoPartida_TreinamentosVisao(m.get("treinamentos")),
+                lerEstadoPartida_VendasVisao(m.get("vendas")));
     }
 
     public static void escreverEstadoPartida(StringBuilder sb, br.marellar.engine.estado.EstadoPartida v) {
@@ -1126,6 +1212,8 @@ public final class CodecGerado {
         ((Json.Escritor<java.util.List<br.marellar.engine.dominio.NcInspecao3d>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.dominio.NcInspecao3d>) CodecGerado::escreverNcInspecao3d)).escrever(sb, v.ncsInspecao());
         sb.append(",\"treinamentos\":");
         ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.TreinamentosVisao>) CodecGerado::escreverEstadoPartida_TreinamentosVisao).escrever(sb, v.treinamentos());
+        sb.append(",\"vendas\":");
+        ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.VendasVisao>) CodecGerado::escreverEstadoPartida_VendasVisao).escrever(sb, v.vendas());
         sb.append("}");
     }
 
@@ -1170,7 +1258,10 @@ public final class CodecGerado {
                 Json.decimal(m.get("materialAplicado")),
                 Json.decimal(m.get("precoVenda")),
                 Json.decimal(m.get("valorRecebido")),
-                Json.lista(m.get("cotas"), o -> lerEstadoPartida_CotaVisao(o)));
+                Json.lista(m.get("cotas"), o -> lerEstadoPartida_CotaVisao(o)),
+                Json.data(m.get("prazoEntrega")),
+                Json.inteiro(m.get("semanasAtraso")),
+                Json.decimal(m.get("multa")));
     }
 
     public static void escreverEstadoPartida_BarcoVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.BarcoVisao v) {
@@ -1232,6 +1323,12 @@ public final class CodecGerado {
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.valorRecebido());
         sb.append(",\"cotas\":");
         ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.CotaVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.CotaVisao>) CodecGerado::escreverEstadoPartida_CotaVisao)).escrever(sb, v.cotas());
+        sb.append(",\"prazoEntrega\":");
+        ((Json.Escritor<java.time.LocalDate>) Json::data).escrever(sb, v.prazoEntrega());
+        sb.append(",\"semanasAtraso\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.semanasAtraso());
+        sb.append(",\"multa\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.multa());
         sb.append("}");
     }
 
@@ -1864,6 +1961,7 @@ public final class CodecGerado {
                 Json.decimal(m.get("pessoal")),
                 Json.decimal(m.get("despesasFixas")),
                 Json.decimal(m.get("chargebackRecuperado")),
+                Json.decimal(m.get("multas")),
                 Json.decimal(m.get("ebitda")));
     }
 
@@ -1886,6 +1984,8 @@ public final class CodecGerado {
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.despesasFixas());
         sb.append(",\"chargebackRecuperado\":");
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.chargebackRecuperado());
+        sb.append(",\"multas\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.multas());
         sb.append(",\"ebitda\":");
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.ebitda());
         sb.append("}");
@@ -2073,6 +2173,166 @@ public final class CodecGerado {
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.fatorNc());
         sb.append(",\"salario\":");
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.salario());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.VendasVisao lerEstadoPartida_VendasVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "VendasVisao");
+        return new br.marellar.engine.estado.EstadoPartida.VendasVisao(
+                Json.texto(m.get("vendedor")),
+                Json.inteiro(m.get("capacidadeVigente")),
+                Json.inteiro(m.get("capacidadeDeclarada")),
+                Json.inteiro(m.get("capacidadeMaxima")),
+                Json.inteiro(m.get("moldes")),
+                Json.inteiro(m.get("moldesOcupados")),
+                Json.lista(m.get("propostas"), o -> lerEstadoPartida_PropostaVisao(o)),
+                Json.lista(m.get("carteira"), o -> lerEstadoPartida_CarteiraVisao(o)),
+                Json.inteiro(m.get("vendasFechadas")),
+                Json.inteiro(m.get("desistencias")),
+                Json.inteiro(m.get("propostasExpiradas")),
+                Json.inteiro(m.get("propostasRecusadas")),
+                Json.decimal(m.get("multasTotal")),
+                Json.inteiro(m.get("diasUteisPorSemana")));
+    }
+
+    public static void escreverEstadoPartida_VendasVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.VendasVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"vendedor\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.vendedor());
+        sb.append(",\"capacidadeVigente\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.capacidadeVigente());
+        sb.append(",\"capacidadeDeclarada\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.capacidadeDeclarada());
+        sb.append(",\"capacidadeMaxima\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.capacidadeMaxima());
+        sb.append(",\"moldes\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.moldes());
+        sb.append(",\"moldesOcupados\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.moldesOcupados());
+        sb.append(",\"propostas\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.PropostaVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.PropostaVisao>) CodecGerado::escreverEstadoPartida_PropostaVisao)).escrever(sb, v.propostas());
+        sb.append(",\"carteira\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.CarteiraVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.CarteiraVisao>) CodecGerado::escreverEstadoPartida_CarteiraVisao)).escrever(sb, v.carteira());
+        sb.append(",\"vendasFechadas\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.vendasFechadas());
+        sb.append(",\"desistencias\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.desistencias());
+        sb.append(",\"propostasExpiradas\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.propostasExpiradas());
+        sb.append(",\"propostasRecusadas\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.propostasRecusadas());
+        sb.append(",\"multasTotal\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.multasTotal());
+        sb.append(",\"diasUteisPorSemana\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.diasUteisPorSemana());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.PropostaVisao lerEstadoPartida_PropostaVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "PropostaVisao");
+        return new br.marellar.engine.estado.EstadoPartida.PropostaVisao(
+                Json.texto(m.get("id")),
+                Json.texto(m.get("cliente")),
+                lerLinha(m.get("linha")),
+                Json.decimal(m.get("preco")),
+                Json.inteiro(m.get("prazoPedidoDias")),
+                Json.data(m.get("dataPedida")),
+                Json.inteiro(m.get("prazoFabricaDias")),
+                Json.data(m.get("dataFabrica")),
+                Json.data(m.get("validaAte")),
+                Json.lista(m.get("opcoes"), o -> lerEstadoPartida_OpcaoPrazoVisao(o)));
+    }
+
+    public static void escreverEstadoPartida_PropostaVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.PropostaVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"id\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.id());
+        sb.append(",\"cliente\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.cliente());
+        sb.append(",\"linha\":");
+        ((Json.Escritor<br.marellar.engine.dominio.Linha>) CodecGerado::escreverLinha).escrever(sb, v.linha());
+        sb.append(",\"preco\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.preco());
+        sb.append(",\"prazoPedidoDias\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.prazoPedidoDias());
+        sb.append(",\"dataPedida\":");
+        ((Json.Escritor<java.time.LocalDate>) Json::data).escrever(sb, v.dataPedida());
+        sb.append(",\"prazoFabricaDias\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.prazoFabricaDias());
+        sb.append(",\"dataFabrica\":");
+        ((Json.Escritor<java.time.LocalDate>) Json::data).escrever(sb, v.dataFabrica());
+        sb.append(",\"validaAte\":");
+        ((Json.Escritor<java.time.LocalDate>) Json::data).escrever(sb, v.validaAte());
+        sb.append(",\"opcoes\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.OpcaoPrazoVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.OpcaoPrazoVisao>) CodecGerado::escreverEstadoPartida_OpcaoPrazoVisao)).escrever(sb, v.opcoes());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.OpcaoPrazoVisao lerEstadoPartida_OpcaoPrazoVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "OpcaoPrazoVisao");
+        return new br.marellar.engine.estado.EstadoPartida.OpcaoPrazoVisao(
+                Json.texto(m.get("tipo")),
+                Json.inteiro(m.get("prazoDias")),
+                Json.data(m.get("data")),
+                Json.decimal(m.get("chanceDesistencia")),
+                Json.decimal(m.get("multaEstimada")));
+    }
+
+    public static void escreverEstadoPartida_OpcaoPrazoVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.OpcaoPrazoVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"tipo\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.tipo());
+        sb.append(",\"prazoDias\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.prazoDias());
+        sb.append(",\"data\":");
+        ((Json.Escritor<java.time.LocalDate>) Json::data).escrever(sb, v.data());
+        sb.append(",\"chanceDesistencia\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.chanceDesistencia());
+        sb.append(",\"multaEstimada\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.multaEstimada());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.CarteiraVisao lerEstadoPartida_CarteiraVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "CarteiraVisao");
+        return new br.marellar.engine.estado.EstadoPartida.CarteiraVisao(
+                Json.texto(m.get("propostaId")),
+                Json.texto(m.get("cliente")),
+                Json.data(m.get("prazoEntrega")));
+    }
+
+    public static void escreverEstadoPartida_CarteiraVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.CarteiraVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"propostaId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.propostaId());
+        sb.append(",\"cliente\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.cliente());
+        sb.append(",\"prazoEntrega\":");
+        ((Json.Escritor<java.time.LocalDate>) Json::data).escrever(sb, v.prazoEntrega());
         sb.append("}");
     }
 
@@ -2408,6 +2668,69 @@ public final class CodecGerado {
         sb.append("{\"tipo\":\"MudarVelocidade\"");
         sb.append(",\"velocidade\":");
         ((Json.Escritor<br.marellar.engine.dominio.Velocidade>) CodecGerado::escreverVelocidade).escrever(sb, v.velocidade());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.ordens.Ordem.DeclararCapacidade lerOrdem_DeclararCapacidade(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "DeclararCapacidade");
+        return new br.marellar.engine.ordens.Ordem.DeclararCapacidade(
+                Json.inteiro(m.get("barcosPorMes")));
+    }
+
+    public static void escreverOrdem_DeclararCapacidade(StringBuilder sb, br.marellar.engine.ordens.Ordem.DeclararCapacidade v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"tipo\":\"DeclararCapacidade\"");
+        sb.append(",\"barcosPorMes\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.barcosPorMes());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.ordens.Ordem.AceitarProposta lerOrdem_AceitarProposta(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "AceitarProposta");
+        return new br.marellar.engine.ordens.Ordem.AceitarProposta(
+                Json.texto(m.get("propostaId")),
+                Json.inteiro(m.get("prazoDiasUteis")));
+    }
+
+    public static void escreverOrdem_AceitarProposta(StringBuilder sb, br.marellar.engine.ordens.Ordem.AceitarProposta v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"tipo\":\"AceitarProposta\"");
+        sb.append(",\"propostaId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.propostaId());
+        sb.append(",\"prazoDiasUteis\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.prazoDiasUteis());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.ordens.Ordem.RecusarProposta lerOrdem_RecusarProposta(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "RecusarProposta");
+        return new br.marellar.engine.ordens.Ordem.RecusarProposta(
+                Json.texto(m.get("propostaId")));
+    }
+
+    public static void escreverOrdem_RecusarProposta(StringBuilder sb, br.marellar.engine.ordens.Ordem.RecusarProposta v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"tipo\":\"RecusarProposta\"");
+        sb.append(",\"propostaId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.propostaId());
         sb.append("}");
     }
 

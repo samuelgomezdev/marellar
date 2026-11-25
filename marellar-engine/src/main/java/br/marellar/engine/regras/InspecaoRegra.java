@@ -64,6 +64,7 @@ public final class InspecaoRegra {
             barco.mudarStatus(StatusBarco.ENTREGUE);
             partida.registrarEvento(TipoEvento.BARCO_ENTREGUE, barco.id(), "eventos.barcoEntregue",
                     Map.of("barco", barco.id()));
+            VendasRegra.entregue(partida, barco);
             return;
         }
         CodigoGate proximo = barco.gateAtual().proximo();

@@ -5,6 +5,7 @@ import br.marellar.engine.dados.CatalogoInspecao;
 import br.marellar.engine.dados.CatalogoNc;
 import br.marellar.engine.dados.ParametrosEventos;
 import br.marellar.engine.dados.ParametrosFinanceiro;
+import br.marellar.engine.dados.ParametrosVendas;
 import br.marellar.engine.dados.ParametrosFornecedores;
 import br.marellar.engine.dados.ParametrosLinha;
 import br.marellar.engine.dados.ParametrosPessoas;
@@ -43,7 +44,7 @@ public final class GeradorCodec {
     /** Tipos de entrada (dados e ordens) e de saida (respostas da API). */
     static final List<Class<?>> RAIZES = List.of(
             ParametrosLinha.class, CatalogoNc.class, ParametrosPessoas.class, ParametrosFornecedores.class,
-            ParametrosEventos.class, ParametrosFinanceiro.class, CatalogoInspecao.class,
+            ParametrosEventos.class, ParametrosFinanceiro.class, CatalogoInspecao.class, ParametrosVendas.class,
             Ordem.class, Save.class,
             EstadoPartida.class, EstadoPartida.BarcoVisao.class, ResultadoAvanco.class, Evento.class,
             RelatorioConselho.class,

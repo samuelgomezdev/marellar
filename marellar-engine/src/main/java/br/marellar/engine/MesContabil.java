@@ -17,6 +17,34 @@ public final class MesContabil {
     int barcosEntregues;
     int rncs;
     int concessoes;
+    BigDecimal multas = BigDecimal.ZERO;
+    int vendas;
+    int vendasPerdidas;
+
+    public void somarMulta(BigDecimal v) {
+        multas = multas.add(v);
+    }
+
+    public void contarVenda() {
+        vendas++;
+    }
+
+    /** Desistencia, proposta expirada ou recusada. */
+    public void contarVendaPerdida() {
+        vendasPerdidas++;
+    }
+
+    public BigDecimal multas() {
+        return multas;
+    }
+
+    public int vendas() {
+        return vendas;
+    }
+
+    public int vendasPerdidas() {
+        return vendasPerdidas;
+    }
 
     public void somarReceita(BigDecimal v) {
         receita = receita.add(v);

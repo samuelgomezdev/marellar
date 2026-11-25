@@ -3,7 +3,7 @@
 (function () {
   "use strict";
   var ARQUIVOS = ["linha-33.json", "nc-catalogo.json", "pessoas.json", "fornecedores.json",
-    "eventos.json", "financeiro.json", "textos-ptbr.json", "nc-catalogo-inspecao.json"];
+    "eventos.json", "financeiro.json", "textos-ptbr.json", "nc-catalogo-inspecao.json", "vendas.json"];
   window.marellarStatus = "carregando";
   try {
     main([]); // registra window.marellarIniciar e window.marellarRequisitar
