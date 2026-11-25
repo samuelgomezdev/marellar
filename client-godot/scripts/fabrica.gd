@@ -87,6 +87,7 @@ var tela_conselho: PanelContainer
 var tela_saves: PanelContainer
 var tela_ficha: FichaBarco
 var tela_3d: Inspecao3D
+var tela_rodada: Rodada2D
 var botao_ficha: Button
 var botao_conselho: Button
 var botao_carregar: Button
@@ -147,6 +148,28 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 			estado = resposta["estado"]
 			faltam -= int(resposta["resultado"]["ticksExecutados"])
 		await _buscar_eventos()
+	if args.has("--rodada"):   # avança até a primeira pausa da rodada e abre a tela (capturas)
+		var k := args.find("--pular")   # --pular K: passa as K primeiras rodadas (ficam com o inspetor)
+		var pular := int(args[k + 1]) if k >= 0 and k + 1 < args.size() else 0
+		for _volta in 400:
+			var resposta = await Api.avancar(8)
+			if resposta == null:
+				return
+			estado = resposta["estado"]
+			if resposta["resultado"]["motivoPausa"] == "RODADA_INSPECAO":
+				if pular <= 0:
+					break
+				pular -= 1
+		await _buscar_eventos()
+		_atualizar_interface()
+		_abrir_rodada(str(estado.get("barcoPausa", "")))
+		var j := args.find("--marcar")   # --marcar M1,M2: marca e conclui depois de 1 s
+		if j >= 0 and j + 1 < args.size():
+			await get_tree().create_timer(1.0).timeout
+			for id in args[j + 1].split(","):
+				tela_rodada._alternar(id)
+			await get_tree().create_timer(1.0).timeout
+			tela_rodada._enviar()
 	if args.has("--proposta"):   # avança até o vendedor trazer uma proposta e abre a janela dela (capturas)
 		for _dia in 80:
 			if estado.has("vendas") and not (estado["vendas"]["propostas"] as Array).is_empty():
@@ -273,8 +296,9 @@ func _medir(delta: float) -> void:
 	if delta > 0.05:
 		print("MEDICAO pico %.0f ms em %.1f s, tick %d, ocupado %s, ultimo evento %d" % [delta * 1000.0,
 				Time.get_ticks_msec() / 1000.0, int(estado.get("tick", 0)), ocupado, ultimo_evento])
-	if velocidade == 0 and tela_conselho != null:
-		_fechar_conselho()   # medição sem parar no fim do mês
+	if velocidade == 0 and not pausa_auto.is_empty() and pausa_auto != "DERROTA":
+		_fechar_conselho()   # medição sem parar: fim do mês e rodada ficam com o conselho e o inspetor
+		_fechar_aviso_pausa(false)
 		_mudar_velocidade(4)
 	if Time.get_ticks_msec() / 1000.0 < medir_ate:
 		return
@@ -431,7 +455,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_focar_padrao()
 				get_viewport().set_input_as_handled()
 				return
-	if tela_conselho != null or tela_saves != null or tela_proposta != null:
+	if tela_conselho != null or tela_saves != null or tela_proposta != null or tela_rodada.aberta:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		# Letras não valem no 3D: lá WASD/R/F movem a câmera e o formulário tem campo de texto.
@@ -458,6 +482,12 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F:
 				if letras_livres:
 					_abrir_painel(PAINEL_FORNECEDORES)
+			KEY_R:   # rodada de inspeção do barco da pausa ou do selecionado
+				if letras_livres:
+					var alvo := str(estado.get("barcoPausa", "")) if pausa_auto == "RODADA_INSPECAO" else selecionado
+					if not _rodada_aberta(alvo).is_empty():
+						_fechar_aviso_pausa(false)
+						_abrir_rodada(alvo)
 			KEY_V:   # vendas: a proposta mais antiga esperando resposta
 				if letras_livres and not proposta_alerta.is_empty():
 					_abrir_proposta(proposta_alerta)
@@ -477,6 +507,12 @@ func _unhandled_input(event: InputEvent) -> void:
 ## Fecha o painel de cima: saves, conselho, formulário/vista do 3D, 3D, ficha, painel lateral;
 ## sem nada aberto, tira a seleção.
 func _fechar_o_de_cima() -> void:
+	if tela_rodada.aberta:
+		if tela_rodada.resultado.is_empty():
+			_cancelar_rodada()
+		else:
+			_fechar_rodada_e_seguir()
+		return
 	if tela_aviso != null:
 		_fechar_aviso_pausa()
 		return
@@ -638,6 +674,14 @@ func _montar_ficha_completa() -> void:
 	tela_ficha.alternar_segurar.connect(_alternar_segurar)
 	tela_ficha.decidir_nc.connect(_decidir_nc)
 	tela_ficha.inspecionar.connect(_abrir_inspecao_3d)
+	tela_ficha.rodada.connect(func(): _abrir_rodada(selecionado))
+	tela_rodada = Rodada2D.new()
+	tela_rodada.position = Vector2(0, ALTURA_TOPO)
+	tela_rodada.size = Vector2(size.x, size.y - ALTURA_TOPO - ALTURA_BASE)
+	add_child(tela_rodada)
+	tela_rodada.concluir.connect(_concluir_rodada)
+	tela_rodada.cancelar.connect(_cancelar_rodada)
+	tela_rodada.continuar.connect(_fechar_rodada_e_seguir)
 
 
 ## Inspeção 3D (pixel art) por cima da fábrica e da ficha, entre as barras de cima e de baixo.
@@ -930,6 +974,7 @@ func _atualizar_interface() -> void:
 			tela_ficha.aberta = false
 		else:
 			tela_ficha.animado = velocidade > 0
+			tela_ficha.rodada_disponivel = not _rodada_aberta(str(barco["id"])).is_empty()
 			tela_ficha.atualizar(barco, int(estado["tick"]))
 	for chave in botoes_painel:
 		botoes_painel[chave].set_pressed_no_signal(painel == chave)
@@ -1511,9 +1556,13 @@ func _abrir_aviso_pausa(motivo: String, barco_id: String) -> void:
 	var titulo := Label.new()
 	titulo.text = "PAUSADO: %s" % _motivo_curto(motivo).to_upper()
 	titulo.theme_type_variation = "Titulo"
-	titulo.add_theme_color_override("font_color", Tokens.NC)
+	# vermelho só para perda (NC crítica, acidente); a inspeção é uma escolha, não uma perda
+	titulo.add_theme_color_override("font_color", Tokens.MARCA_CLARA if motivo == "RODADA_INSPECAO" else Tokens.NC)
 	itens.add_child(_cabecalho(titulo, _fechar_aviso_pausa))
 	var texto: String = ultima_mensagem.get(motivo, "")
+	if motivo == "RODADA_INSPECAO":
+		texto = "%s terminou o gate %s. Inspecionar agora (%d s) ou deixar com o inspetor?" % [barco_id,
+				_barco(barco_id).get("gateAtual", ""), int(estado["rodada"]["segundos"])]
 	if texto.is_empty():
 		texto = "%s parou." % barco_id if not barco_id.is_empty() else "O jogo parou."
 	itens.add_child(_rotulo_rico(texto, Tokens.TEXTO, LARGURA_AVISO - 16))
@@ -1529,10 +1578,17 @@ func _abrir_aviso_pausa(motivo: String, barco_id: String) -> void:
 				acao = _botao("Abrir ficha do %s" % barco_id, _ir_para_barco.bind(barco_id))
 		"ACIDENTE":
 			acao = _botao("Ver equipe", _ir_para_equipe)
+		"RODADA_INSPECAO":
+			if not _rodada_aberta(barco_id).is_empty():
+				acao = _botao("Inspecionar (R)", func():
+					_fechar_aviso_pausa(false)
+					foco_ao_fechar.erase("aviso")
+					_abrir_rodada(barco_id))
 	if acao != null:
 		acao.theme_type_variation = "BotaoAcao"
 		botoes.add_child(acao)
-	var continuar := _botao("Continuar (Espaço)", _continuar_depois_da_pausa)
+	var continuar := _botao("Deixar com o inspetor" if motivo == "RODADA_INSPECAO" else "Continuar (Espaço)",
+			_continuar_depois_da_pausa)
 	botoes.add_child(continuar)
 
 	# no centro da tela, já com o tamanho final
@@ -1576,6 +1632,51 @@ func _ir_para_equipe() -> void:
 	foco_ao_fechar.erase("aviso")
 	if painel != PAINEL_EQUIPE:
 		_abrir_painel(PAINEL_EQUIPE)
+
+
+# ---------------------------------------------------------------- rodada de inspeção 2D (sprint 2, etapa 3)
+
+func _rodada_aberta(barco_id: String) -> Dictionary:
+	var r = estado.get("rodada")
+	if r == null or barco_id.is_empty():
+		return {}
+	for x in r["abertas"]:
+		if x["barcoId"] == barco_id:
+			return x
+	return {}
+
+
+## Abre a rodada (o jogo fica parado enquanto ela dura).
+func _abrir_rodada(barco_id: String) -> void:
+	var rodada := _rodada_aberta(barco_id)
+	if rodada.is_empty():
+		return
+	if velocidade > 0:
+		velocidade_antes = velocidade
+	_mudar_velocidade(0)
+	if pausa_auto.is_empty():
+		pausa_auto = "RODADA_INSPECAO"   # Continuar no fim volta à velocidade de antes
+	tela_rodada.abrir(_barco(barco_id), rodada, estado["rodada"]["pontos"], int(estado["rodada"]["segundos"]))
+
+
+func _concluir_rodada(barco_id: String, marcas: Array) -> void:
+	await _enviar_ordem({"tipo": "InspecionarRodada", "barcoId": barco_id, "marcas": marcas}, "")
+	var r = estado.get("rodada", {}).get("ultimoResultado")
+	if r != null and r["barcoId"] == barco_id:
+		tela_rodada.mostrar_resultado(r)
+	else:
+		_fechar_rodada_e_seguir()
+
+
+## Fechou sem inspecionar: o inspetor faz a inspeção automática.
+func _cancelar_rodada() -> void:
+	tela_rodada.fechar()
+	_continuar_depois_da_pausa()
+
+
+func _fechar_rodada_e_seguir() -> void:
+	tela_rodada.fechar()
+	_continuar_depois_da_pausa()
 
 
 # ---------------------------------------------------------------- vendas (M14)
@@ -2006,6 +2107,8 @@ func _motivo_curto(motivo: String) -> String:
 			return "NC crítica"
 		"ACIDENTE":
 			return "acidente"
+		"RODADA_INSPECAO":
+			return "inspeção"
 	return motivo.to_lower()
 
 

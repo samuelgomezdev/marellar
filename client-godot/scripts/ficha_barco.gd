@@ -9,6 +9,7 @@ signal priorizar
 signal alternar_segurar
 signal decidir_nc(nc_id: String, decisao: String)
 signal inspecionar
+signal rodada
 
 const GATES := ["DM", "BA", "BF", "ST", "CT", "PI", "TR", "TM", "ET"]
 const NOMES_STATUS_NC := {"EM_RETRABALHO": "em retrabalho", "RESOLVIDA": "fechada", "CONCEDIDA": "concessão",
@@ -44,6 +45,8 @@ var _assinatura_ncs := ""
 var _botao_prioridade: Button
 var _botao_segurar: Button
 var botao_3d: Button
+var _botao_rodada: Button
+var rodada_disponivel := false   ## a fábrica liga quando o motor tem rodada aberta para este barco
 var _botao_fechar: Button
 var _primeiro_retrabalho: Button   # ação principal da ficha quando há NC esperando decisão
 
@@ -65,6 +68,9 @@ func _ready() -> void:
 	botao_3d = _botao("Inspecionar 3D", func(): inspecionar.emit())
 	botao_3d.tooltip_text = "Abre o barco em 3D, no estado do gate atual."
 	botoes.add_child(botao_3d)
+	_botao_rodada = _botao("Rodada 2D", func(): rodada.emit())
+	_botao_rodada.tooltip_text = "Rodada curta de inspeção (R): só com o gate esperando inspeção."
+	botoes.add_child(_botao_rodada)
 	_botao_prioridade = _botao("Prioridade 1", func(): priorizar.emit())
 	botoes.add_child(_botao_prioridade)
 	_botao_segurar = _botao("Segurar gate", func(): alternar_segurar.emit())
@@ -82,6 +88,7 @@ func atualizar(novo: Dictionary, tick: int) -> void:
 	var ativo: bool = not barco.is_empty() and barco["status"] != "ENTREGUE"
 	_botao_prioridade.disabled = not ativo or int(barco["prioridade"]) == 1
 	_botao_segurar.disabled = not ativo
+	_botao_rodada.disabled = not rodada_disponivel
 	_botao_segurar.text = "Liberar gate" if ativo and barco["retido"] else "Segurar gate"
 	_reconstruir_ncs()
 	queue_redraw()
