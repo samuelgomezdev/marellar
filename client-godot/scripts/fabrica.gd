@@ -16,6 +16,8 @@ const TAMANHO_TEXTO := Tokens.TAMANHO_UI       # Pixelify Sans
 const TAMANHO_TITULO := Tokens.TAMANHO_TITULO   # Jersey 10, só nos títulos de tela
 const MAX_AVISOS := 6
 const LARGURA_AVISO := 360   # aviso de pausa automática, no centro
+const LARGURA_PROPOSTA := 420
+const NOMES_OPCAO := {"CLIENTE": "Prazo do cliente", "SEM_DESISTENCIA": "Sem desistir", "FABRICA": "Prazo da fábrica"}
 
 
 const NOMES_STATUS := {
@@ -61,6 +63,11 @@ var gate_anterior := {}
 var pos_inspetora := Vector2(-1, -1)
 var inspetora_andando := false
 var area_alerta_nc := Rect2()
+var area_alerta_proposta := Rect2()
+var proposta_alerta := ""          # id da proposta aberta mostrada no alerta (a mais antiga)
+var tela_proposta: PanelContainer
+var proposta_na_tela := ""         # id da proposta na janela
+var assinatura_proposta := ""      # a janela só se refaz quando a proposta muda (as datas andam com o dia)
 var barco_alerta_nc := ""
 var erro_api := ""
 var selecionado := ""
@@ -87,6 +94,7 @@ var camada_foco: Control   # botões sem fundo por cima do que é desenhado à m
 var botoes_barcos := {}    # id do barco -> Button sem fundo na área clicável do barco
 var botao_cartao: Button
 var botao_alerta: Button
+var botao_proposta: Button
 var botao_fechar_painel: Button   # X do painel lateral (Equipe/Fornecedores)
 var painel_desenhado := ""   # painel lateral na tela (continua desenhado enquanto esmaece ao fechar)
 var alfa_painel := 0.0:       # transparência do painel lateral na animação de abrir/fechar (Movimento)
@@ -139,6 +147,17 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 			estado = resposta["estado"]
 			faltam -= int(resposta["resultado"]["ticksExecutados"])
 		await _buscar_eventos()
+	if args.has("--proposta"):   # avança até o vendedor trazer uma proposta e abre a janela dela (capturas)
+		for _dia in 80:
+			if estado.has("vendas") and not (estado["vendas"]["propostas"] as Array).is_empty():
+				break
+			var resposta = await Api.avancar(8)
+			if resposta == null:
+				return
+			estado = resposta["estado"]
+		await _buscar_eventos()
+		_atualizar_interface()
+		_abrir_proposta(str(estado["vendas"]["propostas"][0]["id"]) if not (estado["vendas"]["propostas"] as Array).is_empty() else "")
 	if args.has("--ate-pausa"):   # avança até a próxima NC crítica ou acidente e mostra o aviso (capturas)
 		for _volta in 200:
 			var resposta = await Api.avancar(168)
@@ -412,7 +431,7 @@ func _unhandled_input(event: InputEvent) -> void:
 				_focar_padrao()
 				get_viewport().set_input_as_handled()
 				return
-	if tela_conselho != null or tela_saves != null:
+	if tela_conselho != null or tela_saves != null or tela_proposta != null:
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		# Letras não valem no 3D: lá WASD/R/F movem a câmera e o formulário tem campo de texto.
@@ -439,6 +458,9 @@ func _unhandled_input(event: InputEvent) -> void:
 			KEY_F:
 				if letras_livres:
 					_abrir_painel(PAINEL_FORNECEDORES)
+			KEY_V:   # vendas: a proposta mais antiga esperando resposta
+				if letras_livres and not proposta_alerta.is_empty():
+					_abrir_proposta(proposta_alerta)
 			KEY_G:
 				if letras_livres:
 					_mudar_galpao("G1" if galpao == "G2" else "G2")
@@ -460,6 +482,9 @@ func _fechar_o_de_cima() -> void:
 		return
 	if tela_saves != null:
 		_fechar_saves()
+		return
+	if tela_proposta != null:
+		_fechar_proposta()
 		return
 	if tela_conselho != null:
 		_fechar_conselho()
@@ -484,6 +509,9 @@ func _gui_input(event: InputEvent) -> void:
 		if painel != PAINEL_BARCO and not _retangulo_painel().has_point(event.position):
 			_fechar_painel()
 			accept_event()
+			return
+		if area_alerta_proposta.has_point(event.position) and not proposta_alerta.is_empty():
+			_abrir_proposta(proposta_alerta)
 			return
 		if area_alerta_nc.has_point(event.position) and not barco_alerta_nc.is_empty():
 			selecionado = barco_alerta_nc
@@ -767,6 +795,7 @@ func _montar_camada_foco() -> void:
 	add_child(camada_foco)
 	botao_cartao = _botao_invisivel(_abrir_ficha_completa)
 	botao_alerta = _botao_invisivel(_abrir_alerta_nc)
+	botao_proposta = _botao_invisivel(func(): _abrir_proposta(proposta_alerta))
 
 
 ## Botão sem fundo, só para o teclado e o controle: o mouse continua no _gui_input da fábrica
@@ -799,6 +828,7 @@ func _sincronizar_botoes_planta() -> void:
 		_cobrir(b, areas_barcos[id])
 	_mostrar_invisivel(botao_cartao, area_cartao, na_planta)
 	_mostrar_invisivel(botao_alerta, area_alerta_nc, na_planta and not barco_alerta_nc.is_empty())
+	_mostrar_invisivel(botao_proposta, area_alerta_proposta, na_planta and not proposta_alerta.is_empty())
 	if na_planta:
 		_vizinhos_dos_barcos()
 
@@ -893,6 +923,8 @@ func _atualizar_interface() -> void:
 	botao_conselho.disabled = estado.get("conselho") == null
 	if tela_3d != null and tela_3d.aberta:
 		tela_3d.atualizar_ncs(estado.get("ncsInspecao", []))
+	if tela_proposta != null:
+		_atualizar_proposta()
 	if tela_ficha.aberta:
 		if barco.is_empty():
 			tela_ficha.aberta = false
@@ -1154,6 +1186,12 @@ func _efeito_do_evento(evento: Dictionary) -> void:
 		"PARADO_MATERIAL":
 			texto = "sem material"
 			cor = Tokens.ATENCAO
+		"MULTA":
+			texto = "multa!"
+			cor = Tokens.NC
+		"CASCO_NOVO":
+			texto = "casco novo"
+			cor = Tokens.OK
 		"BARCO_ENTREGUE":
 			texto = "ENTREGUE!"
 			cor = Tokens.OK
@@ -1364,6 +1402,7 @@ func _desenhar_alertas(t: float) -> void:
 	var y := _topo_planta() + 4.0
 	area_alerta_nc = Rect2()
 	barco_alerta_nc = ""
+	y = _desenhar_alerta_proposta(x, y, largura, t)
 	for barco in estado["barcos"]:
 		for nc in barco["ncs"]:
 			if nc["status"] != "ABERTA" or not barco_alerta_nc.is_empty():
@@ -1398,6 +1437,31 @@ func _desenhar_alertas(t: float) -> void:
 	if not erro_api.is_empty():
 		draw_multiline_string(fonte, Vector2(x, y + 12), erro_api, HORIZONTAL_ALIGNMENT_LEFT, largura, TAMANHO_TEXTO, 3,
 				Tokens.NC)
+
+
+## Proposta do vendedor esperando resposta: cartão clicável (V) no topo dos alertas. Devolve o y seguinte.
+func _desenhar_alerta_proposta(x: float, y: float, largura: float, t: float) -> float:
+	area_alerta_proposta = Rect2()
+	proposta_alerta = ""
+	var vendas = estado.get("vendas")
+	if vendas == null or (vendas["propostas"] as Array).is_empty():
+		return y
+	var propostas: Array = vendas["propostas"]
+	var p: Dictionary = propostas[0]
+	proposta_alerta = str(p["id"])
+	var titulo := "PROPOSTA" if propostas.size() == 1 else "PROPOSTAS (%d)" % propostas.size()
+	var texto := "%s · 33 pés em %d sem. Responder até %s" % [p["cliente"], _semanas(int(p["prazoPedidoDias"])),
+			_data_dia_mes(str(p["validaAte"]))]
+	var altura := fonte.get_multiline_string_size(texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10, TAMANHO_TEXTO).y + 22
+	area_alerta_proposta = Rect2(x, y, largura, altura)
+	draw_rect(area_alerta_proposta, Tokens.FUNDO)
+	draw_rect(area_alerta_proposta.grow(-0.5), Tokens.MARCA_CLARA if int(t * 2) % 2 == 0 else Color(Tokens.MARCA_CLARA, 0.45),
+			false, 1.0)
+	draw_string(fonte, Vector2(x + 5, y + 15), "%s · %s" % [titulo, vendas["vendedor"]], HORIZONTAL_ALIGNMENT_LEFT, -1,
+			TAMANHO_TEXTO, Tokens.MARCA_CLARA)
+	draw_multiline_string(fonte, Vector2(x + 5, y + 32), texto, HORIZONTAL_ALIGNMENT_LEFT, largura - 10,
+			TAMANHO_TEXTO, -1, Tokens.TEXTO)
+	return y + altura + 3
 
 
 ## Equipe e fornecedores: painel por cima da fábrica, à direita (o conteúdo são Controls na rolagem).
@@ -1512,6 +1576,173 @@ func _ir_para_equipe() -> void:
 	foco_ao_fechar.erase("aviso")
 	if painel != PAINEL_EQUIPE:
 		_abrir_painel(PAINEL_EQUIPE)
+
+
+# ---------------------------------------------------------------- vendas (M14)
+
+## Janela da proposta: os dois lados de cada prazo (chance de o cliente desistir x multa estimada).
+## O jogo não pausa: a proposta tem validade e a janela acompanha o dia.
+func _abrir_proposta(id: String) -> void:
+	if _proposta(id).is_empty():
+		return
+	if tela_proposta == null:
+		_guardar_foco("proposta", botao_proposta)
+	proposta_na_tela = id
+	assinatura_proposta = ""
+	_atualizar_proposta()
+
+
+func _atualizar_proposta() -> void:
+	var p := _proposta(proposta_na_tela)
+	if p.is_empty():   # respondida, expirada ou recusada
+		_fechar_proposta()
+		return
+	var assinatura := JSON.stringify(p)
+	if assinatura == assinatura_proposta:
+		return
+	assinatura_proposta = assinatura
+	var primeira := tela_proposta == null
+	var foco := 0
+	if not primeira:
+		var dono := get_viewport().gui_get_focus_owner()
+		foco = maxi(0, _botoes_em(tela_proposta).find(dono))
+		tela_proposta.queue_free()
+	tela_proposta = PanelContainer.new()
+	tela_proposta.theme_type_variation = "Janela"
+	tela_proposta.custom_minimum_size = Vector2(LARGURA_PROPOSTA, 0)
+	_veu(tela_proposta, _fechar_proposta)
+	add_child(tela_proposta)
+	var itens := VBoxContainer.new()
+	itens.add_theme_constant_override("separation", Tokens.GRADE / 2)
+	tela_proposta.add_child(itens)
+	var largura := LARGURA_PROPOSTA - 16
+
+	var titulo := Label.new()
+	titulo.text = "PROPOSTA · %s" % p["cliente"]
+	titulo.theme_type_variation = "Titulo"
+	itens.add_child(_cabecalho(titulo, _fechar_proposta))
+	var vendas: Dictionary = estado["vendas"]
+	itens.add_child(_rotulo_rico("%s: 33 pés por %s. Responda até %s." % [vendas["vendedor"], _reais(p["preco"]),
+			_data_dia_mes(str(p["validaAte"]))], Tokens.TEXTO_CALMO, largura))
+	itens.add_child(_rotulo_rico("Cliente pede %d sem (%s) · a fábrica consegue %d sem (%s)" % [
+			_semanas(int(p["prazoPedidoDias"])), _data_dia_mes(str(p["dataPedida"])),
+			_semanas(int(p["prazoFabricaDias"])), _data_dia_mes(str(p["dataFabrica"]))], Tokens.TEXTO, largura))
+
+	for o in p["opcoes"]:
+		var linha := HBoxContainer.new()
+		linha.add_theme_constant_override("separation", Tokens.GRADE)
+		var b := _botao("%s: %d sem (%s)" % [NOMES_OPCAO.get(str(o["tipo"]), str(o["tipo"])), _semanas(int(o["prazoDias"])),
+				_data_dia_mes(str(o["data"]))], _aceitar_proposta.bind(str(p["id"]), int(o["prazoDias"])))
+		b.custom_minimum_size.x = 196
+		if str(o["tipo"]) == "FABRICA":
+			b.theme_type_variation = "BotaoAcao"   # a palavra final é da fábrica: prazo que ela cumpre
+		linha.add_child(b)
+		var riscos := VBoxContainer.new()
+		riscos.add_theme_constant_override("separation", 0)
+		for r in _riscos(o):
+			riscos.add_child(_rotulo_rico(r[0], r[1], largura - 204))
+		linha.add_child(riscos)
+		itens.add_child(linha)
+	var recusar := _botao("Recusar", _recusar_proposta.bind(str(p["id"])))
+	itens.add_child(recusar)
+
+	tela_proposta.reset_size()
+	tela_proposta.position = ((size - tela_proposta.get_combined_minimum_size()) / 2).floor()
+	if primeira:
+		Movimento.abrir(tela_proposta)
+		var principal: Control = _botoes_em(itens)[1]   # o primeiro botão é o X
+		for b in _botoes_em(itens):
+			if (b as Control).theme_type_variation == "BotaoAcao":
+				principal = b
+		_focar_depois(principal)
+	else:
+		_focar_indice(tela_proposta, foco)
+
+
+## Os dois lados do prazo: chance de o cliente desistir (laranja) e multa estimada (vermelho), uma linha cada.
+func _riscos(o: Dictionary) -> Array:
+	var chance := int(round(float(o["chanceDesistencia"]) * 100))
+	var multa := float(o["multaEstimada"])
+	var lista := []
+	if chance > 0:
+		lista.append(["Desiste: %d%%" % chance, Tokens.ATENCAO])
+	if multa > 0:
+		lista.append(["Multa ~%s" % _mil_reais(multa), Tokens.NC])
+	if lista.is_empty():
+		lista.append(["Sem risco", Tokens.OK])
+	return lista
+
+
+func _aceitar_proposta(id: String, prazo_dias: int) -> void:
+	_fechar_proposta()
+	await _enviar_ordem({"tipo": "AceitarProposta", "propostaId": id, "prazoDiasUteis": prazo_dias}, "")
+
+
+func _recusar_proposta(id: String) -> void:
+	_fechar_proposta()
+	await _enviar_ordem({"tipo": "RecusarProposta", "propostaId": id}, "")
+
+
+func _fechar_proposta() -> void:
+	if tela_proposta != null:
+		var janela := tela_proposta
+		tela_proposta = null
+		proposta_na_tela = ""
+		Movimento.fechar(janela, janela.queue_free)
+		_devolver_foco("proposta")
+
+
+func _proposta(id: String) -> Dictionary:
+	var vendas = estado.get("vendas")
+	if vendas == null:
+		return {}
+	for p in vendas["propostas"]:
+		if p["id"] == id:
+			return p
+	return {}
+
+
+## Capacidade declarada para o próximo mês (vale no mês seguinte e define o prazo das propostas).
+func _linha_capacidade(largura: float) -> HBoxContainer:
+	var vendas: Dictionary = estado["vendas"]
+	var linha := HBoxContainer.new()
+	linha.add_theme_constant_override("separation", Tokens.GRADE / 2)
+	var declarada := int(vendas["capacidadeDeclarada"])
+	var menos := _botao("-", _declarar_capacidade.bind(declarada - 1))
+	menos.disabled = declarada <= 1
+	menos.tooltip_text = "Menos barcos: prazo maior, menos vendas"
+	var mais := _botao("+", _declarar_capacidade.bind(declarada + 1))
+	mais.disabled = declarada >= int(vendas["capacidadeMaxima"])
+	mais.tooltip_text = "Mais barcos: prazo menor, mais vendas e mais risco de multa"
+	linha.add_child(_rotulo_rico("Capacidade do próximo mês: %d barco(s)" % declarada, Tokens.TEXTO, largura - 70))
+	linha.add_child(menos)
+	linha.add_child(mais)
+	return linha
+
+
+func _declarar_capacidade(barcos: int) -> void:
+	await _enviar_ordem({"tipo": "DeclararCapacidade", "barcosPorMes": barcos}, "")
+	_abrir_conselho()
+
+
+## Dias úteis -> semanas (semana iniciada conta, como no motor).
+func _semanas(dias: int) -> int:
+	var por_semana := 5
+	var vendas = estado.get("vendas")
+	if vendas != null:
+		por_semana = int(vendas["diasUteisPorSemana"])
+	return ceili(float(dias) / por_semana)
+
+
+## "2027-08-12" -> "12/08".
+static func _data_dia_mes(iso: String) -> String:
+	var p := iso.split("-")
+	return iso if p.size() != 3 else "%s/%s" % [p[2], p[1]]
+
+
+## "R$ 12 mil".
+func _mil_reais(valor: float) -> String:
+	return "R$ %d mil" % int(round(valor / 1000.0))
 
 
 # ---------------------------------------------------------------- lista de saves
@@ -1660,6 +1891,8 @@ func _abrir_conselho() -> void:
 	lista.add_child(_linha_conselho("DRE: receita %s | material %s | pessoal %s | fixas %s" % [_reais(dre["receita"]),
 			_reais(float(dre["custoMaterial"]) + float(dre["consumiveis"]) + float(dre["materialRetrabalho"])),
 			_reais(dre["pessoal"]), _reais(dre["despesasFixas"])], Tokens.TEXTO, largura))
+	if float(dre["multas"]) > 0:
+		lista.add_child(_linha_conselho("Multas por atraso: %s" % _reais(dre["multas"]), Tokens.NC, largura))
 	var cor_ebitda := Tokens.OK if float(dre["ebitda"]) >= 0 else Tokens.NC
 	lista.add_child(_linha_conselho("EBITDA %s | Caixa %s | Valor da empresa %s" % [_reais(dre["ebitda"]),
 			_reais(r["caixa"]), _reais(r["valorEmpresa"])], cor_ebitda, largura))
@@ -1680,6 +1913,7 @@ func _abrir_conselho() -> void:
 		_focar_depois(nova)
 		return
 
+	lista.add_child(_linha_capacidade(largura))
 	lista.add_child(_linha_conselho("Decisão para o próximo mês (uma):", Tokens.TEXTO, largura))
 	var escolhida = r["decisaoEscolhida"]
 	for o in r["opcoes"]:

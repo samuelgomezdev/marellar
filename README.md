@@ -26,6 +26,7 @@ Simulador de gestão de um estaleiro de iates em Osasco-SP (2027–2031), em pix
 | Sprint 1 | Fundação visual (design system) | Tokens (`tokens.gd`) e tema gerado por script; Pixelify Sans e Jersey 10; foco e navegação por mouse, teclado e controle; todo painel fecha por X, Esc/B, clique fora e o mesmo botão; abas G1/G2; botões desativados com dica; nenhum rótulo cortado; sons por evento, hitstop e tremor; cena de amostra `scenes/amostra_tema.tscn` |
 | Gates | Gates e conselho revistos | 9 gates (DM a ET) com pesos de HH pela equipe por fase; demissão do CEO após 3 meses ruins seguidos (seção 5) |
 | M12a | Treinamento explicado | O estado traz o efeito de cada nível e dos treinos; o painel Equipe mostra o efeito em números na dica de cada botão e no fim do treino |
+| Sprint 2 · etapa 2 | Vender (M14, M12-9) | O vendedor traz propostas pela premissa de mercado e sazonalidade (`data/vendas.json`), no máximo a capacidade declarada; a proposta mostra os dois lados de cada prazo (chance de desistência x multa estimada) e expira em 5 dias úteis; venda fechada entra no caixa (contrato) e vira casco novo quando há molde livre (2 moldes); multa de 0,5% por semana de atraso (semana iniciada conta, teto 10%) na entrega, no caixa, na DRE e na ficha |
 | Sprint 2 · etapa 1 | O jogo não parece travado (M12-1, M12-3) | Toda pausa automática mostra o motivo ao lado das abas e um aviso no centro com o barco, a ação (abrir a ficha, ver a equipe) e Continuar; fim do mês abre o conselho, e Continuar volta à velocidade de antes. Chamadas à API em thread, sem chamada de eventos quando não há evento novo, relógio que não para durante a chamada e sprites gerados na abertura |
 
 ### Próximo
@@ -34,7 +35,7 @@ O que falta das milestones M12 a M15 foi encaixado em sprints. A M16 (inspeção
 
 | Sprint | Tema | Entregas | Pronto quando |
 | --- | --- | --- | --- |
-| 2 | Achar a diversão | ~~Aviso de pausa (M12-1); travadinhas (M12-3)~~ (etapa 1, feita); cascos novos (M12-9); vendedor, propostas, prazo e multa (M14); painel de gestão (M15); rodada curta de inspeção 2D | 3 de 5 jogadores pedem mais um mês |
+| 2 | Achar a diversão | ~~Aviso de pausa (M12-1); travadinhas (M12-3)~~ (etapa 1); ~~cascos novos (M12-9)~~ (etapa 2); vendedor, propostas, prazo e multa (M14); painel de gestão (M15); rodada curta de inspeção 2D | 3 de 5 jogadores pedem mais um mês |
 | 3 | O mês 1 ensina jogando | Cenário enxuto do mês 1; mecânicas que chegam em 4 atos; dicas que apontam (M12-4); cartão de causa → custo em toda perda. O treinamento explicado (M12-7) já foi feito | 4 de 5 jogadores fecham o mês 1 sem ajuda |
 | 4 | Impacto e charme | Equipe junto do barco (M12-5); barco na piscina (M12-6); arte pendente: popa, empilhadeira e sombra (M13); mesa do conselho (M15) | — |
 | 5 | Profundidade | Barra de risco nas propostas; álbum ISO; NC do 3D gerando retrabalho e custo | Passa nas 6 métricas de diversão |
@@ -445,6 +446,7 @@ godot --path client-godot -- --dias 12 --selecionar 33-002   # opcional: pula di
 godot --path client-godot -- --dias 40 --painel equipe       # opcional: abre direto no painel equipe ou fornecedores
 godot --path client-godot -- --dias 12 --salvar              # opcional: salva depois de avançar; --carregar abre o último save
 godot --path client-godot -- --dias 15 --selecionar 33-001 --ficha   # opcional: abre a ficha completa; --saves abre a lista de saves
+godot --path client-godot -- --proposta         # opcional: avança até o vendedor trazer uma proposta e abre a janela dela
 godot --path client-godot -- --ate-pausa        # opcional: avança até a próxima NC crítica ou acidente e mostra o aviso de pausa
 godot --path client-godot -- --dias 42 --medir 120   # opcional: joga 120 s em x4 e imprime o tempo dos quadros e das chamadas à API
 godot --path client-godot -- --dias 6 --selecionar 33-002 --inspecao  # opcional: abre a inspeção 3D; --gate PI mostra outro gate (só para capturas); --comp CONS --vista dentro abre uma vista (ext, raiox, corte, inf, pri, cima, dentro)
@@ -476,7 +478,7 @@ A CLI tem um jogador automático: NC de material vira RNC, as outras vão para r
 
 Tudo se joga com o mouse pela barra de baixo: velocidade (**Pausa**, **x1**, **x2**, **x4**), **Ficha**, **Prior. 1**, **Segurar**, **Equipe** (contratar, 1:1, treinar), **Fornec.** (scorecard, estoque, pedidos), **Conselho** (última reunião), **Salvar** e **Carregar** (lista de saves). Clique num barco para selecioná-lo; **duplo clique** abre a ficha completa (caminho pelos gates, horas-homem, material, NCs com **Retrabalho**, **Concessão** ou **RNC**, e cotas do cliente). Na ficha, **Inspecionar 3D** abre o barco em 3D no estado do gate atual: arraste para girar, roda ou setas aproximam, Esc volta. Passe o mouse para ver o item; clique numa peça para marcar uma NC (defeito do catálogo ampliado, gravidade a partir da mínima, observação).
 
-Também se joga só com teclado ou só com controle: setas ou D-pad movem o foco, Enter ou A confirmam, Esc ou B fecham o painel de cima. Atalhos de teclado: **Espaço** pausa, **1/2/3** velocidade, **Enter** ficha, **F1** ou **E** Equipe, **F2** ou **F** Fornecedores, **G** troca de galpão, **F5** salva, **F9** carrega o último save, **Esc** volta.
+Também se joga só com teclado ou só com controle: setas ou D-pad movem o foco, Enter ou A confirmam, Esc ou B fecham o painel de cima. Atalhos de teclado: **Espaço** pausa, **1/2/3** velocidade, **Enter** ficha, **F1** ou **E** Equipe, **F2** ou **F** Fornecedores, **V** proposta do vendedor, **G** troca de galpão, **F5** salva, **F9** carrega o último save, **Esc** volta.
 
 ---
 

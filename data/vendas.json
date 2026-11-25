@@ -18,5 +18,5 @@
   "clientes": ["Cliente Foxtrot", "Cliente Golf", "Cliente Hotel", "Cliente India", "Cliente Juliett",
     "Cliente Kilo", "Cliente Lima", "Cliente Mike", "Cliente November", "Cliente Oscar", "Cliente Papa",
     "Cliente Quebec", "Cliente Romeo", "Cliente Sierra", "Cliente Tango", "Cliente Uniform"],
-  "prazosIniciaisDiasUteis": { "33-001": 40, "33-002": 45, "33-003": 85, "33-004": 100 }
+  "prazosIniciaisDiasUteis": { "33-001": 40, "33-002": 45, "33-003": 95, "33-004": 130 }
 }
