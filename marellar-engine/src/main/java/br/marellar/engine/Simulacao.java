@@ -25,6 +25,7 @@ import br.marellar.engine.regras.FornecedorRegra;
 import br.marellar.engine.regras.PessoasRegra;
 import br.marellar.engine.regras.ConselhoRegra;
 import br.marellar.engine.regras.FinanceiroRegra;
+import br.marellar.engine.regras.VendasRegra;
 import br.marellar.engine.estado.EstadoPartida.FinanceiroVisao;
 import br.marellar.engine.relatorio.RelatorioConselho;
 import br.marellar.engine.dominio.CotaAReceber;
@@ -166,6 +167,7 @@ public final class Simulacao {
     }
 
     private void tick() {
+        VendasRegra.executar(partida);
         ProducaoRegra.executar(partida);
         InspecaoRegra.executar(partida);
         if (partida.relogio().horaDoTurno() == Relogio.TICKS_POR_DIA - 1) {
@@ -173,6 +175,7 @@ public final class Simulacao {
             PessoasRegra.fimDoDia(partida);
             FornecedorRegra.fimDoDia(partida);
             FinanceiroRegra.fimDoDia(partida);
+            VendasRegra.fimDoDia(partida);
         }
         boolean ultimoTickDoMes = (partida.relogio().tick() + 1) % Relogio.TICKS_POR_MES == 0;
         if (ultimoTickDoMes) {
@@ -203,6 +206,9 @@ public final class Simulacao {
             case Ordem.EscolherDecisaoConselho o -> ConselhoRegra.escolher(partida, o.opcaoId());
             case Ordem.MudarVelocidade o -> partida.definirVelocidade(o.velocidade());
             case Ordem.RegistrarNcInspecao o -> Inspecao3dRegra.registrar(partida, o);
+            case Ordem.DeclararCapacidade o -> VendasRegra.declararCapacidade(partida, o.barcosPorMes());
+            case Ordem.AceitarProposta o -> VendasRegra.aceitar(partida, o.propostaId(), o.prazoDiasUteis());
+            case Ordem.RecusarProposta o -> VendasRegra.recusar(partida, o.propostaId());
         }
         historico.add(new Save.OrdemNoTempo(partida.relogio().tick(), ordem));
     }
@@ -271,7 +277,8 @@ public final class Simulacao {
                 partida.horasOciosas(),
                 partida.eventos().size(),
                 List.copyOf(partida.ncsInspecao()),
-                treinamentosVisao());
+                treinamentosVisao(),
+                vendasVisao());
     }
 
     private EstadoPartida.TreinamentosVisao treinamentosVisao() {
@@ -316,7 +323,30 @@ public final class Simulacao {
                 linha.hhPorBarco(), hhConcluidas(b), linha.materialPorBarco(), materialAplicado(b),
                 linha.precoVenda(), cotas.stream().filter(c -> c.situacao() == SituacaoCota.PAGA)
                         .map(CotaVisao::valor).reduce(BigDecimal.ZERO, BigDecimal::add),
-                cotas);
+                cotas,
+                b.diaPrometido().map(this::dataDoDia).orElse(null),
+                VendasRegra.semanasAteHoje(partida, b),
+                VendasRegra.multaAteHoje(partida, b));
+    }
+
+    private EstadoPartida.VendasVisao vendasVisao() {
+        var v = partida.parametros().vendas();
+        long hoje = partida.hoje();
+        List<EstadoPartida.PropostaVisao> abertas = partida.propostas().stream().filter(p -> p.aberta())
+                .map(p -> new EstadoPartida.PropostaVisao(p.id(), p.cliente(), p.linha(), p.preco(), p.prazoPedido(),
+                        dataDoDia(hoje + p.prazoPedido()), p.prazoFabrica(), dataDoDia(hoje + p.prazoFabrica()),
+                        dataDoDia(p.validaAte()),
+                        VendasRegra.opcoes(v, p).stream().map(o -> new EstadoPartida.OpcaoPrazoVisao(o.tipo().name(),
+                                o.prazoDias(), dataDoDia(hoje + o.prazoDias()), o.chanceDesistencia(), o.multaEstimada()))
+                                .toList()))
+                .toList();
+        List<EstadoPartida.CarteiraVisao> carteira = partida.carteira().stream()
+                .map(c -> new EstadoPartida.CarteiraVisao(c.propostaId(), c.cliente(), dataDoDia(c.diaPrometido())))
+                .toList();
+        return new EstadoPartida.VendasVisao(v.vendedor(), partida.capacidadeVigente(), partida.capacidadeDeclarada(),
+                v.capacidadeMaxima(), v.moldes(), VendasRegra.moldesOcupados(partida), abertas, carteira,
+                partida.vendasFechadas(), partida.desistencias(), partida.propostasExpiradas(),
+                partida.propostasRecusadas(), partida.multasTotal(), v.diasUteisPorSemana());
     }
 
     /** HH padrao dos gates aprovados + o que ja foi feito no gate atual. */

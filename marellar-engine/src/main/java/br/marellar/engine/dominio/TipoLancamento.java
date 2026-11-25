@@ -6,5 +6,6 @@ public enum TipoLancamento {
     MATERIAL_RETRABALHO,
     FOLHA,
     DESPESA_FIXA,
-    DECISAO_CONSELHO
+    DECISAO_CONSELHO,
+    MULTA_ATRASO
 }

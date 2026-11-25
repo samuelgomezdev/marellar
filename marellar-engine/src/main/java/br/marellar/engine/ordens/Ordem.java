@@ -23,7 +23,10 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(Ordem.FazerUmAUm.class),
         @JsonSubTypes.Type(Ordem.EscolherDecisaoConselho.class),
         @JsonSubTypes.Type(Ordem.MudarVelocidade.class),
-        @JsonSubTypes.Type(Ordem.RegistrarNcInspecao.class)
+        @JsonSubTypes.Type(Ordem.RegistrarNcInspecao.class),
+        @JsonSubTypes.Type(Ordem.DeclararCapacidade.class),
+        @JsonSubTypes.Type(Ordem.AceitarProposta.class),
+        @JsonSubTypes.Type(Ordem.RecusarProposta.class)
 })
 public sealed interface Ordem {
 
@@ -52,6 +55,17 @@ public sealed interface Ordem {
     record EscolherDecisaoConselho(String opcaoId) implements Ordem {}
 
     record MudarVelocidade(Velocidade velocidade) implements Ordem {}
+
+    /** Capacidade de producao (barcos por mes) que vale a partir do proximo mes; define o prazo das propostas. */
+    record DeclararCapacidade(int barcosPorMes) implements Ordem {}
+
+    /**
+     * Responde a proposta com o prazo prometido, em dias uteis a partir de hoje: entre o pedido pelo cliente
+     * e o prazo da fabrica. Prazo longo demais pode fazer o cliente desistir.
+     */
+    record AceitarProposta(String propostaId, int prazoDiasUteis) implements Ordem {}
+
+    record RecusarProposta(String propostaId) implements Ordem {}
     /**
      * Marca uma NC no ponto clicado do modelo 3D do barco (inspecao dentro do jogo). O gate e o atual do barco;
      * {@code codigoDefeito} vem do catalogo ampliado ({@code nc-catalogo-inspecao.json}); x, y, z em metros no

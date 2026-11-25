@@ -74,7 +74,8 @@ class SaveTest {
         assertThat(lido.ordens()).isNotEmpty();
         assertThat(json).contains("\"tipo\":\"DecidirNc\"");
         assertThat(b.tick()).isEqualTo(a.tick());
-        assertThat(JSON.writeValueAsString(b.barcos())).isEqualTo(JSON.writeValueAsString(a.barcos()));
+        assertThat(b.barcos()).isEqualTo(a.barcos());   // records: equals por valor (tem LocalDate, que o JSON simples nao escreve)
+        assertThat(b.vendas()).isEqualTo(a.vendas());
         assertThat(JSON.writeValueAsString(b.pessoas())).isEqualTo(JSON.writeValueAsString(a.pessoas()));
         assertThat(b.financeiro()).isEqualTo(a.financeiro());
         assertThat(carregada.conselhos()).isEqualTo(original.conselhos());

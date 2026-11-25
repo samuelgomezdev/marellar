@@ -34,6 +34,7 @@ public final class ValidadorDados {
         v.fornecedores(p.fornecedores());
         v.eventos(p.eventos());
         v.financeiro(p.financeiro());
+        v.vendas(p.vendas(), p.linha33());
         v.textos(p.textos());
         v.itensDeFornecedor(p.catalogoNc(), p.fornecedores());
         v.itensDaLinha(p.linha33(), p.fornecedores());
@@ -283,6 +284,35 @@ public final class ValidadorDados {
         regra(f.kitsAntecipados() >= 1, arq, "kitsAntecipados deve ser pelo menos 1");
     }
 
+    private void vendas(ParametrosVendas v, ParametrosLinha linha) {
+        String arq = CarregadorDados.VENDAS;
+        regra(v.vendedor() != null && !v.vendedor().isBlank(), arq, "vendedor e obrigatorio");
+        positivo(arq, "mercadoInternoAnual", v.mercadoInternoAnual());
+        percentual(arq, "fatiaMercadoPercentual", v.fatiaMercadoPercentual());
+        regra(v.sazonalidade().size() == 12, arq, "sazonalidade deve ter 12 meses (jan a dez)");
+        v.sazonalidade().forEach(i -> naoNegativo(arq, "sazonalidade", i));
+        regra(v.capacidadeMaxima() >= 1, arq, "capacidadeMaxima deve ser pelo menos 1");
+        regra(v.capacidadeInicial() >= 1 && v.capacidadeInicial() <= v.capacidadeMaxima(), arq,
+                "capacidadeInicial deve estar entre 1 e capacidadeMaxima");
+        regra(v.moldes() >= 1, arq, "moldes deve ser pelo menos 1");
+        regra(v.cicloPlanejadoDiasUteis() >= 1, arq, "cicloPlanejadoDiasUteis deve ser pelo menos 1");
+        regra(v.prazoPedidoMinDiasUteis() >= 1 && v.prazoPedidoMinDiasUteis() <= v.prazoPedidoMaxDiasUteis(), arq,
+                "prazoPedidoMinDiasUteis deve estar entre 1 e prazoPedidoMaxDiasUteis");
+        regra(v.validadePropostaDiasUteis() >= 1, arq, "validadePropostaDiasUteis deve ser pelo menos 1");
+        regra(v.diasUteisPorSemana() >= 1, arq, "diasUteisPorSemana deve ser pelo menos 1");
+        percentual(arq, "multaPercentualPorSemana", v.multaPercentualPorSemana());
+        percentual(arq, "multaTetoPercentual", v.multaTetoPercentual());
+        positivo(arq, "desistenciaInicio", v.desistenciaInicio());
+        regra(v.desistenciaInicio() != null && v.desistenciaTotal() != null
+                && v.desistenciaTotal().compareTo(v.desistenciaInicio()) > 0, arq, "desistenciaTotal deve ser maior que desistenciaInicio");
+        regra(!v.clientes().isEmpty(), arq, "clientes deve ser uma lista nao vazia");
+        var ids = linha.barcosIniciais().stream().map(ParametrosLinha.BarcoInicial::id).toList();
+        v.prazosIniciaisDiasUteis().forEach((id, dias) -> {
+            regra(ids.contains(id), arq, "prazosIniciaisDiasUteis." + id + ": barco inicial inexistente");
+            regra(dias != null && dias >= 1, arq, "prazosIniciaisDiasUteis." + id + " deve ser pelo menos 1");
+        });
+    }
+
     private void textos(Textos t) {
         String arq = CarregadorDados.TEXTOS;
         for (String caminho : List.of("inspetor.ncDetectada", "inspetor.gateAprovado", "inspetor.concessaoDemais",
@@ -297,6 +327,8 @@ public final class ValidadorDados {
                 "eventos.treinamentoFimTecnico", "eventos.treinamentoFimSeguranca", "eventos.subiuNivel", "eventos.retornoAfastamento", "eventos.umAUm",
                 "eventos.oitoDRespondido", "eventos.oitoDVencido", "eventos.scorecard", "eventos.cotaRecebida",
                 "eventos.salarios", "eventos.decisaoConselho", "eventos.derrota",
+                "eventos.propostaNova", "eventos.propostaExpirada", "eventos.propostaRecusada", "eventos.vendaFechada",
+                "eventos.clienteDesistiu", "eventos.cascoNovo", "eventos.multa", "eventos.capacidade",
                 "conselho.serio.acidente", "conselho.serio.caixaRuim", "conselho.serio.metaPerdida",
                 "conselho.serio.metaCumprida", "conselho.serio.ebitdaNegativo", "conselho.serio.caixaNegativo", "conselho.humor.materialDemais",
                 "conselho.humor.tudoBem", "conselho.humor.zeroNc", "conselho.derrota.CAIXA", "conselho.derrota.CONSELHO")) {

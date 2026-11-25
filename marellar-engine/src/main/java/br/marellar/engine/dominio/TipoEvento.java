@@ -20,5 +20,15 @@ public enum TipoEvento {
     DERROTA,
     /** NC marcada pelo jogador no modelo 3D do barco. */
     NC_INSPECAO_3D,
-    FIM_DO_MES
+    FIM_DO_MES,
+    /** O vendedor trouxe uma proposta, ou ela expirou ou foi recusada. */
+    PROPOSTA,
+    /** Venda fechada (contrato assinado). */
+    VENDA,
+    /** O cliente desistiu do prazo oferecido. */
+    DESISTENCIA,
+    /** Pedido da carteira entrou num molde livre. */
+    CASCO_NOVO,
+    /** Multa por atraso na entrega. */
+    MULTA
 }

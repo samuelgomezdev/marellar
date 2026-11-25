@@ -39,12 +39,14 @@ public final class DadosWeb {
                 CodecGerado.lerParametrosEventos(arvore.apply(CarregadorDados.EVENTOS)),
                 CodecGerado.lerParametrosFinanceiro(arvore.apply(CarregadorDados.FINANCEIRO)),
                 new Textos(Json.objeto(arvore.apply(CarregadorDados.TEXTOS), CarregadorDados.TEXTOS)),
-                CodecGerado.lerCatalogoInspecao(arvore.apply(CarregadorDados.NC_CATALOGO_INSPECAO)));
+                CodecGerado.lerCatalogoInspecao(arvore.apply(CarregadorDados.NC_CATALOGO_INSPECAO)),
+                CodecGerado.lerParametrosVendas(arvore.apply(CarregadorDados.VENDAS)));
         ValidadorDados.validar(p);
         return p;
     }
 
     public static final List<String> ARQUIVOS = List.of(CarregadorDados.LINHA_33, CarregadorDados.NC_CATALOGO,
             CarregadorDados.PESSOAS, CarregadorDados.FORNECEDORES, CarregadorDados.EVENTOS,
-            CarregadorDados.FINANCEIRO, CarregadorDados.TEXTOS, CarregadorDados.NC_CATALOGO_INSPECAO);
+            CarregadorDados.FINANCEIRO, CarregadorDados.TEXTOS, CarregadorDados.NC_CATALOGO_INSPECAO,
+            CarregadorDados.VENDAS);
 }
