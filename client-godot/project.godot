@@ -15,6 +15,7 @@ config/features=PackedStringArray("4.7", "GL Compatibility")
 Api="*res://scripts/api.gd"
 Sons="*res://scripts/sons.gd"
 Impacto="*res://scripts/impacto.gd"
+Playtest="*res://scripts/playtest.gd"
 
 [display]
 
