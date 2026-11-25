@@ -62,6 +62,7 @@ public final class QualidadeRegra {
     // ----- 2. resultado da inspecao -----
 
     public static void aposInspecao(Partida partida, Barco barco) {
+        RodadaRegra.descartar(partida, barco);
         CatalogoNc catalogo = partida.parametros().catalogoNc();
         Pessoa inspetor = partida.inspetor();
         Personalidade personalidade = inspetor.personalidade().orElseThrow();
@@ -82,6 +83,12 @@ public final class QualidadeRegra {
                 partida.mes().contarNcEscapada();
             }
         }
+        concluirInspecao(partida, barco, detectadas);
+    }
+
+    /** Fim da inspecao (automatica ou rodada do jogador): aprova o gate ou espera a decisao das NCs detectadas. */
+    public static void concluirInspecao(Partida partida, Barco barco, List<NaoConformidade> detectadas) {
+        Pessoa inspetor = partida.inspetor();
 
         if (detectadas.isEmpty()) {
             InspecaoRegra.aprovarGate(partida, barco);

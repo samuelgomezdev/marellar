@@ -26,7 +26,8 @@ import com.fasterxml.jackson.annotation.JsonTypeInfo;
         @JsonSubTypes.Type(Ordem.RegistrarNcInspecao.class),
         @JsonSubTypes.Type(Ordem.DeclararCapacidade.class),
         @JsonSubTypes.Type(Ordem.AceitarProposta.class),
-        @JsonSubTypes.Type(Ordem.RecusarProposta.class)
+        @JsonSubTypes.Type(Ordem.RecusarProposta.class),
+        @JsonSubTypes.Type(Ordem.InspecionarRodada.class)
 })
 public sealed interface Ordem {
 
@@ -66,6 +67,12 @@ public sealed interface Ordem {
     record AceitarProposta(String propostaId, int prazoDiasUteis) implements Ordem {}
 
     record RecusarProposta(String propostaId) implements Ordem {}
+
+    /**
+     * Resposta da rodada curta de inspecao: as marcas clicadas no tempo da rodada (ids M1, M2...).
+     * Marca de NC clicada = detectada; nao clicada = escapa; marca falsa clicada = falso alarme.
+     */
+    record InspecionarRodada(String barcoId, java.util.List<String> marcas) implements Ordem {}
     /**
      * Marca uma NC no ponto clicado do modelo 3D do barco (inspecao dentro do jogo). O gate e o atual do barco;
      * {@code codigoDefeito} vem do catalogo ampliado ({@code nc-catalogo-inspecao.json}); x, y, z em metros no

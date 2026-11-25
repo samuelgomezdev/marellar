@@ -1,0 +1,35 @@
+{
+  "pausarNoGate": true,
+  "segundos": 45,
+  "horasPorFalsoAlarme": 1,
+  "marcasFalsasMin": 1,
+  "marcasFalsasMax": 3,
+  "aparenciasFalsas": ["SUJEIRA", "REFLEXO", "FITA"],
+  "garantiaFatorCusto": 3,
+  "garantiaDiasMin": 20,
+  "garantiaDiasMax": 60,
+  "pontos": [
+    { "id": "PROA",        "nome": "Proa",               "x": 0.50, "y": 0.12 },
+    { "id": "BB_VANTE",    "nome": "Costado BB a vante", "x": 0.25, "y": 0.34 },
+    { "id": "BE_VANTE",    "nome": "Costado BE a vante", "x": 0.75, "y": 0.34 },
+    { "id": "CONSOLE",     "nome": "Console",            "x": 0.50, "y": 0.47 },
+    { "id": "BB_RE",       "nome": "Costado BB a ré",    "x": 0.22, "y": 0.68 },
+    { "id": "BE_RE",       "nome": "Costado BE a ré",    "x": 0.78, "y": 0.68 },
+    { "id": "PRACA",       "nome": "Praça de popa",      "x": 0.50, "y": 0.78 },
+    { "id": "POPA",        "nome": "Popa e motores",     "x": 0.50, "y": 0.93 }
+  ],
+  "tipos": {
+    "LAM-BOLHA":    { "aparencia": "BOLHA",    "pontos": ["PROA", "BB_VANTE", "BE_VANTE", "BB_RE", "BE_RE", "POPA"] },
+    "LAM-SECO":     { "aparencia": "SECO",     "pontos": ["PROA", "BB_VANTE", "BE_VANTE", "BB_RE", "BE_RE", "POPA"] },
+    "GEL-TRINCA":   { "aparencia": "TRINCA",   "pontos": ["PROA", "BB_VANTE", "BE_VANTE", "BB_RE", "BE_RE", "PRACA", "POPA"] },
+    "GEL-LOTE":     { "aparencia": "COR",      "pontos": ["BB_VANTE", "BE_VANTE", "BB_RE", "BE_RE"] },
+    "MON-FIXACAO":  { "aparencia": "FIXACAO",  "pontos": ["CONSOLE", "PRACA", "PROA"] },
+    "ELE-CHICOTE":  { "aparencia": "FIO",      "pontos": ["CONSOLE", "POPA", "PROA"] },
+    "ELE-PAINEL":   { "aparencia": "PAINEL",   "pontos": ["CONSOLE"] },
+    "EST-INFILTRA": { "aparencia": "AGUA",     "pontos": ["PROA", "CONSOLE", "PRACA", "POPA"] },
+    "VID-VEDACAO":  { "aparencia": "VEDACAO",  "pontos": ["CONSOLE"] },
+    "ACA-RISCO":    { "aparencia": "RISCO",    "pontos": ["PROA", "BB_VANTE", "BE_VANTE", "CONSOLE", "BB_RE", "BE_RE", "PRACA"] },
+    "MOT-VIBRACAO": { "aparencia": "VIBRACAO", "pontos": ["POPA"] },
+    "TRA-AVARIA":   { "aparencia": "AMASSADO", "pontos": ["PROA", "BB_VANTE", "BE_VANTE", "BB_RE", "BE_RE", "POPA"] }
+  }
+}

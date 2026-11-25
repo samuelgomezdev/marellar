@@ -1,5 +1,6 @@
 package br.marellar.engine.regras;
 
+import br.marellar.engine.Cenarios;
 import br.marellar.engine.Relogio;
 import br.marellar.engine.ResultadoAvanco;
 import br.marellar.engine.Simulacao;
@@ -31,7 +32,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class QualidadeRegraTest {
 
-    private static final ParametrosJogo PARAMETROS = CarregadorDados.carregarDoClasspath();
+    private static final ParametrosJogo PARAMETROS = Cenarios.PADRAO;   // sem a pausa da rodada a cada gate
     private static final String BARCO = "33-100";
 
     /**
@@ -70,8 +71,8 @@ class QualidadeRegraTest {
 
     @Test
     void mesmaSementeGeraAsMesmasNcsEDeteccoes() {
-        Simulacao a = Simulacao.novaPartida(2027);
-        Simulacao b = Simulacao.novaPartida(2027);
+        Simulacao a = Simulacao.novaPartida(2027, Cenarios.PADRAO);
+        Simulacao b = Simulacao.novaPartida(2027, Cenarios.PADRAO);
 
         for (Simulacao s : List.of(a, b)) {
             for (int i = 0; i < 2 * Relogio.DIAS_UTEIS_POR_MES; i++) {

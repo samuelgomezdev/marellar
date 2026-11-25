@@ -22,7 +22,7 @@ import static org.assertj.core.api.Assertions.assertThatThrownBy;
 
 class SimulacaoTest {
 
-    private static final ParametrosJogo PARAMETROS = CarregadorDados.carregarDoClasspath();
+    private static final ParametrosJogo PARAMETROS = Cenarios.PADRAO;   // sem a pausa da rodada a cada gate
 
     /** Mesmos parametros, mas com probabilidade zero de NC (para testar so a producao). */
     static ParametrosJogo semNcs(ParametrosJogo p) {
@@ -76,8 +76,8 @@ class SimulacaoTest {
 
     @Test
     void mesmaSementeMesmasOrdensMesmoEstado() {
-        Simulacao a = Simulacao.novaPartida(42);
-        Simulacao b = Simulacao.novaPartida(42);
+        Simulacao a = Simulacao.novaPartida(42, Cenarios.PADRAO);
+        Simulacao b = Simulacao.novaPartida(42, Cenarios.PADRAO);
 
         for (Simulacao s : List.of(a, b)) {
             s.avancar(37);
@@ -92,7 +92,7 @@ class SimulacaoTest {
 
     @Test
     void pessoasVaoParaOBarcoMaisPrioritarioAteOLimite() {
-        Simulacao sim = Simulacao.novaPartida(42);
+        Simulacao sim = Simulacao.novaPartida(42, Cenarios.PADRAO);
         sim.aplicarOrdem(new Ordem.DefinirPrioridade("33-004", 1));
 
         sim.avancar(1);
@@ -108,7 +108,7 @@ class SimulacaoTest {
 
     @Test
     void definirPrioridadeReordenaAFila() {
-        Simulacao sim = Simulacao.novaPartida(42);
+        Simulacao sim = Simulacao.novaPartida(42, Cenarios.PADRAO);
 
         sim.aplicarOrdem(new Ordem.DefinirPrioridade("33-003", 1));
 
@@ -166,7 +166,7 @@ class SimulacaoTest {
 
     @Test
     void pausaSozinhoNoFimDoMes() {
-        Simulacao sim = Simulacao.novaPartida(42);
+        Simulacao sim = Simulacao.novaPartida(42, Cenarios.PADRAO);
 
         ResultadoAvanco r = sim.avancar(Relogio.TICKS_POR_MES + 50);
 
@@ -198,7 +198,7 @@ class SimulacaoTest {
 
     @Test
     void ordensInvalidasSaoRecusadas() {
-        Simulacao sim = Simulacao.novaPartida(42);
+        Simulacao sim = Simulacao.novaPartida(42, Cenarios.PADRAO);
 
         assertThatThrownBy(() -> sim.aplicarOrdem(new Ordem.SegurarGate("99-999")))
                 .isInstanceOf(OrdemInvalidaException.class)
@@ -210,7 +210,7 @@ class SimulacaoTest {
 
     @Test
     void mudarVelocidadeApareceNoEstado() {
-        Simulacao sim = Simulacao.novaPartida(42);
+        Simulacao sim = Simulacao.novaPartida(42, Cenarios.PADRAO);
 
         sim.aplicarOrdem(new Ordem.MudarVelocidade(Velocidade.X4));
 
@@ -219,7 +219,7 @@ class SimulacaoTest {
 
     @Test
     void estadoInicialTemOsBarcosEPessoasDosParametros() {
-        EstadoPartida e = Simulacao.novaPartida(42).estado();
+        EstadoPartida e = Simulacao.novaPartida(42, Cenarios.PADRAO).estado();
 
         assertThat(e.barcos()).hasSize(4);
         assertThat(e.pessoas()).hasSize(13);

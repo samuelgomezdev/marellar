@@ -59,7 +59,8 @@ public record EstadoPartida(
         long ultimoEventoId,
         List<NcInspecao3d> ncsInspecao,
         TreinamentosVisao treinamentos,
-        VendasVisao vendas) {
+        VendasVisao vendas,
+        RodadaVisao rodada) {
 
     /**
      * Efeito de cada nivel e dos treinamentos, para o cliente explicar os botoes de treino.
@@ -125,6 +126,27 @@ public record EstadoPartida(
                                   BigDecimal multaEstimada) {}
 
     public record CarteiraVisao(String propostaId, String cliente, LocalDate prazoEntrega) {}
+
+    /**
+     * Rodada curta de inspecao 2D. {@code pontos}: x e y de 0 a 1 na vista de cima, proa para cima.
+     * {@code abertas}: barcos esperando inspecao, com as marcas (sem dizer quais sao NC).
+     * {@code ultimoResultado}: a ultima rodada respondida, com o que era cada marca.
+     */
+    public record RodadaVisao(int segundos, List<PontoVisao> pontos, List<RodadaAbertaVisao> abertas,
+                              ResultadoRodadaVisao ultimoResultado) {}
+
+    public record PontoVisao(String id, String nome, BigDecimal x, BigDecimal y) {}
+
+    public record RodadaAbertaVisao(String barcoId, CodigoGate gate, List<MarcaVisao> marcas) {}
+
+    public record MarcaVisao(String id, String pontoId, String aparencia) {}
+
+    public record ResultadoRodadaVisao(String barcoId, CodigoGate gate, List<MarcaResultadoVisao> marcas, int horasDeEspera) {}
+
+    /** {@code descricao}, {@code gravidade} e {@code custoGarantia} so nas marcas de NC (nulos nas falsas). */
+    public record MarcaResultadoVisao(String id, String pontoId, String aparencia,
+                                      br.marellar.engine.dominio.ResultadoMarca resultado, String descricao,
+                                      Gravidade gravidade, BigDecimal custoGarantia) {}
 
     /**
      * Cota do cliente para a ficha do barco. {@code gate} nulo = cota do contrato.
