@@ -60,7 +60,8 @@ public record EstadoPartida(
         List<NcInspecao3d> ncsInspecao,
         TreinamentosVisao treinamentos,
         VendasVisao vendas,
-        RodadaVisao rodada) {
+        RodadaVisao rodada,
+        GestaoVisao gestao) {
 
     /**
      * Efeito de cada nivel e dos treinamentos, para o cliente explicar os botoes de treino.
@@ -134,6 +135,15 @@ public record EstadoPartida(
      */
     public record RodadaVisao(int segundos, List<PontoVisao> pontos, List<RodadaAbertaVisao> abertas,
                               ResultadoRodadaVisao ultimoResultado) {}
+
+    /**
+     * Painel de gestao: as metas do mes ate agora (se o mes acabasse hoje), quantas ja estao perdidas e quantas
+     * fazem um mes ruim, o EBITDA do mes passado (o do mes corrente so fecha com a folha) e as perdas do mes.
+     */
+    public record GestaoVisao(List<RelatorioConselho.Meta> metasDoMes, int metasPerdidas, int metasPerdidasParaMesRuim,
+                              BigDecimal ebitdaMesPassado, int acidentesDoMes, int ncsDetectadasDoMes,
+                              BigDecimal multasDoMes, BigDecimal garantiaDoMes, int vendasDoMes, int vendasPerdidasDoMes,
+                              int diaUtilDoMes, int diasUteisPorMes) {}
 
     public record PontoVisao(String id, String nome, BigDecimal x, BigDecimal y) {}
 

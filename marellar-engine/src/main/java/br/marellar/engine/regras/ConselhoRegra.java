@@ -44,18 +44,7 @@ public final class ConselhoRegra {
         MesContabil mes = partida.mes();
 
         // ----- metas
-        int barcosNoMes = (int) partida.barcos().stream().filter(b -> b.ativo()).count() + mes.barcosEntregues();
-        BigDecimal ncPorBarco = BigDecimal.valueOf(mes.ncsDetectadas())
-                .divide(BigDecimal.valueOf(Math.max(1, barcosNoMes)), 2, java.math.RoundingMode.HALF_EVEN);
-        List<Meta> metas = List.of(
-                meta(textos, 0, String.valueOf(metasConselho.metaCascosDm()),
-                        mes.gatesDmAprovados() >= metasConselho.metaCascosDm(), mes.gatesDmAprovados() + " casco(s)"),
-                meta(textos, 1, Dinheiro.formatar(metasConselho.metaCaixaMinimo()),
-                        partida.caixa().compareTo(metasConselho.metaCaixaMinimo()) > 0, "R$ " + Dinheiro.formatar(partida.caixa())),
-                meta(textos, 2, "", mes.acidentes() == 0, mes.acidentes() + " acidente(s)"),
-                meta(textos, 3, String.valueOf(metasConselho.metaNcPorBarcoMaxima()),
-                        ncPorBarco.compareTo(BigDecimal.valueOf(metasConselho.metaNcPorBarcoMaxima())) < 0,
-                        ncPorBarco.toPlainString() + " NC/barco"));
+        List<Meta> metas = metas(partida);
 
         // ----- paciencia
         int antes = partida.pacienciaConselho();
@@ -108,9 +97,35 @@ public final class ConselhoRegra {
         return relatorio;
     }
 
-    private static Meta meta(Textos textos, int indice, String alvo, boolean cumprida, String resultado) {
+    /**
+     * As 4 metas do mes com o que aconteceu ate agora. Na reuniao (ultima hora do mes) e o resultado do mes;
+     * no meio do mes, e o painel de gestao. "Cumprida" no meio do mes = se o mes acabasse agora.
+     */
+    public static List<Meta> metas(Partida partida) {
+        ParametrosFinanceiro.Conselho c = partida.parametros().financeiro().conselho();
+        Textos textos = partida.parametros().textos();
+        MesContabil mes = partida.mes();
+        int barcosNoMes = (int) partida.barcos().stream().filter(b -> b.ativo()).count() + mes.barcosEntregues();
+        BigDecimal ncPorBarco = BigDecimal.valueOf(mes.ncsDetectadas())
+                .divide(BigDecimal.valueOf(Math.max(1, barcosNoMes)), 2, java.math.RoundingMode.HALF_EVEN);
+        BigDecimal maxNc = BigDecimal.valueOf(c.metaNcPorBarcoMaxima());
+        return List.of(
+                meta(textos, 0, String.valueOf(c.metaCascosDm()), mes.gatesDmAprovados() >= c.metaCascosDm(),
+                        mes.gatesDmAprovados() + " casco(s)", BigDecimal.valueOf(mes.gatesDmAprovados()),
+                        BigDecimal.valueOf(c.metaCascosDm()), false),
+                meta(textos, 1, Dinheiro.formatar(c.metaCaixaMinimo()), partida.caixa().compareTo(c.metaCaixaMinimo()) > 0,
+                        "R$ " + Dinheiro.formatar(partida.caixa()), partida.caixa(), c.metaCaixaMinimo(), false),
+                meta(textos, 2, "", mes.acidentes() == 0, mes.acidentes() + " acidente(s)",
+                        BigDecimal.valueOf(mes.acidentes()), BigDecimal.ZERO, true),
+                meta(textos, 3, String.valueOf(c.metaNcPorBarcoMaxima()), ncPorBarco.compareTo(maxNc) < 0,
+                        ncPorBarco.toPlainString() + " NC/barco", ncPorBarco, maxNc, true));
+    }
+
+    private static Meta meta(Textos textos, int indice, String alvo, boolean cumprida, String resultado,
+                             BigDecimal atual, BigDecimal valorAlvo, boolean limite) {
         return new Meta(textos.campo("metas", indice, "id"),
-                textos.campo("metas", indice, "descricao").replace("{alvo}", alvo), cumprida, resultado);
+                textos.campo("metas", indice, "descricao").replace("{alvo}", alvo), cumprida, resultado,
+                atual, valorAlvo, limite);
     }
 
     /** Conselheiro financeiro fala de caixa; a de operacoes, de seguranca e metas. Serio quando ha problema. */

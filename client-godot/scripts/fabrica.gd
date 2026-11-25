@@ -84,6 +84,8 @@ var ficha: VBoxContainer
 var rolagem: ScrollContainer
 var botoes_painel := {}
 var tela_conselho: PanelContainer
+var tela_gestao: PanelContainer
+var gestao_fechamento := false   # painel aberto no modo fechamento do mês
 var tela_saves: PanelContainer
 var tela_ficha: FichaBarco
 var tela_3d: Inspecao3D
@@ -235,11 +237,13 @@ func _opcoes_de_desenvolvimento(args: PackedStringArray) -> void:
 				tela_3d._formulario._confirmar()
 	if args.has("--saves"):
 		await _abrir_saves()
+	if args.has("--gestao"):
+		_abrir_gestao(false)
 	i = args.find("--painel")
 	if i >= 0 and i + 1 < args.size():
 		_abrir_painel(args[i + 1])   # abre com a animação; só trocar `painel` deixava o painel transparente
 	if estado.get("motivoPausa") in ["FIM_DO_MES", "DERROTA"] and estado.get("conselho") != null:
-		_abrir_conselho()
+		_abrir_fim_do_mes(str(estado["motivoPausa"]))
 	_atualizar_interface()
 	if args.has("--rodar"):
 		_mudar_velocidade(4)
@@ -298,6 +302,7 @@ func _medir(delta: float) -> void:
 				Time.get_ticks_msec() / 1000.0, int(estado.get("tick", 0)), ocupado, ultimo_evento])
 	if velocidade == 0 and not pausa_auto.is_empty() and pausa_auto != "DERROTA":
 		_fechar_conselho()   # medição sem parar: fim do mês e rodada ficam com o conselho e o inspetor
+		_fechar_gestao()
 		_fechar_aviso_pausa(false)
 		_mudar_velocidade(4)
 	if Time.get_ticks_msec() / 1000.0 < medir_ate:
@@ -425,7 +430,7 @@ func _carregar(id: String) -> void:
 	ultimo_evento = int(estado["ultimoEventoId"])  # eventos antigos já foram vistos
 	_avisar("Save carregado: %s, %02dh." % [_data_curta(str(estado["data"])), int(estado["hora"])])
 	if estado.get("motivoPausa") in ["FIM_DO_MES", "DERROTA"] and estado.get("conselho") != null:
-		_abrir_conselho()
+		_abrir_fim_do_mes(str(estado["motivoPausa"]))
 	_atualizar_interface()
 
 
@@ -456,6 +461,8 @@ func _unhandled_input(event: InputEvent) -> void:
 				get_viewport().set_input_as_handled()
 				return
 	if tela_conselho != null or tela_saves != null or tela_proposta != null or tela_rodada.aberta:
+		return
+	if tela_gestao != null and not (event is InputEventKey and event.keycode == KEY_P):
 		return
 	if event is InputEventKey and event.pressed and not event.echo:
 		# Letras não valem no 3D: lá WASD/R/F movem a câmera e o formulário tem campo de texto.
@@ -488,6 +495,9 @@ func _unhandled_input(event: InputEvent) -> void:
 					if not _rodada_aberta(alvo).is_empty():
 						_fechar_aviso_pausa(false)
 						_abrir_rodada(alvo)
+			KEY_P:   # painel de gestão
+				if letras_livres:
+					_alternar_gestao()
 			KEY_V:   # vendas: a proposta mais antiga esperando resposta
 				if letras_livres and not proposta_alerta.is_empty():
 					_abrir_proposta(proposta_alerta)
@@ -521,6 +531,9 @@ func _fechar_o_de_cima() -> void:
 		return
 	if tela_proposta != null:
 		_fechar_proposta()
+		return
+	if tela_gestao != null:
+		_fechar_gestao()
 		return
 	if tela_conselho != null:
 		_fechar_conselho()
@@ -606,8 +619,8 @@ func _montar_barra_inferior() -> void:
 		b.tooltip_text = "Atalho: %s" % opcao[2]
 		barra.add_child(b)
 		botoes_painel[opcao[0]] = b
-	botao_conselho = _botao("Conselho", _alternar_conselho)
-	botao_conselho.tooltip_text = "Última reunião do conselho."
+	botao_conselho = _botao("Gestão", _alternar_gestao)
+	botao_conselho.tooltip_text = "Painel de gestão: metas do mês, números e vendas (P)."
 	barra.add_child(botao_conselho)
 	barra.add_child(VSeparator.new())
 	var salvar := _botao("Salvar", _salvar)
@@ -964,7 +977,9 @@ func _atualizar_interface() -> void:
 	for b in [botao_ficha, botao_prioridade, botao_segurar]:
 		_atualizar_dica(b, motivo)
 	_atualizar_abas()
-	botao_conselho.disabled = estado.get("conselho") == null
+	botao_conselho.disabled = estado.is_empty()
+	if tela_gestao != null:
+		_atualizar_gestao()
 	if tela_3d != null and tela_3d.aberta:
 		tela_3d.atualizar_ncs(estado.get("ncsInspecao", []))
 	if tela_proposta != null:
@@ -1376,8 +1391,53 @@ func _desenhar_topo() -> void:
 		x += largura + 1
 	if velocidade == 0 and not pausa_auto.is_empty():
 		_desenhar_faixa_pausa()
+	elif not tela_ficha.aberta:
+		_desenhar_chips_metas()
 	var vel := "PAUSA" if velocidade == 0 else "x%d" % velocidade
 	Texto.desenhar(self, Vector2(x + 1, 16), vel, Tokens.ATENCAO if velocidade == 0 else Tokens.OK)
+
+
+## Metas do mês sempre à vista: um chip por meta à direita das abas G1/G2 (verde dentro, laranja a caminho,
+## vermelho perdida). O motor diz o valor e se a meta está cumprida; aqui só se escolhe a cor e o texto curto.
+func _desenhar_chips_metas() -> void:
+	var g = estado.get("gestao")
+	if g == null:
+		return
+	var x := size.x - 4
+	var metas: Array = g["metasDoMes"]
+	for i in range(metas.size() - 1, -1, -1):
+		var m: Dictionary = metas[i]
+		var texto := _texto_chip(m)
+		var cor := _cor_meta(m, false)
+		var largura := Texto.largura(texto) + 8
+		x -= largura
+		var r := Rect2(x, ALTURA_TOPO + 3, largura, ALTURA_ABAS - 6)
+		draw_rect(r, Tokens.FUNDO)
+		draw_rect(r.grow(-0.5), cor, false, 1.0)
+		Texto.desenhar(self, Vector2(x + 4, ALTURA_TOPO + 17), texto, cor)
+		x -= 2
+
+
+func _texto_chip(m: Dictionary) -> String:
+	var atual := float(m["atual"])
+	match str(m["id"]):
+		"M-DM2":
+			return "DM %d/%d" % [int(atual), int(float(m["alvo"]))]
+		"M-CAIXA":
+			return ("%.1fmi" % (atual / 1000000.0)).replace(".", ",")
+		"M-ACID":
+			return "Ac %d" % int(atual)
+		"M-RNC":
+			return ("NC %.1f" % atual).replace(".", ",")
+	return str(m["id"])
+
+
+## Verde: cumprida. Meta de "chegar a" ainda não batida: laranja durante o mês. Limite estourado: vermelho.
+## No fechamento tudo que não foi cumprido é vermelho.
+func _cor_meta(m: Dictionary, final: bool) -> Color:
+	if m["cumprida"]:
+		return Tokens.OK
+	return Tokens.NC if final or m["limite"] else Tokens.ATENCAO
 
 
 ## Pausa automática: "PAUSADO: motivo" à direita das abas G1/G2 até o jogo voltar a rodar (M12-1).
@@ -1535,7 +1595,7 @@ func _pausa_automatica(motivo: String) -> void:
 	pausa_auto = motivo
 	_avisar("PAUSADO: %s." % _motivo_curto(motivo))
 	if motivo == "FIM_DO_MES" or motivo == "DERROTA":
-		_abrir_conselho()
+		_abrir_fim_do_mes(motivo)
 	else:
 		var barco = estado.get("barcoPausa")
 		_abrir_aviso_pausa(motivo, "" if barco == null else str(barco))
@@ -1615,6 +1675,8 @@ func _continuar_depois_da_pausa() -> void:
 	_fechar_aviso_pausa()
 	if tela_conselho != null:
 		_fechar_conselho()
+	if tela_gestao != null:
+		_fechar_gestao()
 	_mudar_velocidade(velocidade_antes)
 
 
@@ -1806,6 +1868,7 @@ func _proposta(id: String) -> Dictionary:
 ## Capacidade declarada para o próximo mês (vale no mês seguinte e define o prazo das propostas).
 func _linha_capacidade(largura: float) -> HBoxContainer:
 	var vendas: Dictionary = estado["vendas"]
+	var vigente := int(vendas["capacidadeVigente"])
 	var linha := HBoxContainer.new()
 	linha.add_theme_constant_override("separation", Tokens.GRADE / 2)
 	var declarada := int(vendas["capacidadeDeclarada"])
@@ -1815,7 +1878,7 @@ func _linha_capacidade(largura: float) -> HBoxContainer:
 	var mais := _botao("+", _declarar_capacidade.bind(declarada + 1))
 	mais.disabled = declarada >= int(vendas["capacidadeMaxima"])
 	mais.tooltip_text = "Mais barcos: prazo menor, mais vendas e mais risco de multa"
-	linha.add_child(_rotulo_rico("Capacidade do próximo mês: %d barco(s)" % declarada, Tokens.TEXTO, largura - 70))
+	linha.add_child(_rotulo_rico("Capacidade %d/mês · próx. %d" % [vigente, declarada], Tokens.TEXTO, largura - 60))
 	linha.add_child(menos)
 	linha.add_child(mais)
 	return linha
@@ -1823,7 +1886,7 @@ func _linha_capacidade(largura: float) -> HBoxContainer:
 
 func _declarar_capacidade(barcos: int) -> void:
 	await _enviar_ordem({"tipo": "DeclararCapacidade", "barcosPorMes": barcos}, "")
-	_abrir_conselho()
+	_reabrir_tela_do_mes()
 
 
 ## Dias úteis -> semanas (semana iniciada conta, como no motor).
@@ -1844,6 +1907,229 @@ static func _data_dia_mes(iso: String) -> String:
 ## "R$ 12 mil".
 func _mil_reais(valor: float) -> String:
 	return "R$ %d mil" % int(round(valor / 1000.0))
+
+
+# ---------------------------------------------------------------- painel de gestão (M15, sprint 2 etapa 4)
+
+func _abrir_fim_do_mes(motivo: String) -> void:
+	if motivo == "DERROTA":
+		_abrir_conselho()
+	else:
+		_abrir_gestao(true)
+
+
+func _alternar_gestao() -> void:
+	if tela_gestao != null:
+		_fechar_gestao()
+	else:
+		# parado no fechamento do mês, o painel volta no modo fechamento
+		_abrir_gestao(pausa_auto == "FIM_DO_MES" and estado.get("conselho") != null)
+
+
+func _reabrir_tela_do_mes() -> void:
+	if tela_gestao != null:
+		_abrir_gestao(gestao_fechamento)
+	elif tela_conselho != null:
+		_abrir_conselho()
+
+
+var _assinatura_gestao := ""
+
+
+## Refaz o painel quando o estado muda (o jogo pode estar rodando com ele aberto).
+func _atualizar_gestao() -> void:
+	var assinatura := JSON.stringify([estado.get("gestao"), estado.get("financeiro", {}).get("caixa"),
+			estado.get("vendas"), estado.get("conselho") != null])
+	if assinatura != _assinatura_gestao:
+		_abrir_gestao(gestao_fechamento)
+
+
+func _abrir_gestao(fechamento: bool) -> void:
+	if estado.is_empty():
+		return
+	var r = estado.get("conselho")
+	if fechamento and r == null:
+		fechamento = false
+	gestao_fechamento = fechamento
+	_assinatura_gestao = JSON.stringify([estado.get("gestao"), estado.get("financeiro", {}).get("caixa"),
+			estado.get("vendas"), estado.get("conselho") != null])
+	var primeira := tela_gestao == null
+	var foco := 0
+	if primeira:
+		_guardar_foco("gestao", botao_conselho)
+	else:
+		foco = maxi(0, _botoes_em(tela_gestao).find(get_viewport().gui_get_focus_owner()))
+		tela_gestao.queue_free()
+	tela_gestao = PanelContainer.new()
+	tela_gestao.theme_type_variation = "Janela"
+	tela_gestao.position = Vector2(16, ALTURA_TOPO + 4)
+	tela_gestao.size = Vector2(size.x - 32, size.y - ALTURA_TOPO - ALTURA_BASE - 8)
+	_veu(tela_gestao, _fechar_gestao)
+	add_child(tela_gestao)
+	if primeira:
+		Movimento.abrir(tela_gestao)
+
+	var rolagem_g := ScrollContainer.new()
+	rolagem_g.horizontal_scroll_mode = ScrollContainer.SCROLL_MODE_DISABLED
+	rolagem_g.follow_focus = true
+	tela_gestao.add_child(rolagem_g)
+	var lista := VBoxContainer.new()
+	lista.custom_minimum_size.x = tela_gestao.size.x - 24
+	lista.add_theme_constant_override("separation", 2)
+	rolagem_g.add_child(lista)
+	var largura := lista.custom_minimum_size.x
+	var g: Dictionary = estado["gestao"]
+	var fin: Dictionary = estado["financeiro"]
+
+	var titulo := Label.new()
+	titulo.theme_type_variation = "Titulo"
+	if fechamento:
+		titulo.text = "FECHAMENTO DE %s" % str(r["mesReferencia"])
+	else:
+		titulo.text = "PAINEL DE GESTÃO · %s · dia %d de %d" % [_mes_curto(str(estado["mesReferencia"])),
+				int(g["diaUtilDoMes"]), int(g["diasUteisPorMes"])]
+	lista.add_child(_cabecalho(titulo, _fechar_gestao))
+
+	var colunas := HBoxContainer.new()
+	colunas.add_theme_constant_override("separation", Tokens.GRADE * 2)
+	lista.add_child(colunas)
+	var largura_col := floorf((largura - Tokens.GRADE * 2) / 2)
+	var esquerda := VBoxContainer.new()
+	esquerda.add_theme_constant_override("separation", 1)
+	esquerda.custom_minimum_size.x = largura_col
+	colunas.add_child(esquerda)
+	var direita := VBoxContainer.new()
+	direita.add_theme_constant_override("separation", 1)
+	direita.custom_minimum_size.x = largura_col
+	colunas.add_child(direita)
+
+	# ----- metas (no fechamento, as do mês que fechou)
+	var metas: Array = r["metas"] if fechamento else g["metasDoMes"]
+	for m in metas:
+		esquerda.add_child(_rotulo_rico(str(m["descricao"]), Tokens.TEXTO, largura_col))
+		var linha := HBoxContainer.new()
+		linha.add_theme_constant_override("separation", 6)
+		var barra := _barra_meta(m, largura_col - 126, fechamento)
+		barra.size_flags_vertical = Control.SIZE_SHRINK_CENTER
+		linha.add_child(barra)
+		linha.add_child(_rotulo_rico(str(m["resultado"]).replace(",00", ""), _cor_meta(m, fechamento), 120))
+		esquerda.add_child(linha)
+	var limite_ruim := int(g["metasPerdidasParaMesRuim"])
+	var limite_meses := int(fin["mesesRuinsParaDemissao"])
+	var ruins := int(fin["mesesRuinsSeguidos"])
+	if fechamento:
+		esquerda.add_child(_rotulo_rico(("MÊS RUIM: %d de %d seguidos" % [ruins, limite_meses]) if r["mesRuim"]
+				else "Mês aceitável: contagem zerada", Tokens.NC if r["mesRuim"] else Tokens.OK, largura_col))
+	else:
+		var perdidas := int(g["metasPerdidas"])
+		esquerda.add_child(_rotulo_rico("Hoje: %d perdida(s) · ruim = %d+" % [perdidas, limite_ruim],
+				Tokens.NC if perdidas >= limite_ruim else (Tokens.ATENCAO if perdidas > 0 else Tokens.OK), largura_col))
+	esquerda.add_child(_rotulo_rico("Meses ruins: %d de %d · paciência %d/%d" % [ruins, limite_meses,
+			int(fin["pacienciaConselho"]), int(fin["pacienciaMaxima"])],
+			_cor_conselho(ruins, limite_meses) if ruins > 0 else Tokens.TEXTO_CALMO, largura_col))
+
+	# ----- números
+	direita.add_child(_rotulo_rico("Caixa %s · a receber %s" % [_milhoes(fin["caixa"]), _milhoes(fin["cotasAReceber"])],
+			Tokens.OK if float(fin["caixa"]) >= 0 else Tokens.NC, largura_col))
+	if fechamento:
+		var dre: Dictionary = r["dre"]
+		direita.add_child(_rotulo_rico("EBITDA do mês %s" % _reais(dre["ebitda"]),
+				Tokens.OK if float(dre["ebitda"]) >= 0 else Tokens.NC, largura_col))
+		direita.add_child(_rotulo_rico("Receita %s" % _reais(dre["receita"]), Tokens.TEXTO, largura_col))
+	else:
+		var ebitda = g["ebitdaMesPassado"]
+		direita.add_child(_rotulo_rico("EBITDA do mês passado %s" % ("-" if ebitda == null else _reais(ebitda)),
+				Tokens.TEXTO if ebitda == null else (Tokens.OK if float(ebitda) >= 0 else Tokens.NC), largura_col))
+		direita.add_child(_rotulo_rico("Receita do mês até agora %s" % _reais(fin["receitaDoMes"]), Tokens.TEXTO, largura_col))
+	if not fechamento:
+		direita.add_child(_rotulo_rico("Valor da empresa %s" % _reais(fin["valorEmpresa"]), Tokens.MARCA_CLARA, largura_col))
+	var perdas := "Multas %s · garantia %s" % [_mil_reais(float(g["multasDoMes"])), _mil_reais(float(g["garantiaDoMes"]))]
+	direita.add_child(_rotulo_rico(perdas, Tokens.NC if float(g["multasDoMes"]) + float(g["garantiaDoMes"]) > 0
+			else Tokens.TEXTO_CALMO, largura_col))
+	if not fechamento:
+		direita.add_child(_rotulo_rico("NCs no mês %d · acidentes %d" % [int(g["ncsDetectadasDoMes"]), int(g["acidentesDoMes"])],
+				Tokens.NC if int(g["acidentesDoMes"]) > 0 else Tokens.TEXTO, largura_col))
+		direita.add_child(_rotulo_rico(_ncs_por_barco(), Tokens.TEXTO_CALMO, largura_col))
+
+	# ----- vendas
+	var vendas: Dictionary = estado["vendas"]
+	if not fechamento:
+		direita.add_child(_rotulo_rico("VENDAS · carteira %d · propostas %d" % [(vendas["carteira"] as Array).size(),
+				(vendas["propostas"] as Array).size()], Tokens.TEXTO_CALMO, largura_col))
+	direita.add_child(_linha_capacidade(largura_col))
+
+	# ----- fechamento: decisão do conselho (uma por linha, na coluna da direita) e Continuar
+	var botoes := HBoxContainer.new()
+	botoes.add_theme_constant_override("separation", Tokens.GRADE / 2)
+	var primeira_livre: Button = null
+	if fechamento and r["derrota"] == null:
+		direita.add_child(_rotulo_rico("Decisão do conselho (uma):", Tokens.TEXTO_CALMO, largura_col))
+		var opcoes := VBoxContainer.new()
+		opcoes.add_theme_constant_override("separation", 1)
+		var escolhida = r["decisaoEscolhida"]
+		for o in r["opcoes"]:
+			var custo := "" if float(o["custo"]) == 0 else " (%s)" % _mil_reais(float(o["custo"]))
+			var b := _botao("%s%s" % [o["titulo"], custo], _escolher_decisao.bind(o["id"]))
+			b.tooltip_text = o["descricao"]
+			b.disabled = escolhida != null
+			if escolhida == o["id"]:
+				b.text = "> " + b.text
+			if primeira_livre == null and not b.disabled:
+				primeira_livre = b
+			opcoes.add_child(b)
+		direita.add_child(opcoes)
+	botoes.add_child(_botao("Última reunião", func():
+		_fechar_gestao()
+		_abrir_conselho()))
+	var fechar_ou_seguir := _botao("Continuar" if fechamento else "Fechar",
+			_continuar_depois_da_pausa if fechamento else _fechar_gestao)
+	if fechamento:
+		fechar_ou_seguir.theme_type_variation = "BotaoAcao"
+	botoes.add_child(fechar_ou_seguir)
+	botoes.get_child(0).disabled = r == null
+	lista.add_child(botoes)
+
+	if primeira:
+		# fechamento: a ação principal é a primeira decisão livre; decidido, Continuar (como na reunião)
+		_focar_depois(primeira_livre if primeira_livre != null else fechar_ou_seguir)
+	else:
+		_focar_indice(tela_gestao, foco)
+
+
+## Barra da meta: "chegar a" enche até o alvo; "não passar de" enche até o limite e fica vermelha se passar.
+func _barra_meta(m: Dictionary, largura: float, final: bool) -> Control:
+	var c := Control.new()
+	c.custom_minimum_size = Vector2(largura, 6)
+	var atual := float(m["atual"])
+	var alvo := float(m["alvo"])
+	var fracao := 0.0
+	if m["limite"]:
+		fracao = (1.0 if atual > 0 else 0.0) if alvo == 0 else atual / alvo
+	else:
+		fracao = 1.0 if alvo <= 0 else atual / alvo
+	var cor := _cor_meta(m, final)
+	c.draw.connect(func():
+		c.draw_rect(Rect2(0, 0, largura, 4), Tokens.FUNDO)
+		c.draw_rect(Rect2(0, 0, largura * clampf(fracao, 0.0, 1.0), 4), cor))
+	return c
+
+
+## "NCs por barco: 33-001 1 · 33-002 0 ..." (só os barcos em produção).
+func _ncs_por_barco() -> String:
+	var partes := []
+	for b in estado["barcos"]:
+		if b["status"] == "ENTREGUE":
+			continue
+		partes.append("%s %d" % [str(b["id"]).substr(3), (b["ncs"] as Array).size()])
+	return "NCs por barco: " + (" · ".join(partes) if not partes.is_empty() else "-")
+
+
+func _fechar_gestao() -> void:
+	if tela_gestao != null:
+		var janela := tela_gestao
+		tela_gestao = null
+		Movimento.fechar(janela, janela.queue_free)
+		_devolver_foco("gestao")
 
 
 # ---------------------------------------------------------------- lista de saves
@@ -2014,7 +2300,6 @@ func _abrir_conselho() -> void:
 		_focar_depois(nova)
 		return
 
-	lista.add_child(_linha_capacidade(largura))
 	lista.add_child(_linha_conselho("Decisão para o próximo mês (uma):", Tokens.TEXTO, largura))
 	var escolhida = r["decisaoEscolhida"]
 	for o in r["opcoes"]:
@@ -2044,7 +2329,7 @@ func _linha_conselho(texto: String, cor: Color, largura: float) -> RichTextLabel
 
 func _escolher_decisao(opcao_id: String) -> void:
 	await _enviar_ordem({"tipo": "EscolherDecisaoConselho", "opcaoId": opcao_id}, "")
-	_abrir_conselho()
+	_reabrir_tela_do_mes()
 
 
 func _fechar_conselho() -> void:
