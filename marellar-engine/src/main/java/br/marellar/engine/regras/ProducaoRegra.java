@@ -81,9 +81,10 @@ public final class ProducaoRegra {
             if (retrabalho) {
                 QualidadeRegra.retrabalhoConcluido(partida, barco);
             } else {
-                QualidadeRegra.sortearNcs(partida, barco);
+                var ncs = QualidadeRegra.sortearNcs(partida, barco);
                 barco.mudarStatus(StatusBarco.AGUARDANDO_INSPECAO);
                 partida.entrarNaFilaDeInspecao(barco.id());
+                RodadaRegra.preparar(partida, barco, ncs);
                 partida.registrarEvento(TipoEvento.GATE_CONCLUIDO, barco.id(), "eventos.gateConcluido",
                         Map.of("barco", barco.id(), "gate", barco.gateAtual().name()));
             }

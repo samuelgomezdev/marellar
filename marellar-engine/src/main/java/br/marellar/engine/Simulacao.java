@@ -26,6 +26,7 @@ import br.marellar.engine.regras.PessoasRegra;
 import br.marellar.engine.regras.ConselhoRegra;
 import br.marellar.engine.regras.FinanceiroRegra;
 import br.marellar.engine.regras.VendasRegra;
+import br.marellar.engine.regras.RodadaRegra;
 import br.marellar.engine.estado.EstadoPartida.FinanceiroVisao;
 import br.marellar.engine.relatorio.RelatorioConselho;
 import br.marellar.engine.dominio.CotaAReceber;
@@ -168,6 +169,7 @@ public final class Simulacao {
 
     private void tick() {
         VendasRegra.executar(partida);
+        RodadaRegra.executar(partida);
         ProducaoRegra.executar(partida);
         InspecaoRegra.executar(partida);
         if (partida.relogio().horaDoTurno() == Relogio.TICKS_POR_DIA - 1) {
@@ -176,6 +178,7 @@ public final class Simulacao {
             FornecedorRegra.fimDoDia(partida);
             FinanceiroRegra.fimDoDia(partida);
             VendasRegra.fimDoDia(partida);
+            RodadaRegra.fimDoDia(partida);
         }
         boolean ultimoTickDoMes = (partida.relogio().tick() + 1) % Relogio.TICKS_POR_MES == 0;
         if (ultimoTickDoMes) {
@@ -209,6 +212,7 @@ public final class Simulacao {
             case Ordem.DeclararCapacidade o -> VendasRegra.declararCapacidade(partida, o.barcosPorMes());
             case Ordem.AceitarProposta o -> VendasRegra.aceitar(partida, o.propostaId(), o.prazoDiasUteis());
             case Ordem.RecusarProposta o -> VendasRegra.recusar(partida, o.propostaId());
+            case Ordem.InspecionarRodada o -> RodadaRegra.inspecionar(partida, o.barcoId(), o.marcas());
         }
         historico.add(new Save.OrdemNoTempo(partida.relogio().tick(), ordem));
     }
@@ -278,7 +282,8 @@ public final class Simulacao {
                 partida.eventos().size(),
                 List.copyOf(partida.ncsInspecao()),
                 treinamentosVisao(),
-                vendasVisao());
+                vendasVisao(),
+                rodadaVisao());
     }
 
     private EstadoPartida.TreinamentosVisao treinamentosVisao() {
@@ -327,6 +332,28 @@ public final class Simulacao {
                 b.diaPrometido().map(this::dataDoDia).orElse(null),
                 VendasRegra.semanasAteHoje(partida, b),
                 VendasRegra.multaAteHoje(partida, b));
+    }
+
+    /** Rodadas abertas (marcas sem dizer qual e NC) e o resultado da ultima rodada respondida (revela tudo). */
+    private EstadoPartida.RodadaVisao rodadaVisao() {
+        var r = partida.parametros().rodada();
+        List<EstadoPartida.PontoVisao> pontos = r.pontos().stream()
+                .map(p -> new EstadoPartida.PontoVisao(p.id(), p.nome(), p.x(), p.y())).toList();
+        List<EstadoPartida.RodadaAbertaVisao> abertas = partida.rodadas().values().stream()
+                .filter(x -> !x.respondida())
+                .map(x -> new EstadoPartida.RodadaAbertaVisao(x.barcoId(), x.gate(), x.marcas().stream()
+                        .map(m -> new EstadoPartida.MarcaVisao(m.id(), m.pontoId(), m.aparencia())).toList()))
+                .toList();
+        EstadoPartida.ResultadoRodadaVisao ultimo = partida.ultimaRodada().map(x -> new EstadoPartida.ResultadoRodadaVisao(
+                x.barcoId(), x.gate(), x.marcas().stream().map(m -> {
+                    var nc = m.ncId() == null ? null : partida.nc(m.ncId()).orElse(null);
+                    return new EstadoPartida.MarcaResultadoVisao(m.id(), m.pontoId(), m.aparencia(),
+                            x.resultado().get(m.id()), nc == null ? null : nc.descricao(), nc == null ? null : nc.gravidade(),
+                            nc == null ? null : br.marellar.engine.regras.RodadaRegra.custoGarantia(partida, nc));
+                }).toList(), (int) x.resultado().values().stream()
+                        .filter(v -> v == br.marellar.engine.dominio.ResultadoMarca.FALSO_ALARME).count() * r.horasPorFalsoAlarme()))
+                .orElse(null);
+        return new EstadoPartida.RodadaVisao(r.segundos(), pontos, abertas, ultimo);
     }
 
     private EstadoPartida.VendasVisao vendasVisao() {

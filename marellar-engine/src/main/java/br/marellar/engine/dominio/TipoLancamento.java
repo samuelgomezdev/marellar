@@ -7,5 +7,6 @@ public enum TipoLancamento {
     FOLHA,
     DESPESA_FIXA,
     DECISAO_CONSELHO,
-    MULTA_ATRASO
+    MULTA_ATRASO,
+    GARANTIA
 }

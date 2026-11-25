@@ -18,6 +18,15 @@ public final class MesContabil {
     int rncs;
     int concessoes;
     BigDecimal multas = BigDecimal.ZERO;
+    BigDecimal garantia = BigDecimal.ZERO;
+
+    public void somarGarantia(BigDecimal v) {
+        garantia = garantia.add(v);
+    }
+
+    public BigDecimal garantia() {
+        return garantia;
+    }
     int vendas;
     int vendasPerdidas;
 

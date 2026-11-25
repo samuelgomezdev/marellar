@@ -14,7 +14,19 @@ import java.util.List;
 /** Parametros prontos para os testes: tira o acaso que nao interessa ao teste. */
 public final class Cenarios {
 
-    public static final ParametrosJogo PADRAO = CarregadorDados.carregarDoClasspath();
+    /**
+     * Parametros de data/, sem a pausa da rodada de inspecao a cada gate (os testes avancam o tempo sem
+     * responder a rodada; os testes da rodada ligam a pausa com {@link #comPausaDaRodada}).
+     */
+    public static final ParametrosJogo PADRAO = semPausaDaRodada(CarregadorDados.carregarDoClasspath());
+
+    public static ParametrosJogo semPausaDaRodada(ParametrosJogo p) {
+        return p.comRodada(p.rodada().comPausa(false));
+    }
+
+    public static ParametrosJogo comPausaDaRodada(ParametrosJogo p) {
+        return p.comRodada(p.rodada().comPausa(true));
+    }
 
     private Cenarios() {
     }

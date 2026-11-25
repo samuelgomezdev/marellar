@@ -911,6 +911,105 @@ public final class CodecGerado {
         sb.append("}");
     }
 
+    public static br.marellar.engine.dados.ParametrosRodada lerParametrosRodada(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "ParametrosRodada");
+        return new br.marellar.engine.dados.ParametrosRodada(
+                Json.logico(m.get("pausarNoGate")),
+                Json.inteiro(m.get("segundos")),
+                Json.inteiro(m.get("horasPorFalsoAlarme")),
+                Json.inteiro(m.get("marcasFalsasMin")),
+                Json.inteiro(m.get("marcasFalsasMax")),
+                Json.lista(m.get("aparenciasFalsas"), o -> Json.texto(o)),
+                Json.decimal(m.get("garantiaFatorCusto")),
+                Json.inteiro(m.get("garantiaDiasMin")),
+                Json.inteiro(m.get("garantiaDiasMax")),
+                Json.lista(m.get("pontos"), o -> lerParametrosRodada_Ponto(o)),
+                Json.mapa(m.get("tipos"), k -> k, o -> lerParametrosRodada_Tipo(o)));
+    }
+
+    public static void escreverParametrosRodada(StringBuilder sb, br.marellar.engine.dados.ParametrosRodada v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"pausarNoGate\":");
+        ((Json.Escritor<Boolean>) Json::numero).escrever(sb, v.pausarNoGate());
+        sb.append(",\"segundos\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.segundos());
+        sb.append(",\"horasPorFalsoAlarme\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.horasPorFalsoAlarme());
+        sb.append(",\"marcasFalsasMin\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.marcasFalsasMin());
+        sb.append(",\"marcasFalsasMax\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.marcasFalsasMax());
+        sb.append(",\"aparenciasFalsas\":");
+        ((Json.Escritor<java.util.List<java.lang.String>>) (s, x) -> Json.lista(s, x, (Json.Escritor<java.lang.String>) Json::texto)).escrever(sb, v.aparenciasFalsas());
+        sb.append(",\"garantiaFatorCusto\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.garantiaFatorCusto());
+        sb.append(",\"garantiaDiasMin\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.garantiaDiasMin());
+        sb.append(",\"garantiaDiasMax\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.garantiaDiasMax());
+        sb.append(",\"pontos\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.dados.ParametrosRodada.Ponto>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.dados.ParametrosRodada.Ponto>) CodecGerado::escreverParametrosRodada_Ponto)).escrever(sb, v.pontos());
+        sb.append(",\"tipos\":");
+        ((Json.Escritor<java.util.Map<java.lang.String, br.marellar.engine.dados.ParametrosRodada.Tipo>>) (s, x) -> Json.mapa(s, x, (Json.Escritor<br.marellar.engine.dados.ParametrosRodada.Tipo>) CodecGerado::escreverParametrosRodada_Tipo)).escrever(sb, v.tipos());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.dados.ParametrosRodada.Ponto lerParametrosRodada_Ponto(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "Ponto");
+        return new br.marellar.engine.dados.ParametrosRodada.Ponto(
+                Json.texto(m.get("id")),
+                Json.texto(m.get("nome")),
+                Json.decimal(m.get("x")),
+                Json.decimal(m.get("y")));
+    }
+
+    public static void escreverParametrosRodada_Ponto(StringBuilder sb, br.marellar.engine.dados.ParametrosRodada.Ponto v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"id\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.id());
+        sb.append(",\"nome\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.nome());
+        sb.append(",\"x\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.x());
+        sb.append(",\"y\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.y());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.dados.ParametrosRodada.Tipo lerParametrosRodada_Tipo(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "Tipo");
+        return new br.marellar.engine.dados.ParametrosRodada.Tipo(
+                Json.texto(m.get("aparencia")),
+                Json.lista(m.get("pontos"), o -> Json.texto(o)));
+    }
+
+    public static void escreverParametrosRodada_Tipo(StringBuilder sb, br.marellar.engine.dados.ParametrosRodada.Tipo v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"aparencia\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.aparencia());
+        sb.append(",\"pontos\":");
+        ((Json.Escritor<java.util.List<java.lang.String>>) (s, x) -> Json.lista(s, x, (Json.Escritor<java.lang.String>) Json::texto)).escrever(sb, v.pontos());
+        sb.append("}");
+    }
+
     public static br.marellar.engine.ordens.Ordem lerOrdem(Object no) {
         if (no == null) {
             return null;
@@ -932,6 +1031,7 @@ public final class CodecGerado {
             case "DeclararCapacidade" -> lerOrdem_DeclararCapacidade(no);
             case "AceitarProposta" -> lerOrdem_AceitarProposta(no);
             case "RecusarProposta" -> lerOrdem_RecusarProposta(no);
+            case "InspecionarRodada" -> lerOrdem_InspecionarRodada(no);
             case "RegistrarNcInspecao" -> lerOrdem_RegistrarNcInspecao(no);
             default -> throw new JsonInvalidoException("Ordem: tipo desconhecido " + tipo);
         };
@@ -988,6 +1088,10 @@ public final class CodecGerado {
         }
         if (v instanceof br.marellar.engine.ordens.Ordem.RecusarProposta x) {
             escreverOrdem_RecusarProposta(sb, x);
+            return;
+        }
+        if (v instanceof br.marellar.engine.ordens.Ordem.InspecionarRodada x) {
+            escreverOrdem_InspecionarRodada(sb, x);
             return;
         }
         if (v instanceof br.marellar.engine.ordens.Ordem.RegistrarNcInspecao x) {
@@ -1146,7 +1250,8 @@ public final class CodecGerado {
                 Json.longo(m.get("ultimoEventoId")),
                 Json.lista(m.get("ncsInspecao"), o -> lerNcInspecao3d(o)),
                 lerEstadoPartida_TreinamentosVisao(m.get("treinamentos")),
-                lerEstadoPartida_VendasVisao(m.get("vendas")));
+                lerEstadoPartida_VendasVisao(m.get("vendas")),
+                lerEstadoPartida_RodadaVisao(m.get("rodada")));
     }
 
     public static void escreverEstadoPartida(StringBuilder sb, br.marellar.engine.estado.EstadoPartida v) {
@@ -1214,6 +1319,8 @@ public final class CodecGerado {
         ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.TreinamentosVisao>) CodecGerado::escreverEstadoPartida_TreinamentosVisao).escrever(sb, v.treinamentos());
         sb.append(",\"vendas\":");
         ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.VendasVisao>) CodecGerado::escreverEstadoPartida_VendasVisao).escrever(sb, v.vendas());
+        sb.append(",\"rodada\":");
+        ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.RodadaVisao>) CodecGerado::escreverEstadoPartida_RodadaVisao).escrever(sb, v.rodada());
         sb.append("}");
     }
 
@@ -1962,6 +2069,7 @@ public final class CodecGerado {
                 Json.decimal(m.get("despesasFixas")),
                 Json.decimal(m.get("chargebackRecuperado")),
                 Json.decimal(m.get("multas")),
+                Json.decimal(m.get("garantia")),
                 Json.decimal(m.get("ebitda")));
     }
 
@@ -1986,6 +2094,8 @@ public final class CodecGerado {
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.chargebackRecuperado());
         sb.append(",\"multas\":");
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.multas());
+        sb.append(",\"garantia\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.garantia());
         sb.append(",\"ebitda\":");
         ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.ebitda());
         sb.append("}");
@@ -2334,6 +2444,186 @@ public final class CodecGerado {
         sb.append(",\"prazoEntrega\":");
         ((Json.Escritor<java.time.LocalDate>) Json::data).escrever(sb, v.prazoEntrega());
         sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.RodadaVisao lerEstadoPartida_RodadaVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "RodadaVisao");
+        return new br.marellar.engine.estado.EstadoPartida.RodadaVisao(
+                Json.inteiro(m.get("segundos")),
+                Json.lista(m.get("pontos"), o -> lerEstadoPartida_PontoVisao(o)),
+                Json.lista(m.get("abertas"), o -> lerEstadoPartida_RodadaAbertaVisao(o)),
+                lerEstadoPartida_ResultadoRodadaVisao(m.get("ultimoResultado")));
+    }
+
+    public static void escreverEstadoPartida_RodadaVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.RodadaVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"segundos\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.segundos());
+        sb.append(",\"pontos\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.PontoVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.PontoVisao>) CodecGerado::escreverEstadoPartida_PontoVisao)).escrever(sb, v.pontos());
+        sb.append(",\"abertas\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.RodadaAbertaVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.RodadaAbertaVisao>) CodecGerado::escreverEstadoPartida_RodadaAbertaVisao)).escrever(sb, v.abertas());
+        sb.append(",\"ultimoResultado\":");
+        ((Json.Escritor<br.marellar.engine.estado.EstadoPartida.ResultadoRodadaVisao>) CodecGerado::escreverEstadoPartida_ResultadoRodadaVisao).escrever(sb, v.ultimoResultado());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.PontoVisao lerEstadoPartida_PontoVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "PontoVisao");
+        return new br.marellar.engine.estado.EstadoPartida.PontoVisao(
+                Json.texto(m.get("id")),
+                Json.texto(m.get("nome")),
+                Json.decimal(m.get("x")),
+                Json.decimal(m.get("y")));
+    }
+
+    public static void escreverEstadoPartida_PontoVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.PontoVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"id\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.id());
+        sb.append(",\"nome\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.nome());
+        sb.append(",\"x\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.x());
+        sb.append(",\"y\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.y());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.RodadaAbertaVisao lerEstadoPartida_RodadaAbertaVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "RodadaAbertaVisao");
+        return new br.marellar.engine.estado.EstadoPartida.RodadaAbertaVisao(
+                Json.texto(m.get("barcoId")),
+                lerCodigoGate(m.get("gate")),
+                Json.lista(m.get("marcas"), o -> lerEstadoPartida_MarcaVisao(o)));
+    }
+
+    public static void escreverEstadoPartida_RodadaAbertaVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.RodadaAbertaVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"barcoId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.barcoId());
+        sb.append(",\"gate\":");
+        ((Json.Escritor<br.marellar.engine.dominio.CodigoGate>) CodecGerado::escreverCodigoGate).escrever(sb, v.gate());
+        sb.append(",\"marcas\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.MarcaVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.MarcaVisao>) CodecGerado::escreverEstadoPartida_MarcaVisao)).escrever(sb, v.marcas());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.MarcaVisao lerEstadoPartida_MarcaVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "MarcaVisao");
+        return new br.marellar.engine.estado.EstadoPartida.MarcaVisao(
+                Json.texto(m.get("id")),
+                Json.texto(m.get("pontoId")),
+                Json.texto(m.get("aparencia")));
+    }
+
+    public static void escreverEstadoPartida_MarcaVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.MarcaVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"id\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.id());
+        sb.append(",\"pontoId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.pontoId());
+        sb.append(",\"aparencia\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.aparencia());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.ResultadoRodadaVisao lerEstadoPartida_ResultadoRodadaVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "ResultadoRodadaVisao");
+        return new br.marellar.engine.estado.EstadoPartida.ResultadoRodadaVisao(
+                Json.texto(m.get("barcoId")),
+                lerCodigoGate(m.get("gate")),
+                Json.lista(m.get("marcas"), o -> lerEstadoPartida_MarcaResultadoVisao(o)),
+                Json.inteiro(m.get("horasDeEspera")));
+    }
+
+    public static void escreverEstadoPartida_ResultadoRodadaVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.ResultadoRodadaVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"barcoId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.barcoId());
+        sb.append(",\"gate\":");
+        ((Json.Escritor<br.marellar.engine.dominio.CodigoGate>) CodecGerado::escreverCodigoGate).escrever(sb, v.gate());
+        sb.append(",\"marcas\":");
+        ((Json.Escritor<java.util.List<br.marellar.engine.estado.EstadoPartida.MarcaResultadoVisao>>) (s, x) -> Json.lista(s, x, (Json.Escritor<br.marellar.engine.estado.EstadoPartida.MarcaResultadoVisao>) CodecGerado::escreverEstadoPartida_MarcaResultadoVisao)).escrever(sb, v.marcas());
+        sb.append(",\"horasDeEspera\":");
+        ((Json.Escritor<Integer>) Json::numero).escrever(sb, v.horasDeEspera());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.estado.EstadoPartida.MarcaResultadoVisao lerEstadoPartida_MarcaResultadoVisao(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "MarcaResultadoVisao");
+        return new br.marellar.engine.estado.EstadoPartida.MarcaResultadoVisao(
+                Json.texto(m.get("id")),
+                Json.texto(m.get("pontoId")),
+                Json.texto(m.get("aparencia")),
+                lerResultadoMarca(m.get("resultado")),
+                Json.texto(m.get("descricao")),
+                lerGravidade(m.get("gravidade")),
+                Json.decimal(m.get("custoGarantia")));
+    }
+
+    public static void escreverEstadoPartida_MarcaResultadoVisao(StringBuilder sb, br.marellar.engine.estado.EstadoPartida.MarcaResultadoVisao v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"id\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.id());
+        sb.append(",\"pontoId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.pontoId());
+        sb.append(",\"aparencia\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.aparencia());
+        sb.append(",\"resultado\":");
+        ((Json.Escritor<br.marellar.engine.dominio.ResultadoMarca>) CodecGerado::escreverResultadoMarca).escrever(sb, v.resultado());
+        sb.append(",\"descricao\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.descricao());
+        sb.append(",\"gravidade\":");
+        ((Json.Escritor<br.marellar.engine.dominio.Gravidade>) CodecGerado::escreverGravidade).escrever(sb, v.gravidade());
+        sb.append(",\"custoGarantia\":");
+        ((Json.Escritor<java.math.BigDecimal>) Json::decimal).escrever(sb, v.custoGarantia());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.dominio.ResultadoMarca lerResultadoMarca(Object no) {
+        String s = Json.texto(no);
+        return s == null ? null : br.marellar.engine.dominio.ResultadoMarca.valueOf(s);
+    }
+
+    public static void escreverResultadoMarca(StringBuilder sb, br.marellar.engine.dominio.ResultadoMarca v) {
+        Json.nome(sb, v);
     }
 
     public static br.marellar.engine.ResultadoAvanco lerResultadoAvanco(Object no) {
@@ -2731,6 +3021,29 @@ public final class CodecGerado {
         sb.append("{\"tipo\":\"RecusarProposta\"");
         sb.append(",\"propostaId\":");
         ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.propostaId());
+        sb.append("}");
+    }
+
+    public static br.marellar.engine.ordens.Ordem.InspecionarRodada lerOrdem_InspecionarRodada(Object no) {
+        if (no == null) {
+            return null;
+        }
+        Map<String, Object> m = Json.objeto(no, "InspecionarRodada");
+        return new br.marellar.engine.ordens.Ordem.InspecionarRodada(
+                Json.texto(m.get("barcoId")),
+                Json.lista(m.get("marcas"), o -> Json.texto(o)));
+    }
+
+    public static void escreverOrdem_InspecionarRodada(StringBuilder sb, br.marellar.engine.ordens.Ordem.InspecionarRodada v) {
+        if (v == null) {
+            sb.append("null");
+            return;
+        }
+        sb.append("{\"tipo\":\"InspecionarRodada\"");
+        sb.append(",\"barcoId\":");
+        ((Json.Escritor<java.lang.String>) Json::texto).escrever(sb, v.barcoId());
+        sb.append(",\"marcas\":");
+        ((Json.Escritor<java.util.List<java.lang.String>>) (s, x) -> Json.lista(s, x, (Json.Escritor<java.lang.String>) Json::texto)).escrever(sb, v.marcas());
         sb.append("}");
     }
 

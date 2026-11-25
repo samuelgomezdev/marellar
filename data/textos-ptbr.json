@@ -129,6 +129,8 @@
     "clienteDesistiu": "{cliente} desistiu: o prazo de {semanas} semanas foi longo demais.",
     "cascoNovo": "{barco} ({cliente}) entrou no molde. Entrega prometida para {data}.",
     "multa": "{barco} entregue com {semanas} semana(s) de atraso: multa de R$ {valor} ({percentual}%).",
-    "capacidade": "Capacidade declarada para o próximo mês: {capacidade} barco(s)."
+    "capacidade": "Capacidade declarada para o próximo mês: {capacidade} barco(s).",
+    "rodada": "{barco}: rodada de inspeção no gate {gate}: {achadas} achada(s), {escaparam} passaram, {falsos} falso(s) alarme(s).",
+    "garantia": "Garantia: {descricao} voltou no {barco}. Custo de R$ {valor} ({fator}x o retrabalho na fábrica)."
   }
 }

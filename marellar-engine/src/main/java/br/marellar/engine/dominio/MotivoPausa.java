@@ -6,6 +6,8 @@ public enum MotivoPausa {
     ACIDENTE,
     NC_CRITICA,
     EVENTO_COM_ESCOLHA,
+    /** Um gate terminou: o jogador faz a rodada de inspecao ou deixa com o inspetor. */
+    RODADA_INSPECAO,
     /** A partida acabou (caixa ou conselho). */
     DERROTA
 }

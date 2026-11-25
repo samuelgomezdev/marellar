@@ -85,13 +85,27 @@ class PartidaControllerTest {
                 .andExpect(jsonPath("$.velocidade").value("X2"));
     }
 
+    /** Avanca o 1o mes atravessando as pausas da rodada de inspecao (o jogador deixa com o inspetor). */
+    private JsonNode avancarAteOFimDoMes() throws Exception {
+        for (int i = 0; i < 200; i++) {
+            String corpo = mvc.perform(post("/api/v1/partidas/{id}/avancar", id)
+                            .contentType(MediaType.APPLICATION_JSON)
+                            .content("{\"ticks\": 168}"))
+                    .andExpect(status().isOk())
+                    .andReturn().getResponse().getContentAsString();
+            JsonNode r = json.readTree(corpo);
+            if ("FIM_DO_MES".equals(r.at("/resultado/motivoPausa").asText())) {
+                return r;
+            }
+        }
+        throw new AssertionError("O mes nao terminou");
+    }
+
     @Test
     void eventosDesdeUmId() throws Exception {
-        mvc.perform(post("/api/v1/partidas/{id}/avancar", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"ticks\": 168}"))
-                .andExpect(jsonPath("$.resultado.pausado").value(true))
-                .andExpect(jsonPath("$.resultado.motivoPausa").value("FIM_DO_MES"));
+        JsonNode fim = avancarAteOFimDoMes();
+        assertThat(fim.at("/resultado/pausado").asBoolean()).isTrue();
+        assertThat(fim.at("/resultado/motivoPausa").asText()).isEqualTo("FIM_DO_MES");
 
         String todos = mvc.perform(get("/api/v1/partidas/{id}/eventos", id))
                 .andExpect(status().isOk())
@@ -177,11 +191,9 @@ class PartidaControllerTest {
         mvc.perform(get("/api/v1/partidas/{id}/conselho", id))
                 .andExpect(status().isUnprocessableEntity());
 
-        mvc.perform(post("/api/v1/partidas/{id}/avancar", id)
-                        .contentType(MediaType.APPLICATION_JSON)
-                        .content("{\"ticks\": 168}"))
-                .andExpect(jsonPath("$.estado.conselho.mesReferencia").value("mar/2027"))
-                .andExpect(jsonPath("$.estado.financeiro.caixa").isNumber());
+        JsonNode fim = avancarAteOFimDoMes();
+        assertThat(fim.at("/estado/conselho/mesReferencia").asText()).isEqualTo("mar/2027");
+        assertThat(fim.at("/estado/financeiro/caixa").isNumber()).isTrue();
 
         mvc.perform(get("/api/v1/partidas/{id}/conselho", id))
                 .andExpect(status().isOk())

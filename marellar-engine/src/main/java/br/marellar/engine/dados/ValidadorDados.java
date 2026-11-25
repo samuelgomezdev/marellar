@@ -35,6 +35,7 @@ public final class ValidadorDados {
         v.eventos(p.eventos());
         v.financeiro(p.financeiro());
         v.vendas(p.vendas(), p.linha33());
+        v.rodada(p.rodada(), p.catalogoNc());
         v.textos(p.textos());
         v.itensDeFornecedor(p.catalogoNc(), p.fornecedores());
         v.itensDaLinha(p.linha33(), p.fornecedores());
@@ -313,6 +314,33 @@ public final class ValidadorDados {
         });
     }
 
+    private void rodada(ParametrosRodada r, CatalogoNc catalogo) {
+        String arq = CarregadorDados.RODADA;
+        regra(r.segundos() >= 10, arq, "segundos deve ser pelo menos 10");
+        regra(r.horasPorFalsoAlarme() >= 0, arq, "horasPorFalsoAlarme nao pode ser negativo");
+        regra(r.marcasFalsasMin() >= 0 && r.marcasFalsasMin() <= r.marcasFalsasMax(), arq,
+                "marcasFalsasMin deve estar entre 0 e marcasFalsasMax");
+        regra(!r.aparenciasFalsas().isEmpty(), arq, "aparenciasFalsas deve ser uma lista nao vazia");
+        positivo(arq, "garantiaFatorCusto", r.garantiaFatorCusto());
+        regra(r.garantiaDiasMin() >= 0 && r.garantiaDiasMin() <= r.garantiaDiasMax(), arq,
+                "garantiaDiasMin deve estar entre 0 e garantiaDiasMax");
+        Set<String> ids = new HashSet<>();
+        for (ParametrosRodada.Ponto p : r.pontos()) {
+            regra(ids.add(p.id()), arq, "ponto repetido: " + p.id());
+            regra(p.x() != null && p.y() != null && p.x().signum() >= 0 && p.x().compareTo(BigDecimal.ONE) <= 0
+                    && p.y().signum() >= 0 && p.y().compareTo(BigDecimal.ONE) <= 0, arq, "ponto " + p.id() + ": x e y entre 0 e 1");
+        }
+        regra(r.pontos().size() >= catalogo.maxNcsPorGate() + r.marcasFalsasMax(), arq,
+                "pontos insuficientes para maxNcsPorGate + marcasFalsasMax marcas");
+        for (CatalogoNc.TipoNc t : catalogo.tipos()) {
+            regra(r.tipos().containsKey(t.codigo()), arq, "tipos." + t.codigo() + " ausente (cada NC do catalogo precisa de aparencia e pontos)");
+        }
+        r.tipos().forEach((codigo, tipo) -> {
+            regra(tipo.aparencia() != null && !tipo.aparencia().isBlank(), arq, "tipos." + codigo + ".aparencia e obrigatoria");
+            regra(!tipo.pontos().isEmpty() && ids.containsAll(tipo.pontos()), arq, "tipos." + codigo + ".pontos com ponto inexistente");
+        });
+    }
+
     private void textos(Textos t) {
         String arq = CarregadorDados.TEXTOS;
         for (String caminho : List.of("inspetor.ncDetectada", "inspetor.gateAprovado", "inspetor.concessaoDemais",
@@ -329,6 +357,7 @@ public final class ValidadorDados {
                 "eventos.salarios", "eventos.decisaoConselho", "eventos.derrota",
                 "eventos.propostaNova", "eventos.propostaExpirada", "eventos.propostaRecusada", "eventos.vendaFechada",
                 "eventos.clienteDesistiu", "eventos.cascoNovo", "eventos.multa", "eventos.capacidade",
+                "eventos.rodada", "eventos.garantia",
                 "conselho.serio.acidente", "conselho.serio.caixaRuim", "conselho.serio.metaPerdida",
                 "conselho.serio.metaCumprida", "conselho.serio.ebitdaNegativo", "conselho.serio.caixaNegativo", "conselho.humor.materialDemais",
                 "conselho.humor.tudoBem", "conselho.humor.zeroNc", "conselho.derrota.CAIXA", "conselho.derrota.CONSELHO")) {

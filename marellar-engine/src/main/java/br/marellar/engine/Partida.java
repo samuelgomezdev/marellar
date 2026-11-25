@@ -15,6 +15,8 @@ import br.marellar.engine.dominio.Funcao;
 import br.marellar.engine.dominio.Pedido;
 import br.marellar.engine.dominio.PedidoCliente;
 import br.marellar.engine.dominio.Proposta;
+import br.marellar.engine.dominio.GarantiaAgendada;
+import br.marellar.engine.dominio.RodadaInspecao;
 import br.marellar.engine.dominio.Rnc;
 import br.marellar.engine.dominio.NaoConformidade;
 import br.marellar.engine.dominio.NcInspecao3d;
@@ -105,6 +107,13 @@ public final class Partida {
     private int propostasRecusadas;
     private BigDecimal multasTotal = BigDecimal.ZERO;
 
+    // ----- rodada de inspecao e garantia -----
+    private final Aleatorio aleatorioRodada;
+    /** Rodada de cada barco que terminou um gate e ainda nao foi inspecionado (ou esta esperando os falsos alarmes). */
+    private final Map<String, RodadaInspecao> rodadas = new LinkedHashMap<>();
+    private RodadaInspecao ultimaRodada;
+    private final List<GarantiaAgendada> garantias = new ArrayList<>();
+
     Partida(long semente, ParametrosJogo parametros, LocalDate inicio) {
         this.semente = semente;
         this.parametros = parametros;
@@ -124,6 +133,7 @@ public final class Partida {
         this.contadorPessoa = pessoas.size();
         this.contadorBarco = barcos.size();
         this.aleatorioVendas = new Aleatorio(semente ^ 0x56454E444153L);   // "VENDAS"
+        this.aleatorioRodada = new Aleatorio(semente ^ 0x524F44414441L);   // "RODADA"
         this.capacidadeVigente = parametros.vendas().capacidadeInicial();
         this.capacidadeDeclarada = capacidadeVigente;
         for (Barco b : barcos) {
@@ -289,6 +299,28 @@ public final class Partida {
 
     public BigDecimal multasTotal() {
         return multasTotal;
+    }
+
+    // ----- rodada de inspecao e garantia -----
+
+    public Aleatorio aleatorioRodada() {
+        return aleatorioRodada;
+    }
+
+    public Map<String, RodadaInspecao> rodadas() {
+        return rodadas;
+    }
+
+    public Optional<RodadaInspecao> ultimaRodada() {
+        return Optional.ofNullable(ultimaRodada);
+    }
+
+    public void registrarUltimaRodada(RodadaInspecao r) {
+        ultimaRodada = r;
+    }
+
+    public List<GarantiaAgendada> garantias() {
+        return garantias;
     }
 
     // ----- qualidade -----
@@ -561,6 +593,10 @@ public final class Partida {
 
     public void entrarNaFilaDeInspecao(String barcoId) {
         filaInspecao.addLast(barcoId);
+    }
+
+    public void sairDaFilaDeInspecao(String barcoId) {
+        filaInspecao.remove(barcoId);
     }
 
     public Optional<String> proximoDaFila() {

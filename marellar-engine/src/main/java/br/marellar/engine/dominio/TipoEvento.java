@@ -30,5 +30,9 @@ public enum TipoEvento {
     /** Pedido da carteira entrou num molde livre. */
     CASCO_NOVO,
     /** Multa por atraso na entrega. */
-    MULTA
+    MULTA,
+    /** Resultado da rodada de inspecao feita pelo jogador. */
+    RODADA,
+    /** NC que escapou voltou no pos-venda. */
+    GARANTIA
 }
